@@ -29,6 +29,9 @@ validate_module_config <- function(module_id, config, data) {
   if (identical(module_id, "autoquant_eda")) {
     return(validate_autoquant_eda_config(data = data, config = config))
   }
+  if (identical(module_id, "autoquant_model_assessment")) {
+    return(validate_autoquant_model_assessment_config(data = data, config = config))
+  }
 
   service_result(
     status = "success",
@@ -63,6 +66,9 @@ run_analysis_module <- function(module_id, data, config = list()) {
 
   if (identical(module_id, "autoquant_eda")) {
     return(run_autoquant_eda_module(data = data, config = config))
+  }
+  if (identical(module_id, "autoquant_model_assessment")) {
+    return(run_autoquant_model_assessment_module(data = data, config = config))
   }
 
   service_result(

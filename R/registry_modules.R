@@ -11,6 +11,17 @@ module_registry <- function() {
       supports_genai = FALSE,
       supports_code_generation = TRUE
     ),
+    autoquant_model_assessment = list(
+      module_id = "autoquant_model_assessment",
+      label = "AutoQuant Model Assessment",
+      category = "Modeling",
+      description = "Generate model assessment artifacts from actuals and predictions using AutoQuant.",
+      status = "experimental",
+      output_artifact_types = c("plot", "table", "text"),
+      required_packages = c("AutoQuant", "AutoPlots"),
+      supports_genai = FALSE,
+      supports_code_generation = TRUE
+    ),
     eda_report = list(
       module_id = "eda_report",
       label = "EDA Report",
