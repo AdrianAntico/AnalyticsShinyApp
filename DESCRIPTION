@@ -1,0 +1,15 @@
+Package: AnalyticsShinyApp
+Title: Local-First AutoPlots Visualization Builder
+Version: 0.1.0
+Authors@R:
+    person("Adrian", "Antico", role = c("aut", "cre"))
+Description: A local-first Shiny visualization builder powered by AutoPlots.
+License: file LICENSE
+Encoding: UTF-8
+Imports:
+    AutoPlots,
+    data.table,
+    htmltools,
+    htmlwidgets,
+    shiny,
+    tools

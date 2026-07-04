@@ -1,0 +1,13 @@
+Date,Channel,Category,Spend,Revenue,Clicks,XNum,YNum,ZVal
+2026-01-01,Search,Software,1200,3200,410,1,11,5
+2026-01-02,Search,Hardware,980,2600,355,2,13,8
+2026-01-03,Social,Software,750,1900,280,3,12,6
+2026-01-04,Social,Services,640,1700,240,4,15,9
+2026-01-05,Email,Software,520,1500,190,5,17,11
+2026-01-06,Email,Hardware,450,1180,160,6,16,10
+2026-01-07,Affiliate,Services,700,2100,230,7,19,13
+2026-01-08,Affiliate,Software,820,2400,260,8,21,14
+2026-01-09,Search,Services,1100,3000,390,9,20,12
+2026-01-10,Social,Hardware,690,1750,225,10,23,16
+2026-01-11,Email,Services,570,1425,175,11,24,18
+2026-01-12,Affiliate,Hardware,760,2200,245,12,26,20

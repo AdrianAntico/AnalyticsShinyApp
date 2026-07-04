@@ -1,0 +1,8 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+autoplots_project/
+autoplots_project.rds
+exports/
