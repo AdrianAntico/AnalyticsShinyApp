@@ -79,7 +79,7 @@ option_registry <- list(
     default = NA
   )
 )
-option_control <- function(option_name) {
+option_control <- function(option_name, ns = identity) {
   opt <- option_registry[[option_name]]
   if (is.null(opt)) {
     return(NULL)
@@ -87,10 +87,10 @@ option_control <- function(option_name) {
 
   switch(
     opt$type,
-    select = selectInput(opt$input_id, opt$label, choices = opt$choices, selected = opt$default),
-    text = textInput(opt$input_id, opt$label, value = opt$default),
-    checkbox = checkboxInput(opt$input_id, opt$label, value = opt$default),
-    numeric = numericInput(opt$input_id, opt$label, value = opt$default),
+    select = selectInput(ns(opt$input_id), opt$label, choices = opt$choices, selected = opt$default),
+    text = textInput(ns(opt$input_id), opt$label, value = opt$default),
+    checkbox = checkboxInput(ns(opt$input_id), opt$label, value = opt$default),
+    numeric = numericInput(ns(opt$input_id), opt$label, value = opt$default),
     NULL
   )
 }

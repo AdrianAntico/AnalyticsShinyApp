@@ -17,7 +17,7 @@ plot_config_summary <- function(name, config, metadata = NULL, status = NULL) {
     paste(value, collapse = ", ")
   }
 
-  data.frame(
+  data.table::data.table(
     Plot = name,
     PlotType = config$plot_type,
     Section = if (is.null(metadata$section_name)) "Analysis" else metadata$section_name,
@@ -26,8 +26,7 @@ plot_config_summary <- function(name, config, metadata = NULL, status = NULL) {
     Title = option_text("title.text"),
     XVar = mapping_text("XVar"),
     YVar = mapping_text("YVar"),
-    GroupVar = mapping_text("GroupVar"),
-    stringsAsFactors = FALSE
+    GroupVar = mapping_text("GroupVar")
   )
 }
 
