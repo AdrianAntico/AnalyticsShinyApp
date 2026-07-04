@@ -91,6 +91,24 @@ Modules should return standard `service_result` objects. The shell can then hand
 
 The module contract should keep UI controls, validation, execution, and generated artifacts close to the module while still letting the app shell own navigation, state, layout, and persistence.
 
+## Current Page Module Layout
+
+The app shell is intentionally thin:
+
+- `R/app_ui.R` owns the top-level app shell and tab navigation.
+- `R/app_server.R` owns shared reactive state, cross-page helper functions, and page-module wiring.
+
+Product pages live in flat `R/page_*.R` files:
+
+- `R/page_project.R`: project save/load, bundle save/load, project status
+- `R/page_data.R`: CSV upload, data status, data preview
+- `R/page_plot_builder.R`: plot builder controls, plot preview, saved plot management
+- `R/page_artifact_library.R`: artifact selection, summary, preview, metadata edits, visibility, removal, table export actions
+- `R/page_layouts.R`: text/table artifact creation, mixed artifact layout preview, layout/report code preview
+- `R/page_export.R`: export directory/name, HTML export, R code export, Export All status
+
+Each page file should expose `page_<name>_ui(id)` and `page_<name>_server(id, ctx)`. Page modules should use Shiny module namespacing internally and share app state through the `ctx` object created by `R/app_server.R`.
+
 ## Separation of Duties
 
 Analytical modules create artifacts. Display and report pages select, arrange, and render artifacts.

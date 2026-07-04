@@ -66,6 +66,24 @@ page_layouts_ui <- function(id) {
             actionButton(ns("export_all_tables_xlsx"), "Export All Tables XLSX", class = "btn-success")
           ),
           textOutput(ns("table_artifact_message"))
+        ),
+        tags$hr(),
+        ui_card(
+          title = "Report Plans",
+          tableOutput(ns("report_plan_summary")),
+          selectInput(ns("selected_report_plan"), "Plan", choices = character()),
+          uiOutput(ns("selected_report_plan_status")),
+          uiOutput(ns("active_report_plan_indicator")),
+          ui_action_row(
+            actionButton(ns("preview_report_plan"), "Preview Plan", class = "btn-secondary"),
+            actionButton(ns("apply_report_plan"), "Apply Plan", class = "btn-primary")
+          ),
+          textOutput(ns("report_plan_message"))
+        ),
+        tags$hr(),
+        ui_card(
+          title = "Plan Editor",
+          uiOutput(ns("report_plan_editor"))
         )
       ),
       mainPanel(
@@ -74,6 +92,8 @@ page_layouts_ui <- function(id) {
         tags$hr(),
         h4("Artifact Summary"),
         tableOutput(ns("artifact_summary")),
+        tags$hr(),
+        uiOutput(ns("report_plan_preview")),
         tags$hr(),
         uiOutput(ns("saved_layout_preview")),
         tags$hr(),
@@ -89,6 +109,9 @@ page_layouts_ui <- function(id) {
 
 page_layouts_server <- function(id, ctx) {
   moduleServer(id, function(input, output, session) {
+    report_plan_message <- reactiveVal("")
+    report_plan_preview <- reactiveVal(NULL)
+
     ctx$layout_cols_value <- function() {
       cols <- input$layout_cols
       if (is.null(cols) || is.na(cols)) {
@@ -471,15 +494,552 @@ page_layouts_server <- function(id, ctx) {
     })
 
     output$artifact_summary <- renderTable({
-      combined_artifact_summary(ctx$plot_artifacts(), ctx$text_artifacts(), ctx$table_artifacts())
+      ctx$combined_artifact_summary()
+    })
+
+    selected_report_plan <- function() {
+      plan_id <- selected_value(input$selected_report_plan)
+      if (is.null(plan_id)) {
+        return(NULL)
+      }
+
+      ctx$report_plan_state$plans[[plan_id]]
+    }
+
+    ordered_plan_sections <- function(plan) {
+      sections <- plan$sections %||% list()
+      if (!length(sections)) {
+        return(list())
+      }
+
+      section_order <- vapply(sections, function(section) {
+        suppressWarnings(as.integer(section$order %||% NA_integer_))
+      }, integer(1))
+      sections[order(section_order, names(sections), na.last = TRUE)]
+    }
+
+    refresh_plan_artifact_ids <- function(plan) {
+      plan$sections <- ordered_plan_sections(plan)
+      plan$artifact_ids <- unique(unlist(lapply(plan$sections, function(section) {
+        section$artifact_ids %||% character()
+      }), use.names = FALSE))
+      plan$updated_at <- Sys.time()
+      plan
+    }
+
+    save_report_plan <- function(plan, message) {
+      plan <- refresh_plan_artifact_ids(plan)
+      validation <- validate_report_plan(plan, ctx$all_artifacts())
+      if (identical(validation$status, "error")) {
+        report_plan_message(service_result_message(validation))
+        return(FALSE)
+      }
+
+      plan <- validation$value
+      ctx$report_plan_state$plans[[plan$plan_id]] <- plan
+      report_plan_message(paste(c(message, validation$warnings), collapse = " "))
+      report_plan_preview(render_report_plan_preview(plan))
+      TRUE
+    }
+
+    selected_plan_section_id <- function() {
+      selected_value(input$plan_section_edit)
+    }
+
+    selected_plan_artifact_id <- function() {
+      selected_value(input$plan_artifact_edit)
+    }
+
+    observe({
+      plan_ids <- names(ctx$report_plan_state$plans)
+      selected <- isolate(input$selected_report_plan)
+      if (!length(plan_ids)) {
+        selected <- character()
+      } else if (is.null(selected) || !selected %in% plan_ids) {
+        selected <- plan_ids[1L]
+      }
+
+      updateSelectInput(
+        session,
+        "selected_report_plan",
+        choices = plan_ids,
+        selected = selected
+      )
+    })
+
+    output$report_plan_summary <- renderTable({
+      summary <- ctx$report_plan_summary()
+      if (!nrow(summary)) {
+        return(data.table::data.table(Message = "No report plans have been created yet."))
+      }
+
+      summary
+    })
+
+    output$selected_report_plan_status <- renderUI({
+      plan <- selected_report_plan()
+      if (is.null(plan)) {
+        return(ui_empty_state("Select a plan to edit."))
+      }
+
+      validation <- validate_report_plan(plan, ctx$all_artifacts())
+      label <- report_plan_validation_status(validation, plan)
+      badge_status <- switch(
+        label,
+        "Applied" = "success",
+        "Ready" = "success",
+        "Has warnings" = "warning",
+        "Invalid" = "error",
+        "neutral"
+      )
+      tags$div(
+        class = "aq-plan-status-row",
+        ui_status_badge(label, status = badge_status),
+        if (length(validation$warnings)) {
+          tags$p(class = "aq-export-message", paste(validation$warnings, collapse = " "))
+        },
+        if (length(validation$errors)) {
+          tags$p(class = "aq-export-message", paste(validation$errors, collapse = " "))
+        }
+      )
+    })
+
+    output$active_report_plan_indicator <- renderUI({
+      plan_id <- ctx$report_plan_state$active_plan_id
+      plan <- ctx$report_plan_state$plans[[plan_id]]
+      if (is.null(plan)) {
+        return(NULL)
+      }
+
+      tags$div(
+        class = "aq-plan-active-indicator",
+        ui_status_badge("Applied", status = "success"),
+        tags$p(
+          class = "aq-export-message",
+          paste("Active plan:", plan$label, "from", plan$source_module)
+        )
+      )
+    })
+
+    observe({
+      plan <- selected_report_plan()
+      if (is.null(plan)) {
+        return()
+      }
+
+      updateTextInput(session, "plan_label_edit", value = plan$label %||% "")
+      updateSelectInput(session, "plan_layout_type_edit", selected = plan$layout_type %||% "sections")
+      updateNumericInput(session, "plan_cols_edit", value = as.integer(plan$cols %||% 2L))
+    })
+
+    observe({
+      plan <- selected_report_plan()
+      if (is.null(plan)) {
+        updateSelectInput(session, "plan_section_edit", choices = character(), selected = character())
+        updateSelectInput(session, "plan_artifact_edit", choices = character(), selected = character())
+        updateSelectInput(session, "plan_target_section", choices = character(), selected = character())
+        updateSelectInput(session, "plan_add_section", choices = character(), selected = character())
+        updateSelectInput(session, "plan_add_artifact", choices = character(), selected = character())
+        return()
+      }
+
+      sections <- ordered_plan_sections(plan)
+      section_ids <- names(sections)
+      section_choices <- stats::setNames(section_ids, vapply(sections, function(section) {
+        section$title %||% section$section_id
+      }, character(1)))
+      selected_section <- selected_value(input$plan_section_edit)
+      if (is.null(selected_section) || !selected_section %in% section_ids) {
+        selected_section <- if (length(section_ids)) section_ids[[1]] else character()
+      }
+
+      updateSelectInput(session, "plan_section_edit", choices = section_choices, selected = selected_section)
+      updateSelectInput(session, "plan_target_section", choices = section_choices, selected = selected_section)
+      updateSelectInput(session, "plan_add_section", choices = section_choices, selected = selected_section)
+
+      if (!length(section_ids)) {
+        updateSelectInput(session, "plan_artifact_edit", choices = character(), selected = character())
+        updateSelectInput(session, "plan_add_artifact", choices = character(), selected = character())
+        return()
+      }
+
+      selected_section_obj <- sections[[selected_section]]
+      artifact_ids <- selected_section_obj$artifact_ids %||% character()
+      artifacts <- ctx$all_artifacts()
+      artifact_choices <- stats::setNames(artifact_ids, vapply(artifact_ids, function(artifact_id) {
+        artifact <- artifacts[[artifact_id]]
+        if (is.null(artifact)) {
+          return(paste(artifact_id, "(missing)"))
+        }
+        paste0(artifact$label %||% artifact_id, " [", artifact_id, "]")
+      }, character(1)))
+      selected_artifact <- selected_value(input$plan_artifact_edit)
+      if (is.null(selected_artifact) || !selected_artifact %in% artifact_ids) {
+        selected_artifact <- if (length(artifact_ids)) artifact_ids[[1]] else character()
+      }
+      updateSelectInput(session, "plan_artifact_edit", choices = artifact_choices, selected = selected_artifact)
+
+      available_ids <- setdiff(names(artifacts), plan$artifact_ids %||% character())
+      available_choices <- stats::setNames(available_ids, vapply(available_ids, function(artifact_id) {
+        artifact <- artifacts[[artifact_id]]
+        paste0(artifact$label %||% artifact_id, " [", artifact_id, "]")
+      }, character(1)))
+      updateSelectInput(session, "plan_add_artifact", choices = available_choices)
+    })
+
+    render_report_plan_preview <- function(plan) {
+      artifacts <- ctx$all_artifacts()
+      validation <- validate_report_plan(plan, artifacts)
+      plan <- validation$value
+      tags$div(
+        class = "aq-report-plan-preview",
+        ui_section_header(
+          plan$label,
+          paste(
+            c(
+              paste("Source:", plan$source_module),
+              paste("Layout:", plan$layout_type),
+              paste("Sections:", length(plan$sections)),
+              paste("Artifacts:", length(plan$artifact_ids)),
+              plan$description
+            ),
+            collapse = " | "
+          )
+        ),
+        if (length(validation$warnings)) {
+          ui_empty_state("Plan has warnings.", paste(validation$warnings, collapse = " "))
+        },
+        if (length(validation$errors)) {
+          ui_empty_state("Plan is invalid.", paste(validation$errors, collapse = " "))
+        },
+        lapply(plan$sections, function(section) {
+          rows <- lapply(section$artifact_ids, function(artifact_id) {
+            artifact <- artifacts[[artifact_id]]
+            if (is.null(artifact)) {
+              return(tags$li(
+                tags$span(paste(artifact_id, "(missing)")),
+                " ",
+                ui_status_badge("Missing", status = "warning")
+              ))
+            }
+
+            tags$li(
+              tags$span(artifact$label %||% artifact_id),
+              " ",
+              ui_status_badge(artifact_type_label(artifact$artifact_type), status = "neutral"),
+              if (!isTRUE(artifact$visible)) {
+                tagList(" ", ui_status_badge("Hidden", status = "warning"))
+              }
+            )
+          })
+
+          ui_card(
+            title = section$title,
+            subtitle = section$description,
+            if (length(rows)) {
+              tags$ul(rows)
+            } else {
+              ui_empty_state("This section has no artifacts.")
+            }
+          )
+        })
+      )
+    }
+
+    output$report_plan_editor <- renderUI({
+      plan <- selected_report_plan()
+      if (!length(ctx$report_plan_state$plans)) {
+        return(ui_empty_state("No report plans available."))
+      }
+      if (is.null(plan)) {
+        return(ui_empty_state("Select a plan to edit."))
+      }
+
+      tagList(
+        ui_control_group(
+          "Plan Metadata",
+          textInput(session$ns("plan_label_edit"), "Plan Label", value = plan$label %||% ""),
+          selectInput(
+            session$ns("plan_layout_type_edit"),
+            "Layout Type",
+            choices = c("sections", "grid", "carousel", "canvas"),
+            selected = plan$layout_type %||% "sections"
+          ),
+          numericInput(session$ns("plan_cols_edit"), "Columns", value = as.integer(plan$cols %||% 2L), min = 1, step = 1),
+          ui_action_row(
+            actionButton(session$ns("update_plan_metadata"), "Update Plan Metadata", class = "btn-primary"),
+            actionButton(session$ns("duplicate_plan"), "Duplicate Plan", class = "btn-secondary"),
+            actionButton(session$ns("archive_plan"), "Archive Plan", class = "btn-danger")
+          )
+        ),
+        ui_control_group(
+          "Sections",
+          selectInput(session$ns("plan_section_edit"), "Section", choices = character()),
+          textInput(session$ns("plan_section_title_edit"), "Section Title", value = ""),
+          ui_action_row(
+            actionButton(session$ns("rename_plan_section"), "Rename Section", class = "btn-secondary"),
+            actionButton(session$ns("move_plan_section_up"), "Move Section Up", class = "btn-secondary"),
+            actionButton(session$ns("move_plan_section_down"), "Move Section Down", class = "btn-secondary"),
+            actionButton(session$ns("remove_plan_section"), "Remove Section", class = "btn-danger")
+          )
+        ),
+        ui_control_group(
+          "Artifacts",
+          selectInput(session$ns("plan_artifact_edit"), "Artifact", choices = character()),
+          selectInput(session$ns("plan_target_section"), "Move To Section", choices = character()),
+          ui_action_row(
+            actionButton(session$ns("move_plan_artifact_up"), "Move Artifact Up", class = "btn-secondary"),
+            actionButton(session$ns("move_plan_artifact_down"), "Move Artifact Down", class = "btn-secondary"),
+            actionButton(session$ns("move_plan_artifact_section"), "Move To Section", class = "btn-secondary"),
+            actionButton(session$ns("remove_plan_artifact"), "Remove From Plan", class = "btn-danger")
+          ),
+          tags$hr(),
+          selectInput(session$ns("plan_add_artifact"), "Add Artifact", choices = character()),
+          selectInput(session$ns("plan_add_section"), "Add To Section", choices = character()),
+          ui_action_row(
+            actionButton(session$ns("add_artifact_to_plan"), "Add Artifact to Plan", class = "btn-primary")
+          )
+        )
+      )
+    })
+
+    observe({
+      plan <- selected_report_plan()
+      section_id <- selected_plan_section_id()
+      if (is.null(plan) || is.null(section_id)) {
+        return()
+      }
+
+      section <- plan$sections[[section_id]]
+      updateTextInput(session, "plan_section_title_edit", value = section$title %||% "")
+    })
+
+    observeEvent(input$update_plan_metadata, {
+      plan <- selected_report_plan()
+      if (is.null(plan)) {
+        report_plan_message("Select a plan to edit.")
+        return()
+      }
+
+      plan$label <- selected_value(input$plan_label_edit) %||% plan$label
+      plan$layout_type <- selected_value(input$plan_layout_type_edit) %||% plan$layout_type
+      plan$cols <- as.integer(input$plan_cols_edit %||% plan$cols)
+      save_report_plan(plan, paste("Updated plan metadata:", plan$label))
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$duplicate_plan, {
+      plan <- selected_report_plan()
+      if (is.null(plan)) {
+        report_plan_message("Select a plan to duplicate.")
+        return()
+      }
+
+      base_id <- paste0(plan$plan_id, "_copy")
+      new_id <- base_id
+      index <- 1L
+      while (new_id %in% names(ctx$report_plan_state$plans)) {
+        index <- index + 1L
+        new_id <- paste0(base_id, "_", index)
+      }
+      plan$plan_id <- new_id
+      plan$label <- paste(plan$label, "Copy")
+      plan$status <- "draft"
+      plan$created_at <- Sys.time()
+      plan$updated_at <- Sys.time()
+      save_report_plan(plan, paste("Duplicated report plan:", plan$label))
+      updateSelectInput(session, "selected_report_plan", selected = new_id)
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$archive_plan, {
+      plan <- selected_report_plan()
+      if (is.null(plan)) {
+        report_plan_message("Select a plan to archive.")
+        return()
+      }
+
+      plan$status <- "archived"
+      save_report_plan(plan, paste("Archived report plan:", plan$label))
+    }, ignoreInit = TRUE)
+
+    rename_selected_section <- function() {
+      plan <- selected_report_plan()
+      section_id <- selected_plan_section_id()
+      if (is.null(plan) || is.null(section_id)) {
+        report_plan_message("Select a section to rename.")
+        return()
+      }
+
+      title <- selected_value(input$plan_section_title_edit)
+      if (is.null(title)) {
+        report_plan_message("Enter a section title.")
+        return()
+      }
+
+      plan$sections[[section_id]]$title <- title
+      save_report_plan(plan, paste("Renamed section:", title))
+    }
+
+    observeEvent(input$rename_plan_section, rename_selected_section(), ignoreInit = TRUE)
+
+    move_section <- function(direction) {
+      plan <- selected_report_plan()
+      section_id <- selected_plan_section_id()
+      if (is.null(plan) || is.null(section_id)) {
+        report_plan_message("Select a section to move.")
+        return()
+      }
+
+      sections <- ordered_plan_sections(plan)
+      section_ids <- names(sections)
+      index <- match(section_id, section_ids)
+      swap_index <- index + direction
+      if (is.na(index) || swap_index < 1L || swap_index > length(section_ids)) {
+        report_plan_message("Section is already at that end of the plan.")
+        return()
+      }
+
+      section_ids[c(index, swap_index)] <- section_ids[c(swap_index, index)]
+      sections <- sections[section_ids]
+      for (i in seq_along(sections)) {
+        sections[[i]]$order <- i
+      }
+      plan$sections <- sections
+      save_report_plan(plan, "Moved section.")
+    }
+
+    observeEvent(input$move_plan_section_up, move_section(-1L), ignoreInit = TRUE)
+    observeEvent(input$move_plan_section_down, move_section(1L), ignoreInit = TRUE)
+
+    observeEvent(input$remove_plan_section, {
+      plan <- selected_report_plan()
+      section_id <- selected_plan_section_id()
+      if (is.null(plan) || is.null(section_id)) {
+        report_plan_message("Select a section to remove.")
+        return()
+      }
+
+      plan$sections[[section_id]] <- NULL
+      save_report_plan(plan, "Removed section from plan. Artifacts remain in the Artifact Library.")
+    }, ignoreInit = TRUE)
+
+    move_artifact <- function(direction) {
+      plan <- selected_report_plan()
+      section_id <- selected_plan_section_id()
+      artifact_id <- selected_plan_artifact_id()
+      if (is.null(plan) || is.null(section_id) || is.null(artifact_id)) {
+        report_plan_message("Select an artifact to move.")
+        return()
+      }
+
+      artifact_ids <- plan$sections[[section_id]]$artifact_ids %||% character()
+      index <- match(artifact_id, artifact_ids)
+      swap_index <- index + direction
+      if (is.na(index) || swap_index < 1L || swap_index > length(artifact_ids)) {
+        report_plan_message("Artifact is already at that end of the section.")
+        return()
+      }
+
+      artifact_ids[c(index, swap_index)] <- artifact_ids[c(swap_index, index)]
+      plan$sections[[section_id]]$artifact_ids <- artifact_ids
+      save_report_plan(plan, "Moved artifact.")
+    }
+
+    observeEvent(input$move_plan_artifact_up, move_artifact(-1L), ignoreInit = TRUE)
+    observeEvent(input$move_plan_artifact_down, move_artifact(1L), ignoreInit = TRUE)
+
+    observeEvent(input$remove_plan_artifact, {
+      plan <- selected_report_plan()
+      section_id <- selected_plan_section_id()
+      artifact_id <- selected_plan_artifact_id()
+      if (is.null(plan) || is.null(section_id) || is.null(artifact_id)) {
+        report_plan_message("Select an artifact to remove from the plan.")
+        return()
+      }
+
+      plan$sections[[section_id]]$artifact_ids <- setdiff(plan$sections[[section_id]]$artifact_ids %||% character(), artifact_id)
+      save_report_plan(plan, "Removed artifact from plan. Artifact remains in the Artifact Library.")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$move_plan_artifact_section, {
+      plan <- selected_report_plan()
+      from_section <- selected_plan_section_id()
+      to_section <- selected_value(input$plan_target_section)
+      artifact_id <- selected_plan_artifact_id()
+      if (is.null(plan) || is.null(from_section) || is.null(to_section) || is.null(artifact_id)) {
+        report_plan_message("Select an artifact and target section.")
+        return()
+      }
+
+      plan$sections[[from_section]]$artifact_ids <- setdiff(plan$sections[[from_section]]$artifact_ids %||% character(), artifact_id)
+      plan$sections[[to_section]]$artifact_ids <- c(plan$sections[[to_section]]$artifact_ids %||% character(), artifact_id)
+      save_report_plan(plan, "Moved artifact to another section.")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$add_artifact_to_plan, {
+      plan <- selected_report_plan()
+      section_id <- selected_value(input$plan_add_section)
+      artifact_id <- selected_value(input$plan_add_artifact)
+      if (is.null(plan) || is.null(section_id)) {
+        report_plan_message("Select a plan section.")
+        return()
+      }
+      if (is.null(artifact_id)) {
+        report_plan_message("All artifacts are already included in this plan.")
+        return()
+      }
+
+      plan$sections[[section_id]]$artifact_ids <- unique(c(plan$sections[[section_id]]$artifact_ids %||% character(), artifact_id))
+      save_report_plan(plan, "Added artifact to plan.")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$preview_report_plan, {
+      plan_id <- selected_value(input$selected_report_plan)
+      plan <- ctx$report_plan_state$plans[[plan_id]]
+      if (is.null(plan)) {
+        report_plan_preview(NULL)
+        report_plan_message("Select a report plan to preview.")
+        return()
+      }
+
+      report_plan_preview(render_report_plan_preview(plan))
+      report_plan_message(paste("Previewing report plan:", plan$label))
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$apply_report_plan, {
+      plan_id <- selected_value(input$selected_report_plan)
+      if (is.null(plan_id)) {
+        report_plan_message("Select a report plan to apply.")
+        return()
+      }
+
+      result <- ctx$apply_report_plan(plan_id)
+      report_plan_message(service_result_message(result))
+      if (!identical(result$status, "error")) {
+        report_plan_preview(render_report_plan_preview(result$value))
+      }
+    }, ignoreInit = TRUE)
+
+    output$report_plan_preview <- renderUI({
+      report_plan_preview()
+    })
+
+    output$report_plan_message <- renderText({
+      report_plan_message()
     })
 
     output$saved_layout_preview <- renderUI({
       if (identical(input$layout_type, "Sections")) {
         if (!length(ctx$all_report_artifacts())) {
-          return(tags$div(
-            style = "padding: 16px; color: #6B7280;",
-            "Add ready plots, text artifacts, or table artifacts to preview a section layout."
+          if (!length(ctx$all_artifacts())) {
+            return(ui_empty_state(
+              "No artifacts available.",
+              "Create a plot, text block, or table artifact to preview a section layout."
+            ))
+          }
+
+          return(ui_empty_state(
+            "No visible artifacts selected for this layout.",
+            "Use the Artifact Library to show artifacts in the report preview."
           ))
         }
 
@@ -492,9 +1052,16 @@ page_layouts_server <- function(id, ctx) {
       }
 
       if (!length(ctx$all_report_artifacts())) {
-        return(tags$div(
-          style = "padding: 16px; color: #6B7280;",
-          "Add plots from the Plots tab, text artifacts, or table artifacts to preview a layout."
+        if (!length(ctx$all_artifacts())) {
+          return(ui_empty_state(
+            "No artifacts available.",
+            "Create a plot, text block, or table artifact to preview a grid layout."
+          ))
+        }
+
+        return(ui_empty_state(
+          "No visible artifacts selected for this layout.",
+          "Use the Artifact Library to show artifacts in the report preview."
         ))
       }
 

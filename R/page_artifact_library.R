@@ -45,7 +45,7 @@ page_artifact_library_ui <- function(id) {
 page_artifact_library_server <- function(id, ctx) {
   moduleServer(id, function(input, output, session) {
     filtered_artifact_summary <- function() {
-      summary <- combined_artifact_summary(ctx$plot_artifacts(), ctx$text_artifacts(), ctx$table_artifacts())
+      summary <- ctx$combined_artifact_summary()
       filter <- selected_value(input$artifact_type_filter) %||% "All"
       if (identical(filter, "All") || !nrow(summary)) {
         return(summary)

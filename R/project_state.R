@@ -101,7 +101,8 @@ validate_project_state <- function(project_state, data = NULL) {
 
   optional_fields <- c(
     "data_path", "data_name", "current_plot_type",
-    "current_mappings", "current_options", "section_names", "selected_theme"
+    "current_mappings", "current_options", "section_names", "selected_theme",
+    "module_artifacts", "text_artifacts", "table_artifacts", "report_plans", "active_plan_id"
   )
   missing_optional <- setdiff(optional_fields, names(project_state))
   if (length(missing_optional)) {

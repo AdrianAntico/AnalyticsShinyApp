@@ -9,9 +9,14 @@ server <- function(input, output, session) {
     metadata = list(),
     status = list()
   )
+  ctx$saved_module_artifacts <- reactiveValues(artifacts = list())
   ctx$saved_sections <- reactiveValues(sections = list())
   ctx$saved_text_artifacts <- reactiveValues(artifacts = list())
   ctx$saved_table_artifacts <- reactiveValues(artifacts = list())
+  ctx$report_plan_state <- reactiveValues(
+    plans = list(),
+    active_plan_id = NULL
+  )
 
   ctx$plot_result <- reactiveVal(NULL)
   ctx$plot_error <- reactiveVal(NULL)
@@ -96,8 +101,21 @@ server <- function(input, output, session) {
     ctx$saved_table_artifacts$artifacts
   }
 
+  ctx$module_artifacts <- function() {
+    ctx$saved_module_artifacts$artifacts
+  }
+
   ctx$all_artifacts <- function() {
-    c(ctx$plot_artifacts(), ctx$text_artifacts(), ctx$table_artifacts())
+    c(ctx$plot_artifacts(), ctx$module_artifacts(), ctx$text_artifacts(), ctx$table_artifacts())
+  }
+
+  ctx$combined_artifact_summary <- function() {
+    combined_artifact_summary(
+      ctx$plot_artifacts(),
+      ctx$text_artifacts(),
+      ctx$table_artifacts(),
+      ctx$module_artifacts()
+    )
   }
 
   ctx$artifact_order_value <- function(value, fallback = NA_integer_) {
@@ -146,6 +164,17 @@ server <- function(input, output, session) {
       return(TRUE)
     }
 
+    if (artifact_id %in% names(ctx$saved_module_artifacts$artifacts)) {
+      artifact <- ctx$saved_module_artifacts$artifacts[[artifact_id]]
+      artifact$label <- label
+      artifact$section <- section
+      artifact$order <- order
+      artifact$visible <- visible
+      artifact$updated_at <- Sys.time()
+      ctx$saved_module_artifacts$artifacts[[artifact_id]] <- artifact
+      return(TRUE)
+    }
+
     FALSE
   }
 
@@ -177,7 +206,185 @@ server <- function(input, output, session) {
       return(TRUE)
     }
 
+    if (artifact_id %in% names(ctx$saved_module_artifacts$artifacts)) {
+      ctx$saved_module_artifacts$artifacts[[artifact_id]] <- NULL
+      return(TRUE)
+    }
+
     FALSE
+  }
+
+  ctx$add_artifacts <- function(artifacts) {
+    if (is.null(artifacts) || !length(artifacts)) {
+      return(invisible(0L))
+    }
+
+    added <- 0L
+    for (artifact_id in names(artifacts)) {
+      artifact <- artifacts[[artifact_id]]
+      if (!inherits(artifact, "aq_artifact")) {
+        next
+      }
+
+      if (identical(artifact$artifact_type, "plot") &&
+          identical(artifact$source_module, "plot_builder")) {
+        ctx$saved_plots$plots[[artifact$artifact_id]] <- artifact$object
+        ctx$saved_plots$configs[[artifact$artifact_id]] <- list(
+          plot_type = artifact$metadata$module_id %||% artifact$source_module %||% "module_plot",
+          mappings = list(),
+          options = list()
+        )
+        ctx$saved_plots$code[[artifact$artifact_id]] <- artifact$code
+        ctx$saved_plots$metadata[[artifact$artifact_id]] <- list(
+          label = artifact$label,
+          section_name = artifact$section,
+          sort_order = artifact$order,
+          visible = artifact$visible,
+          source_module = artifact$source_module,
+          module_config = artifact$config
+        )
+        ctx$saved_plots$status[[artifact$artifact_id]] <- list(status = "Ready", message = "")
+        added <- added + 1L
+      } else if (identical(artifact$artifact_type, "plot")) {
+        ctx$saved_module_artifacts$artifacts[[artifact$artifact_id]] <- artifact
+        added <- added + 1L
+      } else if (identical(artifact$artifact_type, "text")) {
+        ctx$saved_text_artifacts$artifacts[[artifact$artifact_id]] <- artifact
+        added <- added + 1L
+      } else if (identical(artifact$artifact_type, "table")) {
+        ctx$saved_table_artifacts$artifacts[[artifact$artifact_id]] <- artifact
+        added <- added + 1L
+      }
+    }
+
+    invisible(added)
+  }
+
+  ctx$apply_artifact_layout <- function(artifact_ids, sections) {
+    planned_ids <- unique(artifact_ids)
+    section_lookup <- list()
+    order_lookup <- list()
+    order_index <- 1L
+    for (section in sections) {
+      for (artifact_id in section$artifact_ids %||% character()) {
+        section_lookup[[artifact_id]] <- section$title
+        order_lookup[[artifact_id]] <- order_index
+        order_index <- order_index + 1L
+      }
+    }
+
+    for (artifact_id in names(ctx$saved_plots$metadata)) {
+      metadata <- ctx$saved_plots$metadata[[artifact_id]] %||% list()
+      metadata$visible <- artifact_id %in% planned_ids
+      if (isTRUE(metadata$visible)) {
+        metadata$section_name <- section_lookup[[artifact_id]] %||% "Analysis"
+        metadata$sort_order <- order_lookup[[artifact_id]] %||% metadata$sort_order %||% NA_integer_
+      }
+      ctx$saved_plots$metadata[[artifact_id]] <- metadata
+    }
+
+    for (artifact_id in names(ctx$saved_text_artifacts$artifacts)) {
+      artifact <- ctx$saved_text_artifacts$artifacts[[artifact_id]]
+      artifact$visible <- artifact_id %in% planned_ids
+      if (isTRUE(artifact$visible)) {
+        artifact$section <- section_lookup[[artifact_id]] %||% "Analysis"
+        artifact$order <- order_lookup[[artifact_id]] %||% artifact$order %||% NA_integer_
+      }
+      artifact$updated_at <- Sys.time()
+      ctx$saved_text_artifacts$artifacts[[artifact_id]] <- artifact
+    }
+
+    for (artifact_id in names(ctx$saved_table_artifacts$artifacts)) {
+      artifact <- ctx$saved_table_artifacts$artifacts[[artifact_id]]
+      artifact$visible <- artifact_id %in% planned_ids
+      if (isTRUE(artifact$visible)) {
+        artifact$section <- section_lookup[[artifact_id]] %||% "Analysis"
+        artifact$order <- order_lookup[[artifact_id]] %||% artifact$order %||% NA_integer_
+      }
+      artifact$updated_at <- Sys.time()
+      ctx$saved_table_artifacts$artifacts[[artifact_id]] <- artifact
+    }
+
+    for (artifact_id in names(ctx$saved_module_artifacts$artifacts)) {
+      artifact <- ctx$saved_module_artifacts$artifacts[[artifact_id]]
+      artifact$visible <- artifact_id %in% planned_ids
+      if (isTRUE(artifact$visible)) {
+        artifact$section <- section_lookup[[artifact_id]] %||% "Analysis"
+        artifact$order <- order_lookup[[artifact_id]] %||% artifact$order %||% NA_integer_
+      }
+      artifact$updated_at <- Sys.time()
+      ctx$saved_module_artifacts$artifacts[[artifact_id]] <- artifact
+    }
+
+    invisible(TRUE)
+  }
+
+  ctx$report_plan_summary <- function() {
+    report_plan_summary(ctx$report_plan_state$plans)
+  }
+
+  ctx$add_report_plan <- function(plan) {
+    validation <- validate_report_plan(plan, ctx$all_artifacts())
+    if (identical(validation$status, "error")) {
+      return(validation)
+    }
+    plan <- validation$value
+
+    ctx$report_plan_state$plans[[plan$plan_id]] <- plan
+    service_result(
+      status = "success",
+      value = plan,
+      messages = paste("Added report plan:", plan$label),
+      warnings = validation$warnings,
+      metadata = list(plan_id = plan$plan_id)
+    )
+  }
+
+  ctx$add_report_plans <- function(plans) {
+    if (is.null(plans) || !length(plans)) {
+      return(invisible(0L))
+    }
+
+    added <- 0L
+    for (plan in plans) {
+      result <- ctx$add_report_plan(plan)
+      if (!identical(result$status, "error")) {
+        added <- added + 1L
+      }
+    }
+
+    invisible(added)
+  }
+
+  ctx$apply_report_plan <- function(plan_id) {
+    plan <- ctx$report_plan_state$plans[[plan_id]]
+    if (is.null(plan)) {
+      return(service_result(
+        status = "error",
+        errors = paste("Report plan was not found:", plan_id),
+        metadata = list(error_code = "REPORT_PLAN_NOT_FOUND")
+      ))
+    }
+
+    result <- apply_report_plan_to_layout_state(
+      plan = plan,
+      artifact_state = list(
+        all_artifacts = ctx$all_artifacts,
+        apply_artifact_layout = ctx$apply_artifact_layout
+      ),
+      layout_state = list(
+        set_layout_settings = ctx$set_layout_settings
+      )
+    )
+    if (!identical(result$status, "error")) {
+      applied_plan <- result$value
+      applied_plan$status <- "applied"
+      applied_plan$updated_at <- Sys.time()
+      ctx$report_plan_state$plans[[plan_id]] <- applied_plan
+      ctx$report_plan_state$active_plan_id <- plan_id
+    }
+
+    result
   }
 
   ctx$all_report_artifacts <- function() {
@@ -198,24 +405,44 @@ server <- function(input, output, session) {
   ctx$mixed_report_preview <- function() {
     artifacts <- ctx$all_report_artifacts()
     if (!length(artifacts)) {
-      return(NULL)
+      return(ui_empty_state(
+        "No visible artifacts selected for this layout.",
+        "Use the Artifact Library to show artifacts in the report preview."
+      ))
     }
 
     cols <- ctx$layout_cols_value()
     if (identical(ctx$get_layout_type(), "Sections")) {
       summary <- artifact_summary(artifacts)
-      section_names <- unique(summary$section)
+      section_summary <- summary[
+        ,
+        list(
+          first_order = min(order, na.rm = TRUE),
+          artifact_count = .N
+        ),
+        by = section
+      ]
+      section_summary[is.infinite(first_order), first_order := NA_integer_]
+      section_summary <- section_summary[order(first_order, section)]
+
       return(tags$div(
         class = "aq-report-sections",
-        lapply(section_names, function(section_name) {
+        lapply(seq_len(nrow(section_summary)), function(index) {
+          section_name <- section_summary$section[[index]]
           section_ids <- summary$artifact_id[summary$section == section_name]
+          subtitle <- sprintf(
+            "%s visible %s",
+            section_summary$artifact_count[[index]],
+            if (identical(section_summary$artifact_count[[index]], 1L)) "artifact" else "artifacts"
+          )
+
           tags$section(
             class = "aq-report-section",
-            tags$h3(class = "aq-report-section-title", section_name),
+            ui_section_header(section_name, subtitle),
             tags$div(
               class = "aq-report-grid",
               style = paste0("grid-template-columns: repeat(", cols, ", minmax(0, 1fr));"),
-              lapply(ordered_list_by_names(artifacts, section_ids), render_artifact)
+              lapply(ordered_list_by_names(artifacts, section_ids), render_artifact, chrome = TRUE)
             )
           )
         })
@@ -225,7 +452,7 @@ server <- function(input, output, session) {
     tags$div(
       class = "aq-report-grid",
       style = paste0("grid-template-columns: repeat(", cols, ", minmax(0, 1fr));"),
-      lapply(artifacts, render_artifact)
+      lapply(artifacts, render_artifact, chrome = TRUE)
     )
   }
 
@@ -254,7 +481,7 @@ server <- function(input, output, session) {
   }
 
   ctx$next_artifact_order <- function() {
-    summary <- combined_artifact_summary(ctx$plot_artifacts(), ctx$text_artifacts(), ctx$table_artifacts())
+    summary <- ctx$combined_artifact_summary()
     if (!nrow(summary) || all(is.na(summary$order))) {
       return(1L)
     }
@@ -315,8 +542,11 @@ server <- function(input, output, session) {
       plot_configs = ctx$saved_plots$configs,
       plot_code = ctx$saved_plots$code,
       plot_metadata = ctx$saved_plots$metadata,
+      module_artifacts = ctx$saved_module_artifacts$artifacts,
       text_artifacts = ctx$saved_text_artifacts$artifacts,
       table_artifacts = ctx$saved_table_artifacts$artifacts,
+      report_plans = ctx$report_plan_state$plans,
+      active_plan_id = ctx$report_plan_state$active_plan_id,
       layout_type = ctx$get_layout_type(),
       layout_cols = ctx$layout_cols_value(),
       export_dir = selected_value(ctx$get_export_dir()),
@@ -389,8 +619,11 @@ server <- function(input, output, session) {
     ctx$saved_plots$code <- project_state$plot_code
     ctx$saved_plots$metadata <- project_state$plot_metadata
     ctx$saved_plots$status <- list()
+    ctx$saved_module_artifacts$artifacts <- project_state$module_artifacts %||% list()
     ctx$saved_text_artifacts$artifacts <- project_state$text_artifacts %||% list()
     ctx$saved_table_artifacts$artifacts <- project_state$table_artifacts %||% list()
+    ctx$report_plan_state$plans <- repair_report_plan_collection(project_state$report_plans %||% list())
+    ctx$report_plan_state$active_plan_id <- project_state$active_plan_id %||% NULL
 
     for (plot_name in names(ctx$saved_plots$configs)) {
       ctx$saved_plots$status[[plot_name]] <- list(
@@ -463,6 +696,7 @@ server <- function(input, output, session) {
 
   page_data_server("data", ctx)
   page_plot_builder_server("plot_builder", ctx)
+  page_analysis_modules_server("analysis_modules", ctx)
   page_layouts_server("layouts", ctx)
   page_export_server("export", ctx)
   page_artifact_library_server("artifact_library", ctx)

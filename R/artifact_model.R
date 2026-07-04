@@ -212,12 +212,14 @@ saved_plots_to_artifacts <- function(saved_plots, configs, code, metadata) {
 combined_artifact_summary <- function(
   plot_artifacts = list(),
   text_artifacts = list(),
-  table_artifacts = list()
+  table_artifacts = list(),
+  module_artifacts = list()
 ) {
   artifacts <- c(
     plot_artifacts %||% list(),
     text_artifacts %||% list(),
-    table_artifacts %||% list()
+    table_artifacts %||% list(),
+    module_artifacts %||% list()
   )
   summary <- artifact_summary(artifacts)
   if (!nrow(summary)) {
@@ -227,16 +229,38 @@ combined_artifact_summary <- function(
   summary[order(summary$order, summary$section, summary$artifact_id)]
 }
 
-render_artifact <- function(artifact) {
+artifact_type_label <- function(artifact_type) {
+  labels <- c(
+    plot = "Plot",
+    table = "Table",
+    text = "Text",
+    metric = "Metric",
+    section_header = "Section",
+    model_summary = "Model",
+    forecast_block = "Forecast",
+    genai_narrative = "Narrative"
+  )
+
+  labels[[artifact_type]] %||% artifact_type
+}
+
+render_artifact_body <- function(artifact) {
   if (!inherits(artifact, "aq_artifact")) {
     return(htmltools::tags$div(
       class = "aq-artifact-placeholder",
-      "Unsupported artifact."
+      "This artifact type cannot be previewed."
     ))
   }
 
   if (identical(artifact$artifact_type, "plot")) {
-    return(artifact$object)
+    if (is.null(artifact$object)) {
+      return(htmltools::tags$div(
+        class = "aq-artifact-placeholder",
+        "Plot artifact has no preview object available."
+      ))
+    }
+
+    return(htmltools::tagList(artifact$object))
   }
 
   if (identical(artifact$artifact_type, "text")) {
@@ -249,7 +273,6 @@ render_artifact <- function(artifact) {
 
     return(htmltools::tags$article(
       class = "aq-text-artifact",
-      htmltools::tags$h3(class = "aq-text-artifact-title", artifact$label),
       lapply(paragraphs, function(paragraph) {
         htmltools::tags$p(htmltools::HTML(htmltools::htmlEscape(paragraph)))
       })
@@ -260,7 +283,7 @@ render_artifact <- function(artifact) {
     return(render_table(
       data = artifact$object,
       engine = artifact$config$engine %||% "reactable",
-      title = artifact$label,
+      title = NULL,
       page_size = artifact$config$page_size %||% 10,
       theme = artifact$config$theme %||% "auto"
     ))
@@ -269,6 +292,44 @@ render_artifact <- function(artifact) {
   htmltools::tags$div(
     class = "aq-artifact-placeholder",
     paste("Preview is not available for artifact type:", artifact$artifact_type)
+  )
+}
+
+render_artifact <- function(artifact, chrome = TRUE) {
+  if (!isTRUE(chrome)) {
+    return(render_artifact_body(artifact))
+  }
+
+  if (!inherits(artifact, "aq_artifact")) {
+    return(htmltools::tags$article(
+      class = "aq-report-artifact aq-report-artifact-unsupported",
+      render_artifact_body(artifact)
+    ))
+  }
+
+  htmltools::tags$article(
+    class = paste(
+      "aq-report-artifact",
+      paste0("aq-report-artifact-", artifact$artifact_type)
+    ),
+    htmltools::tags$header(
+      class = "aq-report-artifact-header",
+      htmltools::tags$div(
+        class = "aq-report-artifact-heading",
+        htmltools::tags$h4(class = "aq-report-artifact-title", artifact$label %||% artifact$artifact_id),
+        if (!is.null(artifact$source_module) && nzchar(artifact$source_module)) {
+          htmltools::tags$p(class = "aq-report-artifact-source", artifact$source_module)
+        }
+      ),
+      htmltools::tags$span(
+        class = "aq-report-artifact-badge aq-status-badge aq-status-badge-neutral",
+        artifact_type_label(artifact$artifact_type)
+      )
+    ),
+    htmltools::tags$div(
+      class = "aq-report-artifact-body",
+      render_artifact_body(artifact)
+    )
   )
 }
 
