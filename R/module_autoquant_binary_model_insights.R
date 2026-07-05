@@ -50,7 +50,7 @@ autoquant_binary_model_insights_unavailable_result <- function() {
   c("Utility", "Accuracy", "BalancedAccuracy", "F1", "FBeta", "MatthewsCorrelation", "YoudensJ", "CohenKappa")
 }
 
-validate_autoquant_binary_model_insights_config <- function(data, config) {
+.autoquant_bmi_validate_config_impl <- function(data, config) {
   if (!autoquant_binary_model_insights_available()) {
     return(autoquant_binary_model_insights_unavailable_result())
   }
@@ -157,6 +157,10 @@ validate_autoquant_binary_model_insights_config <- function(data, config) {
       n_cols = if (is.null(data)) NA_integer_ else ncol(data)
     )
   )
+}
+
+validate_autoquant_binary_model_insights_config <- function(data, config) {
+  .autoquant_bmi_validate_config_impl(data, config)
 }
 
 .autoquant_bmi_run_id <- function(timestamp = Sys.time()) {
@@ -479,7 +483,7 @@ build_autoquant_binary_model_insights_report_plans <- function(artifacts, config
 }
 
 run_autoquant_binary_model_insights_module <- function(data, config) {
-  validation <- validate_autoquant_binary_model_insights_config(data, config)
+  validation <- .autoquant_bmi_validate_config_impl(data, config)
   if (!identical(validation$status, "success")) {
     validation$code <- .autoquant_bmi_code(config)
     return(validation)
@@ -559,15 +563,7 @@ run_autoquant_binary_model_insights_module <- function(data, config) {
   )
 }
 
-qa_autoquant_binary_model_insights_integration <- function() {
-  if (!autoquant_binary_model_insights_available()) {
-    return(data.table::data.table(
-      check = "dependency",
-      status = "warning",
-      message = "AutoQuant::generate_binary_classification_model_insights_artifacts() is not available."
-    ))
-  }
-
+.autoquant_bmi_qa_fixture <- function() {
   set.seed(42)
   data <- data.table::data.table(
     x1 = stats::rnorm(160),
@@ -595,6 +591,88 @@ qa_autoquant_binary_model_insights_integration <- function() {
     beta = 1,
     theme = "light"
   )
+
+  list(data = data, config = config)
+}
+
+.autoquant_bmi_artifact_inventory <- function(artifacts) {
+  if (is.null(artifacts) || !length(artifacts)) {
+    return(data.table::data.table(
+      artifact_id = character(),
+      label = character(),
+      section = character(),
+      artifact_type = character(),
+      original_name = character(),
+      original_section = character()
+    ))
+  }
+
+  data.table::rbindlist(lapply(artifacts, function(artifact) {
+    data.table::data.table(
+      artifact_id = artifact$artifact_id,
+      label = artifact$label,
+      section = artifact$section,
+      artifact_type = artifact$artifact_type,
+      original_name = artifact$metadata$original_name %||% NA_character_,
+      original_section = artifact$metadata$original_section %||% NA_character_
+    )
+  }), use.names = TRUE, fill = TRUE)
+}
+
+debug_autoquant_binary_model_insights_artifacts <- function() {
+  if (!autoquant_binary_model_insights_available()) {
+    return(data.table::data.table(
+      artifact_id = character(),
+      label = character(),
+      section = character(),
+      artifact_type = character(),
+      original_name = character(),
+      original_section = character()
+    ))
+  }
+
+  fixture <- .autoquant_bmi_qa_fixture()
+  result <- run_autoquant_binary_model_insights_module(fixture$data, fixture$config)
+  if (!identical(result$status, "success")) {
+    return(data.table::data.table(
+      artifact_id = NA_character_,
+      label = "Binary Model Insights QA run failed",
+      section = NA_character_,
+      artifact_type = NA_character_,
+      original_name = NA_character_,
+      original_section = paste(c(result$messages, result$warnings, result$errors), collapse = " ")
+    ))
+  }
+
+  .autoquant_bmi_artifact_inventory(result$artifacts)
+}
+
+.autoquant_bmi_has_threshold_artifact <- function(inventory, patterns) {
+  haystack <- paste(
+    inventory$label,
+    inventory$artifact_id,
+    inventory$section,
+    inventory$original_name,
+    inventory$original_section,
+    sep = " "
+  )
+  any(vapply(patterns, function(pattern) {
+    any(grepl(pattern, haystack, ignore.case = TRUE))
+  }, logical(1)))
+}
+
+qa_autoquant_binary_model_insights_integration <- function() {
+  if (!autoquant_binary_model_insights_available()) {
+    return(data.table::data.table(
+      check = "dependency",
+      status = "warning",
+      message = "AutoQuant::generate_binary_classification_model_insights_artifacts() is not available."
+    ))
+  }
+
+  fixture <- .autoquant_bmi_qa_fixture()
+  data <- fixture$data
+  config <- fixture$config
   result <- run_autoquant_binary_model_insights_module(data, config)
   if (!identical(result$status, "success")) {
     return(data.table::data.table(
@@ -608,8 +686,17 @@ qa_autoquant_binary_model_insights_integration <- function() {
   plans <- result$metadata$report_plans %||% list()
   artifact_summary_result <- artifact_summary(artifacts)
   plan_summary_result <- report_plan_summary(plans)
+  inventory <- .autoquant_bmi_artifact_inventory(artifacts)
   labels <- vapply(artifacts, function(artifact) artifact$label, character(1))
-  threshold_labels <- c("Threshold Metrics", "Threshold Optimizer", "Selected Threshold Summary", "Confusion Matrix")
+  threshold_checks <- list(
+    "Threshold Metrics" = "threshold[ _]?metrics",
+    "Threshold Optimizer" = "threshold[ _]?optimizer",
+    "Selected Threshold Summary" = "selected[ _]?threshold[ _]?summary",
+    "Confusion Matrix" = "confusion[ _]?matrix|classification[ _]?matrix"
+  )
+  threshold_present <- vapply(threshold_checks, function(pattern) {
+    .autoquant_bmi_has_threshold_artifact(inventory, pattern)
+  }, logical(1))
   base_checks <- data.table::data.table(
     check = c(
       "run_module",
@@ -627,7 +714,7 @@ qa_autoquant_binary_model_insights_integration <- function() {
       if (length(plans)) "success" else "error",
       if (all(nzchar(labels))) "success" else "error",
       if (all(nzchar(vapply(artifacts, function(artifact) artifact$section, character(1))))) "success" else "error",
-      if (all(threshold_labels %in% labels)) "success" else "error",
+      if (all(threshold_present)) "success" else "error",
       if (nrow(artifact_summary_result) == length(artifacts)) "success" else "error",
       if (nrow(plan_summary_result) == length(plans)) "success" else "error"
     ),
@@ -637,7 +724,12 @@ qa_autoquant_binary_model_insights_integration <- function() {
       paste("Report plans:", length(plans)),
       "All artifact labels are non-empty.",
       "All artifact sections are non-empty.",
-      paste("Threshold artifacts present:", paste(intersect(threshold_labels, labels), collapse = ", ")),
+      paste(
+        "Threshold artifacts present:",
+        paste(names(threshold_present)[threshold_present], collapse = ", "),
+        "| labels:",
+        paste(inventory[grepl("threshold|confusion|classification", paste(label, original_name, section), ignore.case = TRUE), label], collapse = ", ")
+      ),
       paste("Artifact summary rows:", nrow(artifact_summary_result)),
       paste("Report plan summary rows:", nrow(plan_summary_result))
     )

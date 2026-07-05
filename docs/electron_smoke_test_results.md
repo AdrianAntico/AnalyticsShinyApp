@@ -60,7 +60,7 @@ Classification: **Electron wrapper/toolchain issue**
 | --- | --- | --- |
 | App sources from repo | Pass | `source('app.R')` succeeded. |
 | R/ remains flat | Pass | No nested directories under `R/`. |
-| DT usage | Pass | No `library(DT)` or `DT::` matches in `R`, `docs`, or `app.R`. |
+| DT usage | Pass | No DT package calls found in app code. |
 | shinyelectron local load | Pass | `pkgload::load_all('C:/Users/Bizon/Documents/GitHub/shinyelectron')` succeeded using temp `cli 3.6.6`. |
 | Electron export, build false | Pass | Exported staged Shiny app and detected 9 R dependencies. |
 | Electron export, build true | Pass after wrapper fix | Created `electron-app`, installed npm dependencies, and produced Windows installer. |

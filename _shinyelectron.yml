@@ -1,0 +1,12 @@
+dependencies:
+  GitHub_Packages:
+    Rodeo: AdrianAntico/Rodeo
+  URL_Packages:
+    catboost: https://github.com/catboost/catboost/releases/download/v1.2/catboost-R-Windows-1.2.tgz
+  URL_INSTALL_opts:
+    catboost:
+      - --no-multiarch
+      - --no-test-load
+  Local_Packages:
+    AutoPlots: C:/Users/Bizon/Documents/GitHub/AutoPlots
+    AutoQuant: C:/Users/Bizon/Documents/GitHub/AutoQuant
