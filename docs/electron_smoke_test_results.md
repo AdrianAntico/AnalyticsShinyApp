@@ -102,7 +102,7 @@ App-side QA results:
 | Artifact model QA | Pass | Plot, text, and table artifacts summarized correctly. |
 | Module registry QA | Pass | Implemented and planned modules summarized. |
 | Report plan workflow QA | Pass with warning case | Valid plan ready, missing-artifact plan warning, duplicate/edit/apply success, duplicate ID repair ready. |
-| Table framework QA | Warning | Reactable rendering and CSV export passed. XLSX export reported `PACKAGE_MISSING` for `openxlsx` in the app R context. |
+| Table framework QA | Pass | Reactable rendering, CSV export, and XLSX export passed after adding `openxlsx` to app Imports. |
 | Export service QA | Pass | Expected service-result statuses for missing report/code, code export, and invalid filename. |
 
 Electron UI / manual click-through:
@@ -120,13 +120,12 @@ Failure classification:
 | Failure / Limitation | Classification | Notes |
 | --- | --- | --- |
 | Browser automation unavailable for manual UI clicks | Local environment / browser tooling | Electron app served Shiny successfully, but the available browser connector failed before interaction. |
-| XLSX table export QA warning | Local environment / optional dependency | `openxlsx` was not available in the app R context used by QA. CSV export passed. |
+| XLSX table export QA warning | Resolved | `openxlsx 4.2.8.1` is available in the app R context; direct `export_table_xlsx()` and `qa_table_framework()` XLSX export passed. |
 
 Follow-up tasks:
 
 1. Run a true visual/manual Electron click-through with a working browser automation surface or direct human interaction.
-2. Install/verify `openxlsx` in the app R context if XLSX table export should pass in automated QA.
-3. Repeat UI workflows once browser automation is available:
+2. Repeat UI workflows once browser automation is available:
    - Data upload and preview.
    - Plot, text, table, and code-created artifacts.
    - Artifact Library previews and metadata edits.

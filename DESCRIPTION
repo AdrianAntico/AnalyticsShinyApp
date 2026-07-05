@@ -11,5 +11,6 @@ Imports:
     data.table,
     htmltools,
     htmlwidgets,
+    openxlsx,
     shiny,
     tools
