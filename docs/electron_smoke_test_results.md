@@ -10,6 +10,47 @@ This checkpoint verifies the Analytics Shiny App after Code Runner, Code History
 
 The smoke test focused on command-line launch/build verification and app-side QA. Full manual click-through inside the Electron window remains a follow-up checkpoint.
 
+## Dependency Source Checkpoint
+
+Checkpoint run: 2026-07-04T22:12:17-07:00
+
+Status: **Pass**
+
+This checkpoint verified the shinyelectron dependency-source fix for AnalyticsShinyApp using the local fork at:
+
+`C:/Users/Bizon/Documents/GitHub/shinyelectron`
+
+Dependency source handling added in shinyelectron:
+
+- Explicit Local, GitHub, URL, and CRAN package source handling.
+- Source precedence and install ordering for configured package sources.
+- Local/GitHub/URL packages are not installed by CRAN package name.
+- URL package installs support `install.packages(url, repos = NULL, type = "source", INSTALL_opts = ...)`.
+- Post-install validation now checks `requireNamespace()`, `packageVersion()`, and `find.package()`.
+- AutoPlots validation also checks `Line`, `Bar`, and `CorrMatrix`.
+- AutoQuant validation also checks the implemented analysis artifact generator exports.
+- Package installs that emit warnings or verbose output are accepted when post-install validation passes.
+
+AnalyticsShinyApp Electron package source configuration:
+
+| Package | Source | Location / Notes |
+| --- | --- | --- |
+| AutoPlots | Local | `C:/Users/Bizon/Documents/GitHub/AutoPlots` |
+| AutoQuant | Local | `C:/Users/Bizon/Documents/GitHub/AutoQuant` |
+| catboost | URL | `https://github.com/catboost/catboost/releases/download/v1.2/catboost-R-Windows-1.2.tgz` |
+| Rodeo | GitHub | `AdrianAntico/Rodeo` |
+| Ordinary CRAN dependencies | CRAN | Installed only when not source-overridden. |
+
+Verification evidence:
+
+- No CRAN install was attempted for AutoPlots.
+- No CRAN install was attempted for AutoQuant.
+- AutoPlots installed from the local path and validated successfully.
+- AutoQuant installed from the local path and validated successfully.
+- catboost URL package handling was present in the generated manifest.
+- Electron launched the generated app and reached `server_ready`.
+- Final log evidence: `Server ready on port 3838`.
+
 ## Revisions
 
 | Component | Revision / Version | Notes |
