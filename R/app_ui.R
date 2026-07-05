@@ -10,6 +10,7 @@ build_app_ui <- function() {
         page_data_ui("data"),
         page_plot_builder_ui("plot_builder"),
         page_analysis_modules_ui("analysis_modules"),
+        page_code_runner_ui("code_runner"),
         page_artifact_library_ui("artifact_library"),
         page_layouts_ui("layouts"),
         page_export_ui("export")

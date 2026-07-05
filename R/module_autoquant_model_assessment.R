@@ -1,23 +1,14 @@
 autoquant_model_assessment_function_name <- function() {
-  candidates <- c(
-    "generate_model_assessment_artifacts",
-    "generate_autoquant_model_assessment_artifacts",
-    "generate_model_assessment_report_artifacts",
-    "generate_regression_model_assessment_artifacts",
-    "generate_classification_model_assessment_artifacts"
-  )
-
   if (!requireNamespace("AutoQuant", quietly = TRUE)) {
     return(NULL)
   }
 
   exports <- getNamespaceExports("AutoQuant")
-  matches <- candidates[candidates %in% exports]
-  if (!length(matches)) {
+  if (!"generate_model_assessment_artifacts" %in% exports) {
     return(NULL)
   }
 
-  matches[[1]]
+  "generate_model_assessment_artifacts"
 }
 
 autoquant_model_assessment_available <- function() {
@@ -27,7 +18,7 @@ autoquant_model_assessment_available <- function() {
 autoquant_model_assessment_unavailable_result <- function() {
   service_result(
     status = "error",
-    errors = "AutoQuant model assessment artifact generator was not found. Install/update AutoQuant before running this module.",
+    errors = "AutoQuant::generate_model_assessment_artifacts() was not found. Install/update AutoQuant before running this module.",
     metadata = list(
       error_code = "MODULE_DEPENDENCY_MISSING",
       module_id = "autoquant_model_assessment"
@@ -98,12 +89,12 @@ validate_autoquant_model_assessment_config <- function(data, config) {
     errors <- c(errors, paste("Actual column was not found:", actual_var))
   }
 
-  if (is.null(prediction_var)) {
-    errors <- c(errors, "Select a prediction/probability column.")
-  } else if (!prediction_var %in% names(data)) {
-    errors <- c(errors, paste("Prediction column was not found:", prediction_var))
-  } else if (!is.numeric(data[[prediction_var]])) {
-    errors <- c(errors, "prediction_var must be numeric.")
+  if (!is.null(prediction_var)) {
+    if (!prediction_var %in% names(data)) {
+      errors <- c(errors, paste("Prediction column was not found:", prediction_var))
+    } else if (!is.numeric(data[[prediction_var]])) {
+      errors <- c(errors, "prediction_var must be numeric.")
+    }
   }
 
   if (!is.null(predicted_class_var) && !predicted_class_var %in% names(data)) {
@@ -173,16 +164,12 @@ validate_autoquant_model_assessment_config <- function(data, config) {
 .autoquant_ma_code <- function(config, function_name = autoquant_model_assessment_function_name()) {
   function_name <- function_name %||% "generate_model_assessment_artifacts"
   paste(
-    paste0("model_assessment_result <- AutoQuant::", function_name, "("),
+    "assessment_result <- AutoQuant::generate_model_assessment_artifacts(",
     "  data = data,",
-    paste0("  ProblemType = ", .autoquant_ma_r_string(.autoquant_ma_problem_type(config)), ","),
-    paste0("  ActualVar = ", .autoquant_ma_r_string(config$actual_var %||% NULL), ","),
-    paste0("  PredictionVar = ", .autoquant_ma_r_string(config$prediction_var %||% NULL), ","),
-    paste0("  PredictedClassVar = ", .autoquant_ma_r_string(config$predicted_class_var %||% NULL), ","),
-    paste0("  PositiveClass = ", .autoquant_ma_r_string(config$positive_class %||% NULL), ","),
-    paste0("  DateVar = ", .autoquant_ma_r_string(config$date_var %||% NULL), ","),
-    paste0("  GroupVar = ", .autoquant_ma_r_string(config$group_var %||% NULL), ","),
-    paste0("  ModelName = ", .autoquant_ma_r_string(config$model_name %||% "Model"), ","),
+    paste0("  DataName = ", .autoquant_ma_r_string(config$model_name %||% "Model"), ","),
+    paste0("  TargetVar = ", .autoquant_ma_r_string(config$actual_var %||% NULL), ","),
+    paste0("  TrendDateVar = ", .autoquant_ma_r_string(config$date_var %||% NULL), ","),
+    paste0("  TrendGroupVar = ", .autoquant_ma_r_string(config$group_var %||% NULL), ","),
     paste0("  Theme = ", .autoquant_ma_r_string(config$theme %||% "light")),
     ")",
     "",
@@ -194,22 +181,17 @@ validate_autoquant_model_assessment_config <- function(data, config) {
 .autoquant_ma_call_args <- function(data, config, function_name) {
   args <- list(
     data = data,
-    ProblemType = .autoquant_ma_problem_type(config),
-    ActualVar = config$actual_var %||% NULL,
+    DataName = config$model_name %||% "Model",
     TargetVar = config$actual_var %||% NULL,
-    TargetColumnName = config$actual_var %||% NULL,
-    PredictionVar = config$prediction_var %||% NULL,
-    PredictionColumnName = config$prediction_var %||% NULL,
-    PredictedClassVar = config$predicted_class_var %||% NULL,
-    PositiveClass = config$positive_class %||% NULL,
-    DateVar = config$date_var %||% NULL,
-    DateColumnName = config$date_var %||% NULL,
-    GroupVar = config$group_var %||% NULL,
-    SegmentVars = config$group_var %||% NULL,
-    ModelName = config$model_name %||% "Model",
+    TrendDateVar = config$date_var %||% NULL,
+    TrendGroupVar = config$group_var %||% NULL,
     Theme = config$theme %||% "light",
-    MaxRows = config$max_rows %||% 1000L,
-    MaxGroups = config$max_groups %||% 25L
+    TargetMaxPlotRows = config$max_rows %||% 1000L,
+    TargetMaxCategoricalLevels = config$max_groups %||% 25L,
+    RunGAMDiagnostics = config$run_gam_diagnostics %||% FALSE,
+    StopOnInvalidTarget = FALSE,
+    ExportPNG = FALSE,
+    ExportHTML = FALSE
   )
 
   fn <- get(function_name, envir = asNamespace("AutoQuant"))
@@ -219,20 +201,21 @@ validate_autoquant_model_assessment_config <- function(data, config) {
 
 .autoquant_ma_section <- function(path, config = list()) {
   text <- tolower(paste(path, collapse = " "))
-  if (grepl("overview|summary|model", text)) return("Model Overview")
+  if (grepl("overview|summary|model readiness|model_readiness|suitability|strategy|recommendation|context|describe data|plot qa", text)) return("Model Overview")
   if (grepl("metric|performance|error|accuracy|auc|rmse|mae|r2", text)) {
     if (identical(.autoquant_ma_problem_type(config), "Binary Classification")) {
       return("Classification Metrics")
     }
     return("Performance Metrics")
   }
-  if (grepl("residual", text)) return("Residual Diagnostics")
+  if (grepl("residual|outlier", text)) return("Residual Diagnostics")
   if (grepl("prediction|actual|fitted", text)) return("Prediction Diagnostics")
-  if (grepl("threshold|confusion", text)) return("Threshold Diagnostics")
+  if (grepl("threshold|confusion|target distribution|target qa|target$", text)) return("Threshold Diagnostics")
   if (grepl("roc|pr|precision|recall", text)) return("ROC / PR Analysis")
   if (grepl("calibration", text)) return("Calibration")
   if (grepl("lift|gain", text)) return("Lift / Gains")
-  if (grepl("segment|group|date|time|trend", text)) return("Segment / Time Diagnostics")
+  if (grepl("segment|group|date|time|trend|drift|monitoring|retraining", text)) return("Segment / Time Diagnostics")
+  if (grepl("risk|diagnostic|schema|feature|association|encoding", text)) return("Prediction Diagnostics")
   config$artifact_section %||% "Model Assessment"
 }
 
@@ -244,7 +227,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
 }
 
 .autoquant_ma_label <- function(name) {
-  clean <- gsub("^tables_?|^plots_?|^texts_?|^narratives_?", "", name)
+  clean <- gsub("^tables_?|^widgets_?|^plots_?|^diagnostics_?|^context_?|^texts_?|^narratives_?", "", name)
   clean <- gsub("([a-z])([A-Z])", "\\1 \\2", clean)
   clean <- gsub("[_.]+", " ", clean)
   clean <- gsub("\\s+", " ", clean)
@@ -254,6 +237,38 @@ validate_autoquant_model_assessment_config <- function(data, config) {
   }
 
   label <- tools::toTitleCase(clean)
+  replacements_exact <- c(
+    "Describe Data" = "Data Description",
+    "Target Qa" = "Target QA",
+    "Target Distribution" = "Target Distribution",
+    "Numeric Association" = "Numeric Association",
+    "Categorical Association" = "Categorical Association",
+    "Categorical Level Association" = "Categorical Level Association",
+    "Target Trend" = "Target Trend",
+    "Target Grouped Trend" = "Grouped Target Trend",
+    "Feature Drift" = "Feature Drift",
+    "Concept Drift" = "Concept Drift",
+    "Risk Flags" = "Risk Flags",
+    "Target Suitability Assessment" = "Target Suitability Assessment",
+    "Feature Risk Registry" = "Feature Risk Registry",
+    "Numeric Feature Diagnostics" = "Numeric Feature Diagnostics",
+    "Numeric Shape Diagnostics" = "Numeric Shape Diagnostics",
+    "Numeric Engineering Recommendations" = "Numeric Engineering Recommendations",
+    "Categorical Feature Diagnostics" = "Categorical Feature Diagnostics",
+    "Categorical Encoding Recommendations" = "Categorical Encoding Recommendations",
+    "Calendar Feature Diagnostics" = "Calendar Feature Diagnostics",
+    "Calendar Engineering Recommendations" = "Calendar Engineering Recommendations",
+    "Validation Recommendations" = "Validation Recommendations",
+    "Monitoring Recommendations" = "Monitoring Recommendations",
+    "Modeling Strategy Recommendations" = "Modeling Strategy Recommendations",
+    "Retraining Cadence Recommendation" = "Retraining Cadence Recommendation",
+    "Model Readiness Summary" = "Model Readiness Summary",
+    "Schema Issues" = "Schema Issues",
+    "Plot Qa" = "Plot QA"
+  )
+  if (label %in% names(replacements_exact)) {
+    return(replacements_exact[[label]])
+  }
   replacements <- c(
     "Roc" = "ROC",
     "Pr" = "PR",
@@ -305,7 +320,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
   if (inherits(value, "htmlwidget")) {
     return("plot")
   }
-  if (identical(root_name, "plots")) {
+  if (root_name %in% c("plots", "widgets")) {
     return("plot")
   }
   NULL
@@ -315,9 +330,9 @@ normalize_autoquant_model_assessment_artifacts <- function(
   autoquant_result,
   config,
   module_run_id = .autoquant_ma_run_id(),
-  run_timestamp = Sys.time()
+  generated_at = Sys.time()
 ) {
-  roots <- c("tables", "plots", "texts", "text", "narratives")
+  roots <- c("tables", "widgets", "plots", "diagnostics", "context", "texts", "text", "narratives")
   artifacts <- list()
   used_ids <- character()
   order <- 1L
@@ -351,25 +366,35 @@ normalize_autoquant_model_assessment_artifacts <- function(
       }
 
       section <- .autoquant_ma_section(strsplit(name, "_", fixed = TRUE)[[1]], config)
+      label <- .autoquant_ma_label(name)
+      if (tolower(label) %in% c("unnamed", "plot_1", "table_1", "artifact", "model assessment artifact")) {
+        label <- paste(section, "Artifact", order)
+      }
       artifacts[[artifact_id]] <- create_artifact(
         artifact_id = artifact_id,
         artifact_type = artifact_type,
-        label = .autoquant_ma_label(name),
+        label = label,
         source_module = "autoquant_model_assessment",
         object = object,
         content = content,
         config = config,
         code = .autoquant_ma_code(config),
-        metadata = list(
+        metadata = module_artifact_metadata(
           module_id = "autoquant_model_assessment",
           module_run_id = module_run_id,
-          run_timestamp = run_timestamp,
-          model_name = config$model_name %||% "Model",
-          problem_type = .autoquant_ma_problem_type(config),
-          actual_var = config$actual_var %||% NULL,
-          prediction_var = config$prediction_var %||% NULL,
+          source_module = "autoquant_model_assessment",
           original_name = name,
-          autoquant_section = root
+          original_section = root,
+          normalized_section = section,
+          artifact_index = order,
+          generated_at = generated_at,
+          extra = list(
+            model_name = config$model_name %||% "Model",
+            problem_type = .autoquant_ma_problem_type(config),
+            actual_var = config$actual_var %||% NULL,
+            prediction_var = config$prediction_var %||% NULL,
+            autoquant_section = root
+          )
         ),
         section = section,
         order = order,
@@ -511,8 +536,8 @@ run_autoquant_model_assessment_module <- function(data, config) {
     return(validation)
   }
 
-  run_timestamp <- Sys.time()
-  module_run_id <- .autoquant_ma_run_id(run_timestamp)
+  generated_at <- Sys.time()
+  module_run_id <- .autoquant_ma_run_id(generated_at)
   function_name <- autoquant_model_assessment_function_name()
 
   result <- tryCatch(
@@ -529,7 +554,8 @@ run_autoquant_model_assessment_module <- function(data, config) {
           error_code = "RUNTIME_ERROR",
           module_id = "autoquant_model_assessment",
           module_run_id = module_run_id,
-          run_timestamp = run_timestamp
+          generated_at = generated_at,
+          run_timestamp = generated_at
         )
       )
     }
@@ -544,18 +570,10 @@ run_autoquant_model_assessment_module <- function(data, config) {
     result,
     config,
     module_run_id = module_run_id,
-    run_timestamp = run_timestamp
+    generated_at = generated_at
   )
   plans <- build_autoquant_model_assessment_report_plans(artifacts, config, module_run_id = module_run_id)
-
-  artifact_counts <- if (length(artifacts)) {
-    table(vapply(artifacts, function(artifact) artifact$artifact_type, character(1)))
-  } else {
-    integer()
-  }
-  artifact_count <- function(type) {
-    if (type %in% names(artifact_counts)) as.integer(artifact_counts[[type]]) else 0L
-  }
+  counts <- module_artifact_counts(artifacts)
 
   service_result(
     status = "success",
@@ -563,28 +581,36 @@ run_autoquant_model_assessment_module <- function(data, config) {
     artifacts = artifacts,
     messages = sprintf(
       "Generated %s model assessment artifacts: %s plots, %s tables, %s text blocks. Created %s report plan(s).",
-      length(artifacts),
-      artifact_count("plot"),
-      artifact_count("table"),
-      artifact_count("text"),
+      counts$artifact_count,
+      counts$plot_count,
+      counts$table_count,
+      counts$text_count,
       length(plans)
     ),
-    metadata = list(
+    metadata = module_run_metadata(
       module_id = "autoquant_model_assessment",
       module_run_id = module_run_id,
-      run_timestamp = run_timestamp,
-      model_name = config$model_name %||% "Model",
-      problem_type = .autoquant_ma_problem_type(config),
-      actual_var = config$actual_var %||% NULL,
-      prediction_var = config$prediction_var %||% NULL,
-      n_artifacts = length(artifacts),
-      artifact_counts = list(
-        plot = artifact_count("plot"),
-        table = artifact_count("table"),
-        text = artifact_count("text")
+      generated_at = generated_at,
+      data_name = config$model_name %||% "Model",
+      source_function = function_name,
+      configured_inputs = list(
+        model_name = config$model_name %||% "Model",
+        problem_type = .autoquant_ma_problem_type(config),
+        actual_var = config$actual_var %||% NULL,
+        prediction_var = config$prediction_var %||% NULL,
+        predicted_class_var = config$predicted_class_var %||% NULL,
+        date_var = config$date_var %||% NULL,
+        group_var = config$group_var %||% NULL,
+        theme = config$theme %||% "light"
       ),
-      n_report_plans = length(plans),
-      report_plans = plans
+      artifacts = artifacts,
+      report_plans = plans,
+      extra = list(
+        model_name = config$model_name %||% "Model",
+        problem_type = .autoquant_ma_problem_type(config),
+        actual_var = config$actual_var %||% NULL,
+        prediction_var = config$prediction_var %||% NULL
+      )
     ),
     code = .autoquant_ma_code(config, function_name)
   )
@@ -625,20 +651,20 @@ qa_autoquant_model_assessment_integration <- function() {
   )
 
   binary_result <- run_autoquant_model_assessment_module(binary_data, binary_config)
-  regression_validation <- validate_autoquant_model_assessment_config(regression_data, regression_config)
+  regression_result <- run_autoquant_model_assessment_module(regression_data, regression_config)
 
   if (!autoquant_model_assessment_available()) {
     friendly <- identical(binary_result$status, "error") &&
       identical(binary_result$metadata$error_code, "MODULE_DEPENDENCY_MISSING")
-    regression_friendly <- identical(regression_validation$status, "error") &&
-      identical(regression_validation$metadata$error_code, "MODULE_DEPENDENCY_MISSING")
+    regression_friendly <- identical(regression_result$status, "error") &&
+      identical(regression_result$metadata$error_code, "MODULE_DEPENDENCY_MISSING")
     return(data.table::data.table(
-      check = c("dependency", "friendly_result", "regression_validation"),
-      status = c("missing", if (friendly) "success" else "error", if (regression_friendly) "success" else regression_validation$status),
+      check = c("dependency", "friendly_result", "regression_run"),
+      status = c("warning", if (friendly) "success" else "error", if (regression_friendly) "success" else regression_result$status),
       message = c(
         "AutoQuant model assessment artifact generator is not available.",
         paste(binary_result$errors, collapse = " "),
-        paste(c(regression_validation$messages, regression_validation$errors), collapse = " ")
+        paste(c(regression_result$messages, regression_result$errors), collapse = " ")
       )
     ))
   }
@@ -648,10 +674,10 @@ qa_autoquant_model_assessment_integration <- function() {
   artifact_summary_result <- artifact_summary(artifacts)
   plan_summary_result <- report_plan_summary(plans)
 
-  data.table::data.table(
+  base_checks <- data.table::data.table(
     check = c(
       "binary_run",
-      "regression_validation",
+      "regression_run",
       "artifacts_returned",
       "report_plans_returned",
       "artifact_labels",
@@ -661,7 +687,7 @@ qa_autoquant_model_assessment_integration <- function() {
     ),
     status = c(
       binary_result$status,
-      regression_validation$status,
+      regression_result$status,
       if (length(artifacts)) "success" else "error",
       if (length(plans)) "success" else "error",
       if (all(nzchar(vapply(artifacts, function(artifact) artifact$label, character(1))))) "success" else "error",
@@ -671,7 +697,7 @@ qa_autoquant_model_assessment_integration <- function() {
     ),
     message = c(
       paste(c(binary_result$messages, binary_result$warnings, binary_result$errors), collapse = " "),
-      paste(c(regression_validation$messages, regression_validation$errors), collapse = " "),
+      paste(c(regression_result$messages, regression_result$warnings, regression_result$errors), collapse = " "),
       paste("Artifacts:", length(artifacts)),
       paste("Report plans:", length(plans)),
       "All artifact labels are non-empty.",
@@ -679,5 +705,10 @@ qa_autoquant_model_assessment_integration <- function() {
       paste("Artifact summary rows:", nrow(artifact_summary_result)),
       paste("Report plan summary rows:", nrow(plan_summary_result))
     )
+  )
+  data.table::rbindlist(
+    list(base_checks, module_result_convention_checks(binary_result, "aq_ma_")),
+    use.names = TRUE,
+    fill = TRUE
   )
 }

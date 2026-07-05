@@ -284,7 +284,7 @@ validate_autoquant_eda_config <- function(data, config) {
   NULL
 }
 
-normalize_autoquant_eda_artifacts <- function(autoquant_result, config, module_run_id, run_timestamp = Sys.time()) {
+normalize_autoquant_eda_artifacts <- function(autoquant_result, config, module_run_id, generated_at = Sys.time()) {
   roots <- c("tables", "plots", "texts", "text", "narratives")
   artifacts <- list()
   order <- 1L
@@ -311,6 +311,9 @@ normalize_autoquant_eda_artifacts <- function(autoquant_result, config, module_r
       autoquant_section <- root
       section <- .autoquant_eda_section(strsplit(name, "_", fixed = TRUE)[[1]])
       label <- .autoquant_eda_label(sub(paste0("^", root, "_?"), "", name))
+      if (tolower(label) %in% c("unnamed", "plot_1", "table_1", "artifact", "eda artifact")) {
+        label <- paste(section, "Artifact", order)
+      }
       object <- NULL
       content <- NULL
       if (identical(artifact_type, "table")) {
@@ -330,16 +333,22 @@ normalize_autoquant_eda_artifacts <- function(autoquant_result, config, module_r
         content = content,
         config = config,
         code = .autoquant_eda_code(config),
-        metadata = list(
+        metadata = module_artifact_metadata(
           module_id = "autoquant_eda",
           module_run_id = module_run_id,
-          run_timestamp = run_timestamp,
-          data_name = config$DataName %||% NULL,
+          source_module = "autoquant_eda",
           original_name = name,
-          autoquant_section = autoquant_section,
-          section = section,
-          selected_variables = .autoquant_eda_selected_variables(config),
-          theme = config$Theme %||% "light"
+          original_section = autoquant_section,
+          normalized_section = section,
+          artifact_index = order,
+          generated_at = generated_at,
+          extra = list(
+            data_name = config$DataName %||% NULL,
+            autoquant_section = autoquant_section,
+            section = section,
+            selected_variables = .autoquant_eda_selected_variables(config),
+            theme = config$Theme %||% "light"
+          )
         ),
         section = section,
         order = order,
@@ -506,8 +515,8 @@ run_autoquant_eda_module <- function(data, config) {
     return(validation)
   }
 
-  run_timestamp <- Sys.time()
-  module_run_id <- .autoquant_eda_run_id(run_timestamp)
+  generated_at <- Sys.time()
+  module_run_id <- .autoquant_eda_run_id(generated_at)
 
   result <- tryCatch(
     do.call(AutoQuant::generate_eda_artifacts, .autoquant_eda_call_args(data, config)),
@@ -520,7 +529,8 @@ run_autoquant_eda_module <- function(data, config) {
           error_code = "RUNTIME_ERROR",
           module_id = "autoquant_eda",
           module_run_id = module_run_id,
-          run_timestamp = run_timestamp
+          generated_at = generated_at,
+          run_timestamp = generated_at
         )
       )
     }
@@ -534,24 +544,10 @@ run_autoquant_eda_module <- function(data, config) {
     result,
     config,
     module_run_id = module_run_id,
-    run_timestamp = run_timestamp
+    generated_at = generated_at
   )
   plans <- build_autoquant_eda_report_plans(artifacts, config, module_run_id = module_run_id)
-  artifact_counts <- if (length(artifacts)) {
-    table(vapply(artifacts, function(artifact) artifact$artifact_type, character(1)))
-  } else {
-    integer()
-  }
-  artifact_count <- function(type) {
-    if (type %in% names(artifact_counts)) {
-      return(as.integer(artifact_counts[[type]]))
-    }
-
-    0L
-  }
-  n_plots <- artifact_count("plot")
-  n_tables <- artifact_count("table")
-  n_text <- artifact_count("text")
+  counts <- module_artifact_counts(artifacts)
 
   service_result(
     status = "success",
@@ -559,28 +555,30 @@ run_autoquant_eda_module <- function(data, config) {
     artifacts = artifacts,
     messages = sprintf(
       "Generated %s EDA artifacts: %s plots, %s tables, %s text blocks. Created %s report plan(s).",
-      length(artifacts),
-      n_plots,
-      n_tables,
-      n_text,
+      counts$artifact_count,
+      counts$plot_count,
+      counts$table_count,
+      counts$text_count,
       length(plans)
     ),
-    metadata = list(
+    metadata = module_run_metadata(
       module_id = "autoquant_eda",
       module_run_id = module_run_id,
-      run_timestamp = run_timestamp,
       data_name = config$DataName %||% NULL,
-      selected_variables = .autoquant_eda_selected_variables(config),
-      target_variable = config$TargetVar %||% NULL,
-      theme = config$Theme %||% "light",
-      n_artifacts = length(artifacts),
-      artifact_counts = list(
-        plot = n_plots,
-        table = n_tables,
-        text = n_text
+      generated_at = generated_at,
+      source_function = "generate_eda_artifacts",
+      configured_inputs = list(
+        selected_variables = .autoquant_eda_selected_variables(config),
+        target_variable = config$TargetVar %||% NULL,
+        theme = config$Theme %||% "light"
       ),
-      n_report_plans = length(plans),
-      report_plans = plans
+      artifacts = artifacts,
+      report_plans = plans,
+      extra = list(
+        selected_variables = .autoquant_eda_selected_variables(config),
+        target_variable = config$TargetVar %||% NULL,
+        theme = config$Theme %||% "light"
+      )
     ),
     code = .autoquant_eda_code(config)
   )
@@ -590,7 +588,7 @@ qa_autoquant_eda_integration <- function(data = NULL, config = NULL) {
   if (!autoquant_eda_available()) {
     return(data.table::data.table(
       check = "dependency",
-      status = "error",
+      status = "warning",
       message = "AutoQuant::generate_eda_artifacts() is not available."
     ))
   }
@@ -635,7 +633,7 @@ qa_autoquant_eda_integration <- function(data = NULL, config = NULL) {
   artifact_summary_result <- artifact_summary(artifacts)
   plan_summary_result <- report_plan_summary(plans)
 
-  data.table::data.table(
+  base_checks <- data.table::data.table(
     check = c(
       "run_module",
       "artifacts_returned",
@@ -663,5 +661,10 @@ qa_autoquant_eda_integration <- function(data = NULL, config = NULL) {
       paste("Artifact summary rows:", nrow(artifact_summary_result)),
       paste("Report plan summary rows:", nrow(plan_summary_result))
     )
+  )
+  data.table::rbindlist(
+    list(base_checks, module_result_convention_checks(result, "aq_eda_")),
+    use.names = TRUE,
+    fill = TRUE
   )
 }

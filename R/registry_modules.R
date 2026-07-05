@@ -22,6 +22,28 @@ module_registry <- function() {
       supports_genai = FALSE,
       supports_code_generation = TRUE
     ),
+    autoquant_regression_model_insights = list(
+      module_id = "autoquant_regression_model_insights",
+      label = "AutoQuant Regression Model Insights",
+      category = "Modeling",
+      description = "Generate regression model insight artifacts using AutoQuant.",
+      status = "experimental",
+      output_artifact_types = c("plot", "table", "text"),
+      required_packages = c("AutoQuant", "AutoPlots"),
+      supports_genai = FALSE,
+      supports_code_generation = TRUE
+    ),
+    autoquant_binary_model_insights = list(
+      module_id = "autoquant_binary_model_insights",
+      label = "AutoQuant Binary Classification Model Insights",
+      category = "Modeling",
+      description = "Generate binary classification model insight artifacts using AutoQuant.",
+      status = "experimental",
+      output_artifact_types = c("plot", "table", "text"),
+      required_packages = c("AutoQuant", "AutoPlots"),
+      supports_genai = FALSE,
+      supports_code_generation = TRUE
+    ),
     eda_report = list(
       module_id = "eda_report",
       label = "EDA Report",

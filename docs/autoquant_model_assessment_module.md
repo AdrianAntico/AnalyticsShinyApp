@@ -2,11 +2,11 @@
 
 ## Purpose
 
-The AutoQuant Model Assessment module is the second analysis-module adapter for Analytics Shiny App. It is designed to generate model assessment artifacts from existing actual and prediction columns when AutoQuant exposes a model assessment artifact generator.
+The AutoQuant Model Assessment module is the second analysis-module adapter for Analytics Shiny App. It generates model assessment and model-readiness artifacts from existing data columns by calling `AutoQuant::generate_model_assessment_artifacts()`.
 
 ## Ownership Boundary
 
-AutoQuant owns model assessment generation. Analytics Shiny App must not reimplement assessment metrics, ROC/PR logic, residual diagnostics, calibration, lift/gains, or segment diagnostics.
+`AutoQuant::generate_model_assessment_artifacts()` is the source of truth for model assessment generation. Analytics Shiny App must not reimplement assessment metrics, model-readiness diagnostics, target diagnostics, trend/drift checks, or feature engineering guidance.
 
 Analytics Shiny App owns:
 
@@ -20,11 +20,11 @@ Analytics Shiny App owns:
 - Layouts page display and final composition
 - project save/load of module artifacts and plans
 
-If AutoQuant does not expose a model assessment artifact generator, the adapter returns a friendly `service_result` error and does not run app-side assessment logic.
+If `AutoQuant::generate_model_assessment_artifacts()` is missing, the adapter returns a friendly `service_result` error and does not run app-side assessment logic.
 
 ## Output Contract
 
-When the AutoQuant generator is available, the module returns a `service_result` with:
+The module returns a `service_result` with:
 
 - generated artifacts
 - user-facing status messages
@@ -89,7 +89,7 @@ Report plans reference artifact IDs only. They do not own artifacts and must not
 
 `qa_autoquant_model_assessment_integration()` creates synthetic binary classification and regression data.
 
-If AutoQuant exposes a model assessment artifact generator, the helper verifies:
+When `AutoQuant::generate_model_assessment_artifacts()` is available, the helper verifies:
 
 - artifacts are returned
 - report plans are returned
@@ -97,8 +97,9 @@ If AutoQuant exposes a model assessment artifact generator, the helper verifies:
 - artifact sections are non-empty
 - `artifact_summary()` works
 - `report_plan_summary()` works
+- both binary and regression runs return `service_result(status = "success")`
 
-If AutoQuant does not expose the generator, the helper verifies a friendly not-implemented `service_result`.
+If AutoQuant does not expose the generator, the helper verifies a friendly missing-dependency `service_result`.
 
 ## Anti-Patterns
 

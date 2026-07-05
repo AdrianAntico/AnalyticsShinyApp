@@ -1,3 +1,176 @@
+module_artifact_counts <- function(artifacts) {
+  counts <- list(
+    artifact_count = 0L,
+    plot_count = 0L,
+    table_count = 0L,
+    text_count = 0L
+  )
+
+  if (is.null(artifacts) || !length(artifacts)) {
+    return(counts)
+  }
+
+  types <- vapply(artifacts, function(artifact) artifact$artifact_type %||% "", character(1))
+  counts$artifact_count <- length(artifacts)
+  counts$plot_count <- sum(types == "plot")
+  counts$table_count <- sum(types == "table")
+  counts$text_count <- sum(types == "text")
+  counts
+}
+
+module_artifact_metadata <- function(
+  module_id,
+  module_run_id,
+  source_module,
+  original_name = NULL,
+  original_section = NULL,
+  normalized_section = NULL,
+  artifact_index = NA_integer_,
+  generated_at = Sys.time(),
+  extra = list()
+) {
+  metadata <- list(
+    module_id = module_id,
+    module_run_id = module_run_id,
+    source_module = source_module,
+    original_name = original_name,
+    original_section = original_section,
+    normalized_section = normalized_section,
+    artifact_index = as.integer(artifact_index),
+    created_by_module = TRUE,
+    generated_at = generated_at,
+    run_timestamp = generated_at
+  )
+
+  for (name in names(extra)) {
+    metadata[[name]] <- extra[[name]]
+  }
+
+  metadata
+}
+
+module_run_metadata <- function(
+  module_id,
+  module_run_id,
+  generated_at = Sys.time(),
+  data_name = NULL,
+  source_package = "AutoQuant",
+  source_function,
+  configured_inputs = list(),
+  artifacts = list(),
+  report_plans = list(),
+  extra = list()
+) {
+  counts <- module_artifact_counts(artifacts)
+  metadata <- list(
+    module_id = module_id,
+    module_run_id = module_run_id,
+    generated_at = generated_at,
+    run_timestamp = generated_at,
+    data_name = data_name,
+    source_package = source_package,
+    source_function = source_function,
+    configured_inputs = configured_inputs,
+    artifact_count = counts$artifact_count,
+    plot_count = counts$plot_count,
+    table_count = counts$table_count,
+    text_count = counts$text_count,
+    report_plan_count = length(report_plans),
+    report_plans = report_plans,
+    n_artifacts = counts$artifact_count,
+    artifact_counts = list(
+      plot = counts$plot_count,
+      table = counts$table_count,
+      text = counts$text_count
+    ),
+    n_report_plans = length(report_plans)
+  )
+
+  for (name in names(extra)) {
+    metadata[[name]] <- extra[[name]]
+  }
+
+  metadata
+}
+
+analysis_module_status_table <- function(result) {
+  if (is.null(result) || is.null(result$metadata)) {
+    return(data.table::data.table())
+  }
+
+  metadata <- result$metadata
+  data.table::data.table(
+    module_id = metadata$module_id %||% NA_character_,
+    module_run_id = metadata$module_run_id %||% NA_character_,
+    status = result$status %||% NA_character_,
+    artifact_count = as.integer(metadata$artifact_count %||% metadata$n_artifacts %||% 0L),
+    plot_count = as.integer(metadata$plot_count %||% metadata$artifact_counts$plot %||% 0L),
+    table_count = as.integer(metadata$table_count %||% metadata$artifact_counts$table %||% 0L),
+    text_count = as.integer(metadata$text_count %||% metadata$artifact_counts$text %||% 0L),
+    report_plan_count = as.integer(metadata$report_plan_count %||% metadata$n_report_plans %||% 0L)
+  )
+}
+
+module_result_convention_checks <- function(result, artifact_id_prefix) {
+  run_metadata <- result$metadata %||% list()
+  artifacts <- result$artifacts %||% list()
+  required_run_keys <- c(
+    "module_id", "module_run_id", "generated_at", "source_package",
+    "source_function", "configured_inputs", "artifact_count", "plot_count",
+    "table_count", "text_count", "report_plan_count"
+  )
+  required_artifact_keys <- c(
+    "module_id", "module_run_id", "source_module", "original_name",
+    "original_section", "normalized_section", "artifact_index",
+    "created_by_module", "generated_at"
+  )
+
+  run_metadata_ok <- all(required_run_keys %in% names(run_metadata))
+  artifact_metadata_ok <- if (length(artifacts)) {
+    all(vapply(artifacts, function(artifact) {
+      metadata <- artifact$metadata %||% list()
+      all(required_artifact_keys %in% names(metadata)) &&
+        isTRUE(metadata$created_by_module)
+    }, logical(1)))
+  } else {
+    FALSE
+  }
+  artifact_ids_ok <- if (length(artifacts)) {
+    ids <- vapply(artifacts, function(artifact) artifact$artifact_id %||% "", character(1))
+    all(startsWith(ids, artifact_id_prefix))
+  } else {
+    FALSE
+  }
+  labels_ok <- if (length(artifacts)) {
+    labels <- tolower(vapply(artifacts, function(artifact) artifact$label %||% "", character(1)))
+    generic_labels <- c("", "unnamed", "plot_1", "table_1", "artifact")
+    all(!labels %in% generic_labels)
+  } else {
+    FALSE
+  }
+
+  data.table::data.table(
+    check = c(
+      "run_metadata_standard",
+      "artifact_metadata_standard",
+      "artifact_ids_prefixed",
+      "artifact_labels_non_generic"
+    ),
+    status = c(
+      if (run_metadata_ok) "success" else "error",
+      if (artifact_metadata_ok) "success" else "error",
+      if (artifact_ids_ok) "success" else "error",
+      if (labels_ok) "success" else "error"
+    ),
+    message = c(
+      if (run_metadata_ok) "Run metadata includes the standard module keys." else paste("Missing run metadata keys:", paste(setdiff(required_run_keys, names(run_metadata)), collapse = ", ")),
+      if (artifact_metadata_ok) "Artifact metadata includes the standard module keys." else "One or more artifacts are missing standard module metadata.",
+      if (artifact_ids_ok) paste("Artifact IDs use prefix", artifact_id_prefix) else paste("One or more artifact IDs do not use prefix", artifact_id_prefix),
+      if (labels_ok) "Artifact labels are non-empty and non-generic." else "One or more artifact labels are empty or generic."
+    )
+  )
+}
+
 validate_module_config <- function(module_id, config, data) {
   module <- get_module_definition(module_id)
   if (is.null(module)) {
@@ -32,6 +205,12 @@ validate_module_config <- function(module_id, config, data) {
   if (identical(module_id, "autoquant_model_assessment")) {
     return(validate_autoquant_model_assessment_config(data = data, config = config))
   }
+  if (identical(module_id, "autoquant_regression_model_insights")) {
+    return(validate_autoquant_regression_model_insights_config(data = data, config = config))
+  }
+  if (identical(module_id, "autoquant_binary_model_insights")) {
+    return(validate_autoquant_binary_model_insights_config(data = data, config = config))
+  }
 
   service_result(
     status = "success",
@@ -44,6 +223,48 @@ validate_module_config <- function(module_id, config, data) {
       n_cols = if (is.null(data)) NA_integer_ else ncol(data)
     )
   )
+}
+
+qa_analysis_modules_integration <- function() {
+  helpers <- list(
+    autoquant_eda = qa_autoquant_eda_integration,
+    autoquant_model_assessment = qa_autoquant_model_assessment_integration,
+    autoquant_regression_model_insights = qa_autoquant_regression_model_insights_integration,
+    autoquant_binary_model_insights = qa_autoquant_binary_model_insights_integration
+  )
+
+  rows <- lapply(names(helpers), function(module_id) {
+    result <- tryCatch(
+      helpers[[module_id]](),
+      error = function(e) {
+        data.table::data.table(
+          check = "qa_helper",
+          status = "error",
+          message = conditionMessage(e)
+        )
+      }
+    )
+
+    statuses <- result$status %||% character()
+    overall_status <- if (any(statuses == "error")) {
+      "error"
+    } else if (any(statuses %in% c("warning", "missing", "needs_input"))) {
+      "warning"
+    } else {
+      "success"
+    }
+
+    data.table::data.table(
+      module_id = module_id,
+      status = overall_status,
+      checks = nrow(result),
+      errors = sum(statuses == "error"),
+      warnings = sum(statuses %in% c("warning", "missing", "needs_input")),
+      message = paste(result$message %||% character(), collapse = " | ")
+    )
+  })
+
+  data.table::rbindlist(rows, use.names = TRUE, fill = TRUE)
 }
 
 run_analysis_module <- function(module_id, data, config = list()) {
@@ -69,6 +290,12 @@ run_analysis_module <- function(module_id, data, config = list()) {
   }
   if (identical(module_id, "autoquant_model_assessment")) {
     return(run_autoquant_model_assessment_module(data = data, config = config))
+  }
+  if (identical(module_id, "autoquant_regression_model_insights")) {
+    return(run_autoquant_regression_model_insights_module(data = data, config = config))
+  }
+  if (identical(module_id, "autoquant_binary_model_insights")) {
+    return(run_autoquant_binary_model_insights_module(data = data, config = config))
   }
 
   service_result(

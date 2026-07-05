@@ -17,6 +17,13 @@ server <- function(input, output, session) {
     plans = list(),
     active_plan_id = NULL
   )
+  ctx$code_runner_state <- reactiveValues(
+    policy = create_code_execution_policy(),
+    requests = list(),
+    results = list(),
+    records = list(),
+    selected_run_id = NULL
+  )
 
   ctx$plot_result <- reactiveVal(NULL)
   ctx$plot_error <- reactiveVal(NULL)
@@ -29,6 +36,7 @@ server <- function(input, output, session) {
   ctx$artifact_library_message <- reactiveVal("")
   ctx$export_message <- reactiveVal("")
   ctx$project_message <- reactiveVal("")
+  ctx$code_runner_message <- reactiveVal("")
   ctx$project_data <- reactiveVal(NULL)
   ctx$project_data_info <- reactiveVal(list(path = NULL, name = NULL))
 
@@ -42,6 +50,44 @@ server <- function(input, output, session) {
   ctx$current_data_path <- function() ctx$project_data_info()$path
   ctx$current_data_name <- function() ctx$project_data_info()$name
   ctx$has_upload_or_project_data <- function() !is.null(ctx$project_data())
+  ctx$code_tracker_summary <- function() {
+    code_tracker_summary(ctx$code_runner_state$records)
+  }
+  ctx$next_code_run_id <- function() {
+    existing <- names(ctx$code_runner_state$requests)
+    index <- length(existing) + 1L
+    repeat {
+      run_id <- paste0("code_run_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", index)
+      if (!run_id %in% existing) {
+        return(run_id)
+      }
+      index <- index + 1L
+    }
+  }
+  ctx$add_code_run_request <- function(request) {
+    validation <- validate_code_run_request(request, ctx$code_runner_state$policy)
+    if (!identical(validation$status, "success")) {
+      return(validation)
+    }
+    ctx$code_runner_state$requests[[request$run_id]] <- request
+    ctx$code_runner_state$selected_run_id <- request$run_id
+    service_result(
+      status = "success",
+      value = request,
+      messages = paste("Added code run request:", request$label),
+      metadata = list(run_id = request$run_id)
+    )
+  }
+  ctx$add_code_tracker_record <- function(record) {
+    ctx$code_runner_state$records[[record$run_id]] <- record
+    ctx$code_runner_state$selected_run_id <- record$run_id
+    service_result(
+      status = "success",
+      value = record,
+      messages = paste("Added code tracker record:", record$label),
+      metadata = list(run_id = record$run_id)
+    )
+  }
   ctx$layout_cols_value <- function() 2L
   ctx$get_layout_type <- function() "Grid"
   ctx$set_layout_settings <- function(layout_type = NULL, layout_cols = NULL) invisible(NULL)
@@ -253,6 +299,9 @@ server <- function(input, output, session) {
         added <- added + 1L
       } else if (identical(artifact$artifact_type, "table")) {
         ctx$saved_table_artifacts$artifacts[[artifact$artifact_id]] <- artifact
+        added <- added + 1L
+      } else if (identical(artifact$artifact_type, "metric")) {
+        ctx$saved_module_artifacts$artifacts[[artifact$artifact_id]] <- artifact
         added <- added + 1L
       }
     }
@@ -547,6 +596,10 @@ server <- function(input, output, session) {
       table_artifacts = ctx$saved_table_artifacts$artifacts,
       report_plans = ctx$report_plan_state$plans,
       active_plan_id = ctx$report_plan_state$active_plan_id,
+      code_run_records = ctx$code_runner_state$records,
+      code_run_requests = ctx$code_runner_state$requests,
+      code_run_results = lapply(ctx$code_runner_state$results, code_run_result_summary),
+      code_runner_policy = ctx$code_runner_state$policy,
       layout_type = ctx$get_layout_type(),
       layout_cols = ctx$layout_cols_value(),
       export_dir = selected_value(ctx$get_export_dir()),
@@ -624,6 +677,10 @@ server <- function(input, output, session) {
     ctx$saved_table_artifacts$artifacts <- project_state$table_artifacts %||% list()
     ctx$report_plan_state$plans <- repair_report_plan_collection(project_state$report_plans %||% list())
     ctx$report_plan_state$active_plan_id <- project_state$active_plan_id %||% NULL
+    ctx$code_runner_state$records <- project_state$code_run_records %||% list()
+    ctx$code_runner_state$requests <- project_state$code_run_requests %||% list()
+    ctx$code_runner_state$results <- project_state$code_run_results %||% list()
+    ctx$code_runner_state$policy <- project_state$code_runner_policy %||% project_state$code_execution_policy %||% create_code_execution_policy()
 
     for (plot_name in names(ctx$saved_plots$configs)) {
       ctx$saved_plots$status[[plot_name]] <- list(
@@ -697,6 +754,7 @@ server <- function(input, output, session) {
   page_data_server("data", ctx)
   page_plot_builder_server("plot_builder", ctx)
   page_analysis_modules_server("analysis_modules", ctx)
+  page_code_runner_server("code_runner", ctx)
   page_layouts_server("layouts", ctx)
   page_export_server("export", ctx)
   page_artifact_library_server("artifact_library", ctx)

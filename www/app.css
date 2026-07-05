@@ -284,6 +284,25 @@ body.aq-theme-pimp {
   line-height: 1.5;
 }
 
+.aq-module-run-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(72px, 1fr));
+  gap: 6px 10px;
+  margin: 12px 0 0;
+}
+
+.aq-module-run-summary dt {
+  color: var(--aq-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.aq-module-run-summary dd {
+  margin: 0;
+  color: var(--aq-text);
+  font-weight: 700;
+}
+
 .aq-report-grid {
   display: grid;
   gap: 16px;

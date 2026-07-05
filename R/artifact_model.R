@@ -289,6 +289,23 @@ render_artifact_body <- function(artifact) {
     ))
   }
 
+  if (identical(artifact$artifact_type, "metric")) {
+    metric_data <- artifact$object
+    if (is.null(metric_data)) {
+      metric_data <- data.table::data.table(
+        metric = artifact$label %||% artifact$artifact_id,
+        value = artifact$content %||% ""
+      )
+    }
+    return(render_table(
+      data = metric_data,
+      engine = "html",
+      title = NULL,
+      page_size = 10,
+      theme = artifact$config$theme %||% "auto"
+    ))
+  }
+
   htmltools::tags$div(
     class = "aq-artifact-placeholder",
     paste("Preview is not available for artifact type:", artifact$artifact_type)
