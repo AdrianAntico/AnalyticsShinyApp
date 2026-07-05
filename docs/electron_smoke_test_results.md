@@ -51,6 +51,90 @@ Verification evidence:
 - Electron launched the generated app and reached `server_ready`.
 - Final log evidence: `Server ready on port 3838`.
 
+## Focused Electron / Manual App Checkpoint
+
+Checkpoint run: 2026-07-04T22:55:00-07:00
+
+Status: **Partial pass**
+
+This checkpoint verified the current AnalyticsShinyApp build after shinyelectron dependency-source handling, Code Runner, and AutoQuant module adapter work.
+
+Revisions and package context:
+
+| Component | Revision / Version | Path / Notes |
+| --- | --- | --- |
+| AnalyticsShinyApp | `e69bddf Configure Electron package sources` | `C:/Users/Bizon/Documents/GitHub/AnalyticsShinyApp` |
+| shinyelectron | `f2fa3fe Add explicit R package source handling` | `C:/Users/Bizon/Documents/GitHub/shinyelectron` |
+| AutoPlots | `1.5.0` | `C:/Users/Bizon/AppData/Local/R/win-library/4.5/AutoPlots` |
+| AutoQuant | `1.0.1` | `C:/Users/Bizon/AppData/Local/R/win-library/4.5/AutoQuant` |
+
+Dependency/source result:
+
+- Generated Electron manifest included 11 R packages.
+- AutoPlots was configured as Local: `C:/Users/Bizon/Documents/GitHub/AutoPlots`.
+- AutoQuant was configured as Local: `C:/Users/Bizon/Documents/GitHub/AutoQuant`.
+- catboost was configured as URL package: `https://github.com/catboost/catboost/releases/download/v1.2/catboost-R-Windows-1.2.tgz`.
+- Rodeo was configured as GitHub: `AdrianAntico/Rodeo`.
+- Ordinary dependencies remained CRAN-managed when not source-overridden.
+- No CRAN package-name install was attempted for AutoPlots or AutoQuant in the successful dependency-source run.
+- Electron served the app on `127.0.0.1:3838`; HTTP GET returned 200.
+
+Pre-checks:
+
+| Check | Status | Notes |
+| --- | --- | --- |
+| `source("app.R", local = new.env())` | Pass | Sourced successfully. |
+| AutoQuant critical exports | Pass | EDA, Model Assessment, Regression Model Insights, and Binary Model Insights artifact generators exist. |
+| AutoPlots critical exports | Pass | `Line`, `Bar`, and `CorrMatrix` exist. |
+| No nested `R/` directories | Pass | `Get-ChildItem R -Directory -Recurse` returned no directories. |
+| No DT usage | Pass | No `DT`, `DT::`, `library(DT)`, or `require(DT)` matches in app code. |
+| `git diff --check` | Pass | Passed with no whitespace errors. |
+
+App-side QA results:
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Analysis modules aggregate QA | Pass | EDA, Model Assessment, Regression Model Insights, and Binary Model Insights all returned success. |
+| Code Runner model QA | Pass | Summary includes successful code run record. |
+| Code Runner UI state QA | Pass | Request validation, record add, summary rows, and local trusted service checks passed. |
+| Code Runner local trusted QA | Pass | Success value, warning capture, error capture, blocked function, and table artifact candidate passed. |
+| Code Runner history QA | Pass | Duplicate, rerun, parent run ID, immutable original, notes, and failed rerun preservation passed. |
+| Artifact model QA | Pass | Plot, text, and table artifacts summarized correctly. |
+| Module registry QA | Pass | Implemented and planned modules summarized. |
+| Report plan workflow QA | Pass with warning case | Valid plan ready, missing-artifact plan warning, duplicate/edit/apply success, duplicate ID repair ready. |
+| Table framework QA | Warning | Reactable rendering and CSV export passed. XLSX export reported `PACKAGE_MISSING` for `openxlsx` in the app R context. |
+| Export service QA | Pass | Expected service-result statuses for missing report/code, code export, and invalid filename. |
+
+Electron UI / manual click-through:
+
+| Check | Status | Notes |
+| --- | --- | --- |
+| Electron fixture build | Pass | Built `C:/Users/Bizon/AppData/Local/Temp/aq_electron_manual_checkpoint/electron-app`. |
+| Electron process launch | Pass | Electron, Node, and Rscript processes started. |
+| Shiny backend port | Pass | `127.0.0.1:3838` was listening. |
+| App HTTP load | Pass | `Invoke-WebRequest http://127.0.0.1:3838` returned 200 and Shiny HTML. |
+| Browser/UI click-through | Blocked | The in-app browser connector failed with a sandbox metadata error, and no local Playwright/Puppeteer runtime was available in the generated Electron project. |
+
+Failure classification:
+
+| Failure / Limitation | Classification | Notes |
+| --- | --- | --- |
+| Browser automation unavailable for manual UI clicks | Local environment / browser tooling | Electron app served Shiny successfully, but the available browser connector failed before interaction. |
+| XLSX table export QA warning | Local environment / optional dependency | `openxlsx` was not available in the app R context used by QA. CSV export passed. |
+
+Follow-up tasks:
+
+1. Run a true visual/manual Electron click-through with a working browser automation surface or direct human interaction.
+2. Install/verify `openxlsx` in the app R context if XLSX table export should pass in automated QA.
+3. Repeat UI workflows once browser automation is available:
+   - Data upload and preview.
+   - Plot, text, table, and code-created artifacts.
+   - Artifact Library previews and metadata edits.
+   - Layout Grid/Sections and report plan apply.
+   - Code Runner disabled-by-default, local_trusted runs, duplicate/rerun/history.
+   - HTML/R code/export all and project/bundle save/load.
+   - Light/Dark/Pimp theme readability.
+
 ## Revisions
 
 | Component | Revision / Version | Notes |
