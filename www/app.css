@@ -430,6 +430,12 @@ body.aq-theme-pimp {
   color: var(--aq-muted);
 }
 
+.aq-table-filter-help {
+  margin: 0 0 8px;
+  color: var(--aq-muted);
+  font-size: 12px;
+}
+
 .aq-table {
   width: 100%;
   color: var(--aq-text);

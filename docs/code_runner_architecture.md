@@ -59,6 +59,44 @@ GenAI owns:
 
 GenAI must not execute code directly.
 
+## Custom Code Hooks
+
+Every workflow stage may expose user-triggered custom code hooks, but hooks must reuse the existing Code Runner architecture. The app must not create a second execution system for workflow code.
+
+Supported hook timings:
+
+- `pre_stage`: user-authored code to run before a workflow stage.
+- `post_stage`: user-authored code to run after a workflow stage.
+- `standalone`: exploratory code between stages.
+
+Supported hook output intent:
+
+- modified dataset
+- plots
+- tables
+- text artifacts
+- metrics
+- handoff notes
+
+Custom code hooks create ordinary Code Runner requests with `source = "manual"` and hook metadata in `context`:
+
+- `custom_code_hook = TRUE`
+- `workflow_stage`
+- `hook_timing`
+- `auto_run = FALSE`
+
+Hooks must not auto-run. A page may create or prefill a draft hook request, but execution still requires the user to use Code Runner controls and pass the existing `local_trusted` policy checks. Output-to-artifact conversion also remains user-triggered through the existing Code Runner conversion flow.
+
+The first hook helper layer is:
+
+- `custom_code_hook_stages()`
+- `custom_code_hook_timings()`
+- `custom_code_hook_output_types()`
+- `create_custom_code_hook_request()`
+- `validate_custom_code_hook_request()`
+- `custom_code_hook_summary()`
+- `qa_custom_code_hooks()`
+
 ## Execution Modes
 
 The app recognizes these execution modes:

@@ -203,7 +203,8 @@ page_code_runner_server <- function(id, ctx) {
           code = request$code,
           source = request$source,
           status = status,
-          data_name = request$context$data_name
+          data_name = request$context$data_name,
+          metadata = list(context = request$context %||% list())
         )
       }
 
@@ -213,6 +214,13 @@ page_code_runner_server <- function(id, ctx) {
       existing$source <- request$source
       existing$status <- status
       existing$data_name <- request$context$data_name
+      existing$metadata <- existing$metadata %||% list()
+      existing$metadata$context <- request$context %||% existing$metadata$context %||% list()
+      if (isTRUE(request$context$custom_code_hook)) {
+        existing$metadata$custom_code_hook <- TRUE
+        existing$metadata$workflow_stage <- request$context$workflow_stage %||% NA_character_
+        existing$metadata$hook_timing <- request$context$hook_timing %||% NA_character_
+      }
       if (!is.null(result)) {
         existing$started_at <- result$started_at
         existing$ended_at <- result$ended_at

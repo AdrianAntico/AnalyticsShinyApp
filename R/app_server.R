@@ -78,6 +78,27 @@ server <- function(input, output, session) {
       metadata = list(run_id = request$run_id)
     )
   }
+  ctx$add_custom_code_hook_request <- function(stage, timing = "standalone", label = NULL, code = "",
+                                               requested_outputs = custom_code_hook_output_types(),
+                                               context = list()) {
+    request <- create_custom_code_hook_request(
+      run_id = ctx$next_code_run_id(),
+      stage = stage,
+      timing = timing,
+      label = label,
+      code = code,
+      requested_outputs = requested_outputs,
+      data_name = ctx$current_data_name(),
+      context = context,
+      status = "draft",
+      execution_mode = ctx$code_runner_state$policy$execution_mode %||% "disabled"
+    )
+    validation <- validate_custom_code_hook_request(request, ctx$code_runner_state$policy)
+    if (!identical(validation$status, "success")) {
+      return(validation)
+    }
+    ctx$add_code_run_request(request)
+  }
   ctx$add_code_tracker_record <- function(record) {
     ctx$code_runner_state$records[[record$run_id]] <- record
     ctx$code_runner_state$selected_run_id <- record$run_id

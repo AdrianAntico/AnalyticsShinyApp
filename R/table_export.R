@@ -144,6 +144,7 @@ qa_table_framework <- function() {
     Date = as.Date("2026-01-01") + 0:11,
     Channel = rep(c("Search", "Social", "Email"), 4),
     Category = rep(c("A", "B"), 6),
+    IsPaid = rep(c(TRUE, FALSE), 6),
     Revenue = c(100, 125, 140, NA, 180, 210, 205, 230, 260, 300, 320, 340),
     Spend = c(40, 55, 65, 75, 80, 90, 95, 100, 120, 130, 140, 150)
   )
@@ -166,9 +167,42 @@ qa_table_framework <- function() {
     export_dir,
     "tables"
   )
+  filter_columns <- if (requireNamespace("reactable", quietly = TRUE)) {
+    aq_reactable_column_defs(sample_data)
+  } else {
+    list()
+  }
+  has_filter <- function(column) {
+    !is.null(filter_columns[[column]]) && !is.null(filter_columns[[column]]$filterMethod)
+  }
+  filter_js <- aq_reactable_exclusion_filter()
+  filter_source <- paste(as.character(filter_js), collapse = "\n")
+  filter_checks <- data.table::data.table(
+    check = c(
+      "text_filter_helper_available",
+      "normal_filter_semantics_documented",
+      "bang_exclusion_semantics_documented",
+      "dash_exclusion_semantics_documented",
+      "text_column_filter",
+      "logical_column_filter",
+      "numeric_column_unmodified",
+      "date_column_unmodified"
+    ),
+    status = c(
+      if (!is.null(filter_js)) "success" else "warning",
+      if (nzchar(filter_source) && grepl("includes\\(term\\)", filter_source, fixed = FALSE)) "success" else "error",
+      if (nzchar(filter_source) && grepl("startsWith('!')", filter_source, fixed = TRUE)) "success" else "error",
+      if (nzchar(filter_source) && grepl("startsWith('-')", filter_source, fixed = TRUE)) "success" else "error",
+      if (has_filter("Channel")) "success" else "error",
+      if (has_filter("IsPaid")) "success" else "error",
+      if (!has_filter("Revenue")) "success" else "error",
+      if (!has_filter("Date")) "success" else "error"
+    )
+  )
 
   qa_status <- if (identical(csv_result$status, "success") &&
-                   identical(xlsx_result$status, "success")) {
+                   identical(xlsx_result$status, "success") &&
+                   !any(filter_checks$status == "error")) {
     "success"
   } else {
     "warning"
@@ -182,14 +216,16 @@ qa_table_framework <- function() {
       frequency = frequency,
       rendered = rendered,
       csv_result = csv_result,
-      xlsx_result = xlsx_result
+      xlsx_result = xlsx_result,
+      filter_checks = filter_checks
     ),
     artifacts = c(csv_result$artifacts, xlsx_result$artifacts),
     messages = "Table framework QA completed.",
     warnings = if (!identical(xlsx_result$status, "success")) xlsx_result$errors else character(),
     metadata = list(
       reactable_available = requireNamespace("reactable", quietly = TRUE),
-      openxlsx_available = requireNamespace("openxlsx", quietly = TRUE)
+      openxlsx_available = requireNamespace("openxlsx", quietly = TRUE),
+      reactable_filter_checks = filter_checks
     )
   )
 }

@@ -139,6 +139,7 @@ Near-term development should stabilize the artifact/report-plan foundation befor
 | BL-102 | Modules | AutoQuant CatBoost Builder generator contract | P0 | Analysis Modules | Done | AutoQuant | High |
 | BL-103 | Modules | Analytics Shiny App CatBoost Builder adapter | P1 | Analysis Modules | Done | AutoQuant | High |
 | BL-104 | Modules | CatBoost downstream handoff UX | P1 | Analysis Modules | Done | New App | Medium |
+| BL-105 | Code Runner | Custom code hooks for workflow stages | P1 | Code Runner | Done | New App | High |
 
 See `docs/product_backlog.csv` for the sortable backlog with descriptions, dependencies, and notes.
 

@@ -248,6 +248,18 @@ When a handoff action runs, the app passes the scored output and recommended con
 
 The CatBoost Builder run itself must not auto-run downstream modules, mutate downstream page state, or hide downstream failures. If a downstream action fails, it should return a normal `service_result()` failure while preserving the original CatBoost Builder output.
 
+## Custom Code Hooks
+
+CatBoost Builder and downstream handoff stages may offer custom code hooks, but they must use the existing Code Runner architecture.
+
+Examples:
+
+- pre-stage code to inspect or adjust the active dataset before CatBoost Builder runs
+- post-stage code to inspect scored output or create handoff notes
+- standalone exploratory code between CatBoost Builder and Model Assessment / Model Insights / SHAP
+
+Custom code hooks should create draft Code Runner requests with workflow-stage metadata. They must not auto-run, bypass `local_trusted` policy checks, bypass code history, or bypass output-to-artifact conversion.
+
 ## Artifact And Report Plan Integration
 
 The app adapter should return `service_result()` with:

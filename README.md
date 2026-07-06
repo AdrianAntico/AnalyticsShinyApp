@@ -74,6 +74,16 @@ Rscript -e "shiny::runApp('.')"
 
 The app performs a lightweight startup dependency check through `check_app_dependencies()` before loading the Shiny UI.
 
+## Table Filters
+
+Reactable-backed table artifacts support text exclusion filters:
+
+- `Impressions` keeps rows containing `Impressions`
+- `!Impressions` excludes rows containing `Impressions`
+- `-Impressions` also excludes rows containing `Impressions`
+
+Text filtering is case-insensitive. Numeric and date columns keep their standard table behavior.
+
 ## Sample Data
 
 Sample QA data is available at:

@@ -16,6 +16,57 @@
   data
 }
 
+aq_reactable_exclusion_filter <- function() {
+  if (!requireNamespace("htmlwidgets", quietly = TRUE)) {
+    return(NULL)
+  }
+
+  htmlwidgets::JS("
+    function(rows, columnId, filterValue) {
+      if (!filterValue) return rows;
+
+      const filter = String(filterValue).toLowerCase().trim();
+      const exclude = filter.startsWith('!') || filter.startsWith('-');
+      const term = exclude ? filter.slice(1).trim() : filter;
+
+      if (!term) return rows;
+
+      return rows.filter(function(row) {
+        const rawValue = row.values[columnId];
+        const value = rawValue == null ? '' : String(rawValue).toLowerCase();
+        const match = value.includes(term);
+        return exclude ? !match : match;
+      });
+    }
+  ")
+}
+
+aq_reactable_is_text_like <- function(x) {
+  is.character(x) || is.factor(x) || is.logical(x)
+}
+
+aq_reactable_column_defs <- function(data, digits = 3) {
+  data <- .table_as_data_table(data)
+  numeric_cols <- names(data)[vapply(data, is.numeric, logical(1))]
+  text_cols <- names(data)[vapply(data, aq_reactable_is_text_like, logical(1))]
+  exclusion_filter <- aq_reactable_exclusion_filter()
+
+  stats::setNames(
+    lapply(names(data), function(column) {
+      if (column %in% numeric_cols) {
+        return(reactable::colDef(format = reactable::colFormat(digits = digits)))
+      }
+
+      if (column %in% text_cols && !is.null(exclusion_filter)) {
+        return(reactable::colDef(filterMethod = exclusion_filter))
+      }
+
+      reactable::colDef()
+    }),
+    names(data)
+  )
+}
+
 render_table <- function(
   data,
   engine = c("reactable", "html"),
@@ -50,6 +101,12 @@ render_table <- function(
     class = paste("aq-table-wrapper", paste0("aq-table-", theme)),
     if (!is.null(title)) htmltools::tags$h3(class = "aq-table-title", title),
     if (!is.null(subtitle)) htmltools::tags$p(class = "aq-table-subtitle", subtitle),
+    if (isTRUE(filterable) && identical(engine, "reactable")) {
+      htmltools::tags$p(
+        class = "aq-table-filter-help",
+        "Text filters support exclusion: use !term or -term to exclude rows."
+      )
+    },
     table
   )
 }
@@ -68,17 +125,7 @@ render_reactable_table <- function(
   }
 
   data <- .table_as_data_table(data)
-  numeric_cols <- names(data)[vapply(data, is.numeric, logical(1))]
-  columns <- stats::setNames(
-    lapply(names(data), function(column) {
-      if (column %in% numeric_cols) {
-        return(reactable::colDef(format = reactable::colFormat(digits = digits)))
-      }
-
-      reactable::colDef()
-    }),
-    names(data)
-  )
+  columns <- aq_reactable_column_defs(data, digits = digits)
 
   reactable::reactable(
     data,
