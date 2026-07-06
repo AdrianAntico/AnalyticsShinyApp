@@ -211,6 +211,19 @@ validate_module_config <- function(module_id, config, data) {
   if (identical(module_id, "autoquant_binary_model_insights")) {
     return(validate_autoquant_binary_model_insights_config(data = data, config = config))
   }
+  if (identical(module_id, "autoquant_regression_shap_analysis")) {
+    return(validate_autoquant_regression_shap_analysis_config(data = data, config = config))
+  }
+  if (identical(module_id, "autoquant_binary_shap_analysis")) {
+    return(validate_autoquant_binary_shap_analysis_config(data = data, config = config))
+  }
+  if (identical(module_id, "autoquant_catboost_builder")) {
+    return(validate_catboost_builder_config(data = data, config = config))
+  }
+  if (identical(module_id, "autoquant_multiclass_shap_analysis")) {
+    config$problem_type <- "multiclass"
+    return(validate_shap_analysis_config(config = config, data = data, problem_type = "multiclass"))
+  }
 
   service_result(
     status = "success",
@@ -230,7 +243,11 @@ qa_analysis_modules_integration <- function() {
     autoquant_eda = qa_autoquant_eda_integration,
     autoquant_model_assessment = qa_autoquant_model_assessment_integration,
     autoquant_regression_model_insights = qa_autoquant_regression_model_insights_integration,
-    autoquant_binary_model_insights = qa_autoquant_binary_model_insights_integration
+    autoquant_binary_model_insights = qa_autoquant_binary_model_insights_integration,
+    autoquant_regression_shap_analysis = qa_autoquant_regression_shap_analysis_integration,
+    autoquant_binary_shap_analysis = qa_autoquant_binary_shap_analysis_integration,
+    autoquant_catboost_builder = qa_autoquant_catboost_builder_integration,
+    shap_artifact_contract = qa_shap_artifact_contract
   )
 
   rows <- lapply(names(helpers), function(module_id) {
@@ -281,7 +298,7 @@ run_analysis_module <- function(module_id, data, config = list()) {
   }
 
   validation <- validate_module_config(module_id, config, data)
-  if (!identical(validation$status, "success")) {
+  if (identical(validation$status, "error")) {
     return(validation)
   }
 
@@ -296,6 +313,15 @@ run_analysis_module <- function(module_id, data, config = list()) {
   }
   if (identical(module_id, "autoquant_binary_model_insights")) {
     return(run_autoquant_binary_model_insights_module(data = data, config = config))
+  }
+  if (identical(module_id, "autoquant_regression_shap_analysis")) {
+    return(run_autoquant_regression_shap_analysis_module(data = data, config = config))
+  }
+  if (identical(module_id, "autoquant_binary_shap_analysis")) {
+    return(run_autoquant_binary_shap_analysis_module(data = data, config = config))
+  }
+  if (identical(module_id, "autoquant_catboost_builder")) {
+    return(run_autoquant_catboost_builder_module(data = data, config = config))
   }
 
   service_result(

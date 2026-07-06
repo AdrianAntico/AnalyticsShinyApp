@@ -16,7 +16,11 @@ page_analysis_modules_ui <- function(id) {
               "AutoQuant EDA" = "autoquant_eda",
               "AutoQuant Model Assessment" = "autoquant_model_assessment",
               "AutoQuant Regression Model Insights" = "autoquant_regression_model_insights",
-              "AutoQuant Binary Classification Model Insights" = "autoquant_binary_model_insights"
+              "AutoQuant Binary Classification Model Insights" = "autoquant_binary_model_insights",
+              "AutoQuant Regression SHAP Analysis" = "autoquant_regression_shap_analysis",
+              "AutoQuant Binary Classification SHAP Analysis" = "autoquant_binary_shap_analysis",
+              "AutoQuant CatBoost Builder" = "autoquant_catboost_builder",
+              "AutoQuant Multiclass SHAP Analysis" = "autoquant_multiclass_shap_analysis"
             ),
             selected = "autoquant_eda"
           ),
@@ -213,6 +217,272 @@ page_analysis_modules_server <- function(id, ctx) {
         return(do.call(tagList, Filter(Negate(is.null), controls)))
       }
 
+      if (identical(module_id, "autoquant_regression_shap_analysis")) {
+        shap_cols <- choices[startsWith(choices, "Shap_")]
+        shap_features <- sub("^Shap_", "", shap_cols)
+        source_features <- intersect(shap_features, choices)
+        if (!length(source_features)) {
+          source_features <- setdiff(choices, c("y", "Predict", "prediction", "yhat", shap_cols))
+        }
+        id_defaults <- choices[grepl("(^id|id$|_id|IDCol)", choices, ignore.case = TRUE)]
+        by_defaults <- intersect(c("Factor_1", "Channel", "segment", "Segment"), choices)
+
+        return(tagList(
+          textInput(session$ns("rshap_data_name"), "Data Name", value = "Uploaded Data"),
+          selectInput(
+            session$ns("rshap_target_col"),
+            "Target",
+            choices = c("(optional)" = "", numeric_choices),
+            selected = if ("y" %in% numeric_choices) "y" else ""
+          ),
+          selectInput(
+            session$ns("rshap_prediction_col"),
+            "Prediction",
+            choices = c("(infer Predict)" = "", numeric_choices),
+            selected = if ("Predict" %in% numeric_choices) "Predict" else ""
+          ),
+          textInput(session$ns("rshap_shap_prefix"), "SHAP Prefix", value = "Shap_"),
+          selectInput(
+            session$ns("rshap_feature_cols"),
+            "Feature Columns",
+            choices = choices,
+            selected = source_features,
+            multiple = TRUE
+          ),
+          selectInput(
+            session$ns("rshap_selected_features"),
+            "Selected Features",
+            choices = source_features,
+            selected = head(source_features, 10L),
+            multiple = TRUE
+          ),
+          selectInput(
+            session$ns("rshap_date_var"),
+            "Date",
+            choices = c("(none)" = "", choices),
+            selected = if ("Date" %in% choices) "Date" else if ("date" %in% choices) "date" else ""
+          ),
+          selectInput(
+            session$ns("rshap_date_aggregation"),
+            "Date Aggregation",
+            choices = c("day", "week", "month"),
+            selected = "month"
+          ),
+          selectInput(
+            session$ns("rshap_by_vars"),
+            "ByVars",
+            choices = choices,
+            selected = by_defaults,
+            multiple = TRUE
+          ),
+          selectInput(
+            session$ns("rshap_id_cols"),
+            "ID Columns",
+            choices = choices,
+            selected = id_defaults,
+            multiple = TRUE
+          ),
+          textInput(session$ns("rshap_local_row_ids"), "Local Row IDs", value = "1,2"),
+          numericInput(session$ns("rshap_top_n"), "Top N", value = 20, min = 1, step = 1),
+          numericInput(session$ns("rshap_max_dependence_rows"), "Max Dependence Rows", value = 5000, min = 1, step = 1),
+          numericInput(session$ns("rshap_max_segment_levels"), "Max Segment Levels", value = 20, min = 1, step = 1),
+          numericInput(session$ns("rshap_max_byvars"), "Max ByVars", value = 3, min = 1, step = 1),
+          numericInput(session$ns("rshap_max_interaction_pairs"), "Max Interaction Pairs", value = 20, min = 1, step = 1),
+          numericInput(session$ns("rshap_max_interaction_surface_plots"), "Max Interaction Surface Plots", value = 10, min = 1, step = 1),
+          numericInput(session$ns("rshap_numeric_interaction_bins"), "Numeric Interaction Bins", value = 5, min = 2, step = 1),
+          numericInput(session$ns("rshap_min_interaction_cell_n"), "Min Interaction Cell N", value = 5, min = 1, step = 1),
+          checkboxInput(session$ns("rshap_include_dependence"), "Include Dependence", value = TRUE),
+          checkboxInput(session$ns("rshap_include_segments"), "Include Segments", value = TRUE),
+          checkboxInput(session$ns("rshap_include_time"), "Include Time", value = TRUE),
+          checkboxInput(session$ns("rshap_include_local"), "Include Local Explanations", value = FALSE),
+          checkboxInput(session$ns("rshap_include_interactions"), "Include Interactions", value = TRUE),
+          checkboxInput(session$ns("rshap_include_plots"), "Include Plots", value = TRUE),
+          numericInput(session$ns("rshap_max_feature_effect_plots"), "Max Feature Effect Plots", value = 5, min = 1, step = 1),
+          numericInput(session$ns("rshap_max_dependence_plots"), "Max Dependence Plots", value = 5, min = 1, step = 1),
+          numericInput(session$ns("rshap_max_segment_plots"), "Max Segment Plots", value = 5, min = 1, step = 1),
+          numericInput(session$ns("rshap_max_time_plots"), "Max Time Plots", value = 5, min = 1, step = 1),
+          numericInput(session$ns("rshap_max_local_plots"), "Max Local Plots", value = 5, min = 1, step = 1)
+        ))
+      }
+
+      if (identical(module_id, "autoquant_binary_shap_analysis")) {
+        shap_cols <- choices[startsWith(choices, "Shap_")]
+        shap_features <- sub("^Shap_", "", shap_cols)
+        source_features <- intersect(shap_features, choices)
+        if (!length(source_features)) {
+          source_features <- setdiff(choices, c("Target", "target", "Predict", "prediction", "p", "p1", "PredictedClass", shap_cols))
+        }
+        id_defaults <- choices[grepl("(^id|id$|_id|IDCol)", choices, ignore.case = TRUE)]
+        by_defaults <- intersect(c("Channel", "Region", "CustomerTier", "segment", "Segment"), choices)
+        target_choices <- choices
+        prediction_choices <- numeric_choices
+
+        return(tagList(
+          textInput(session$ns("bshap_data_name"), "Data Name", value = "Uploaded Data"),
+          selectInput(
+            session$ns("bshap_target_col"),
+            "Target",
+            choices = c("(required)" = "", target_choices),
+            selected = if ("Target" %in% target_choices) "Target" else if ("target" %in% target_choices) "target" else ""
+          ),
+          selectInput(
+            session$ns("bshap_prediction_col"),
+            "Prediction Probability",
+            choices = c("(infer Predict)" = "", prediction_choices),
+            selected = if ("Predict" %in% prediction_choices) "Predict" else if ("prediction" %in% prediction_choices) "prediction" else ""
+          ),
+          selectInput(
+            session$ns("bshap_predicted_class_col"),
+            "Predicted Class",
+            choices = c("(optional)" = "", target_choices),
+            selected = if ("PredictedClass" %in% target_choices) "PredictedClass" else ""
+          ),
+          textInput(session$ns("bshap_positive_class"), "Positive Class", value = "Yes"),
+          selectInput(
+            session$ns("bshap_prediction_scale"),
+            "Prediction Scale",
+            choices = c("probability", "logit", "margin", "unknown"),
+            selected = "probability"
+          ),
+          numericInput(session$ns("bshap_threshold"), "Threshold", value = 0.5, min = 0.001, max = 0.999, step = 0.01),
+          textInput(session$ns("bshap_shap_prefix"), "SHAP Prefix", value = "Shap_"),
+          selectInput(
+            session$ns("bshap_feature_cols"),
+            "Feature Columns",
+            choices = choices,
+            selected = source_features,
+            multiple = TRUE
+          ),
+          selectInput(
+            session$ns("bshap_selected_features"),
+            "Selected Features",
+            choices = source_features,
+            selected = head(source_features, 10L),
+            multiple = TRUE
+          ),
+          selectInput(
+            session$ns("bshap_date_var"),
+            "Date",
+            choices = c("(none)" = "", choices),
+            selected = if ("Date" %in% choices) "Date" else if ("date" %in% choices) "date" else ""
+          ),
+          selectInput(
+            session$ns("bshap_date_aggregation"),
+            "Date Aggregation",
+            choices = c("day", "week", "month"),
+            selected = "month"
+          ),
+          selectInput(
+            session$ns("bshap_by_vars"),
+            "ByVars",
+            choices = choices,
+            selected = by_defaults,
+            multiple = TRUE
+          ),
+          selectInput(
+            session$ns("bshap_id_cols"),
+            "ID Columns",
+            choices = choices,
+            selected = id_defaults,
+            multiple = TRUE
+          ),
+          textInput(session$ns("bshap_local_row_ids"), "Local Row IDs", value = "1,2"),
+          numericInput(session$ns("bshap_top_n"), "Top N", value = 20, min = 1, step = 1),
+          numericInput(session$ns("bshap_max_dependence_rows"), "Max Dependence Rows", value = 5000, min = 1, step = 1),
+          numericInput(session$ns("bshap_max_segment_levels"), "Max Segment Levels", value = 20, min = 1, step = 1),
+          numericInput(session$ns("bshap_max_byvars"), "Max ByVars", value = 3, min = 1, step = 1),
+          numericInput(session$ns("bshap_max_interaction_pairs"), "Max Interaction Pairs", value = 20, min = 1, step = 1),
+          numericInput(session$ns("bshap_max_interaction_surface_plots"), "Max Interaction Surface Plots", value = 10, min = 1, step = 1),
+          numericInput(session$ns("bshap_numeric_interaction_bins"), "Numeric Interaction Bins", value = 5, min = 2, step = 1),
+          numericInput(session$ns("bshap_min_interaction_cell_n"), "Min Interaction Cell N", value = 5, min = 1, step = 1),
+          checkboxInput(session$ns("bshap_include_threshold_context"), "Include Threshold Context", value = TRUE),
+          checkboxInput(session$ns("bshap_include_class_balance"), "Include Class Balance / Outcome Context", value = TRUE),
+          checkboxInput(session$ns("bshap_include_dependence"), "Include Dependence", value = TRUE),
+          checkboxInput(session$ns("bshap_include_segments"), "Include Segments", value = TRUE),
+          checkboxInput(session$ns("bshap_include_time"), "Include Time", value = TRUE),
+          checkboxInput(session$ns("bshap_include_local"), "Include Local Explanations", value = FALSE),
+          checkboxInput(session$ns("bshap_include_interactions"), "Include Interactions", value = TRUE),
+          checkboxInput(session$ns("bshap_include_plots"), "Include Plots", value = TRUE),
+          numericInput(session$ns("bshap_max_feature_effect_plots"), "Max Feature Effect Plots", value = 5, min = 1, step = 1),
+          numericInput(session$ns("bshap_max_dependence_plots"), "Max Dependence Plots", value = 5, min = 1, step = 1),
+          numericInput(session$ns("bshap_max_segment_plots"), "Max Segment Plots", value = 5, min = 1, step = 1),
+          numericInput(session$ns("bshap_max_time_plots"), "Max Time Plots", value = 5, min = 1, step = 1),
+          numericInput(session$ns("bshap_max_local_plots"), "Max Local Plots", value = 5, min = 1, step = 1)
+        ))
+      }
+
+      if (identical(module_id, "autoquant_catboost_builder")) {
+        target_default <- if ("Revenue" %in% choices) {
+          "Revenue"
+        } else if ("Target" %in% choices) {
+          "Target"
+        } else if (length(choices)) {
+          choices[[1]]
+        } else {
+          ""
+        }
+        feature_defaults <- setdiff(choices, c(target_default))
+        by_defaults <- intersect(c("Channel", "Region", "CustomerTier", "segment", "Segment"), choices)
+
+        return(tagList(
+          selectInput(
+            session$ns("catboost_problem_type"),
+            "Problem Type",
+            choices = c("Regression" = "regression", "Binary Classification" = "binary"),
+            selected = "regression"
+          ),
+          selectInput(
+            session$ns("catboost_target_col"),
+            "Target",
+            choices = choices,
+            selected = target_default
+          ),
+          selectInput(
+            session$ns("catboost_feature_cols"),
+            "Feature Columns",
+            choices = choices,
+            selected = feature_defaults,
+            multiple = TRUE
+          ),
+          textInput(session$ns("catboost_positive_class"), "Positive Class", value = "Yes"),
+          selectInput(
+            session$ns("catboost_date_var"),
+            "Date",
+            choices = c("(none)" = "", choices),
+            selected = if ("Date" %in% choices) "Date" else if ("date" %in% choices) "date" else ""
+          ),
+          selectInput(
+            session$ns("catboost_by_vars"),
+            "ByVars",
+            choices = choices,
+            selected = by_defaults,
+            multiple = TRUE
+          ),
+          numericInput(session$ns("catboost_iterations"), "Iterations", value = 100, min = 1, step = 10),
+          numericInput(session$ns("catboost_depth"), "Depth", value = 6, min = 1, max = 16, step = 1),
+          numericInput(session$ns("catboost_learning_rate"), "Learning Rate", value = NA, min = 0, step = 0.01),
+          numericInput(session$ns("catboost_threshold"), "Threshold", value = 0.5, min = 0, max = 1, step = 0.01),
+          checkboxInput(session$ns("catboost_compute_shap"), "Compute SHAP", value = TRUE)
+        ))
+      }
+
+      if (module_id %in% c(
+        "autoquant_multiclass_shap_analysis"
+      )) {
+        problem_label <- switch(
+          module_id,
+          autoquant_regression_shap_analysis = "Regression",
+          autoquant_binary_shap_analysis = "Binary Classification",
+          autoquant_multiclass_shap_analysis = "Multiclass"
+        )
+        return(tagList(
+          ui_empty_state(
+            paste(problem_label, "SHAP Analysis is scaffolded."),
+            "The full SHAP configuration UI will be added when the AutoQuant generator is available."
+          )
+        ))
+      }
+
       tagList(
         textInput(session$ns("eda_data_name"), "DataName", value = "Uploaded Data"),
         selectInput(
@@ -349,6 +619,164 @@ page_analysis_modules_server <- function(id, ctx) {
       )
     }
 
+    regression_shap_config <- function() {
+      clean_choices <- function(value) {
+        value <- value %||% character()
+        value <- value[nzchar(value)]
+        as.character(value)
+      }
+      local_row_ids <- suppressWarnings(as.integer(unlist(strsplit(selected_value(input$rshap_local_row_ids) %||% "", "[,\\s]+"))))
+      local_row_ids <- local_row_ids[!is.na(local_row_ids) & local_row_ids > 0L]
+
+      create_shap_analysis_config(
+        problem_type = "regression",
+        data_name = selected_value(input$rshap_data_name) %||% "Uploaded Data",
+        target_col = selected_value(input$rshap_target_col),
+        prediction_col = selected_value(input$rshap_prediction_col),
+        feature_cols = clean_choices(input$rshap_feature_cols),
+        shap_prefix = selected_value(input$rshap_shap_prefix) %||% "Shap_",
+        id_cols = clean_choices(input$rshap_id_cols),
+        prediction_scale = "response",
+        DateVar = selected_value(input$rshap_date_var),
+        date_aggregation = selected_value(input$rshap_date_aggregation) %||% "month",
+        ByVars = clean_choices(input$rshap_by_vars),
+        selected_features = clean_choices(input$rshap_selected_features),
+        local_row_ids = local_row_ids,
+        top_n = as.integer(input$rshap_top_n %||% 20L),
+        max_dependence_rows = as.integer(input$rshap_max_dependence_rows %||% 5000L),
+        max_segment_levels = as.integer(input$rshap_max_segment_levels %||% 20L),
+        max_byvars = as.integer(input$rshap_max_byvars %||% 3L),
+        include_dependence = isTRUE(input$rshap_include_dependence),
+        include_segments = isTRUE(input$rshap_include_segments),
+        include_time = isTRUE(input$rshap_include_time),
+        include_local = isTRUE(input$rshap_include_local),
+        include_interactions = isTRUE(input$rshap_include_interactions),
+        include_plots = isTRUE(input$rshap_include_plots),
+        max_feature_effect_plots = as.integer(input$rshap_max_feature_effect_plots %||% 5L),
+        max_dependence_plots = as.integer(input$rshap_max_dependence_plots %||% 5L),
+        max_segment_plots = as.integer(input$rshap_max_segment_plots %||% 5L),
+        max_time_plots = as.integer(input$rshap_max_time_plots %||% 5L),
+        max_local_plots = as.integer(input$rshap_max_local_plots %||% 5L),
+        max_interaction_pairs = as.integer(input$rshap_max_interaction_pairs %||% 20L),
+        max_interaction_surface_plots = as.integer(input$rshap_max_interaction_surface_plots %||% 10L),
+        numeric_interaction_bins = as.integer(input$rshap_numeric_interaction_bins %||% 5L),
+        min_interaction_cell_n = as.integer(input$rshap_min_interaction_cell_n %||% 5L)
+      )
+    }
+
+    binary_shap_config <- function() {
+      clean_choices <- function(value) {
+        value <- value %||% character()
+        value <- value[nzchar(value)]
+        as.character(value)
+      }
+      local_row_ids <- suppressWarnings(as.integer(unlist(strsplit(selected_value(input$bshap_local_row_ids) %||% "", "[,\\s]+"))))
+      local_row_ids <- local_row_ids[!is.na(local_row_ids) & local_row_ids > 0L]
+
+      create_shap_analysis_config(
+        problem_type = "binary_classification",
+        data_name = selected_value(input$bshap_data_name) %||% "Uploaded Data",
+        target_col = selected_value(input$bshap_target_col),
+        prediction_col = selected_value(input$bshap_prediction_col),
+        predicted_class_col = selected_value(input$bshap_predicted_class_col),
+        positive_class = selected_value(input$bshap_positive_class),
+        prediction_scale = selected_value(input$bshap_prediction_scale) %||% "probability",
+        threshold = as.numeric(input$bshap_threshold %||% 0.5),
+        feature_cols = clean_choices(input$bshap_feature_cols),
+        shap_prefix = selected_value(input$bshap_shap_prefix) %||% "Shap_",
+        id_cols = clean_choices(input$bshap_id_cols),
+        DateVar = selected_value(input$bshap_date_var),
+        date_aggregation = selected_value(input$bshap_date_aggregation) %||% "month",
+        ByVars = clean_choices(input$bshap_by_vars),
+        selected_features = clean_choices(input$bshap_selected_features),
+        local_row_ids = local_row_ids,
+        top_n = as.integer(input$bshap_top_n %||% 20L),
+        max_dependence_rows = as.integer(input$bshap_max_dependence_rows %||% 5000L),
+        max_segment_levels = as.integer(input$bshap_max_segment_levels %||% 20L),
+        max_byvars = as.integer(input$bshap_max_byvars %||% 3L),
+        include_threshold_context = isTRUE(input$bshap_include_threshold_context),
+        include_class_balance = isTRUE(input$bshap_include_class_balance),
+        include_dependence = isTRUE(input$bshap_include_dependence),
+        include_segments = isTRUE(input$bshap_include_segments),
+        include_time = isTRUE(input$bshap_include_time),
+        include_local = isTRUE(input$bshap_include_local),
+        include_interactions = isTRUE(input$bshap_include_interactions),
+        include_plots = isTRUE(input$bshap_include_plots),
+        max_feature_effect_plots = as.integer(input$bshap_max_feature_effect_plots %||% 5L),
+        max_dependence_plots = as.integer(input$bshap_max_dependence_plots %||% 5L),
+        max_segment_plots = as.integer(input$bshap_max_segment_plots %||% 5L),
+        max_time_plots = as.integer(input$bshap_max_time_plots %||% 5L),
+        max_local_plots = as.integer(input$bshap_max_local_plots %||% 5L),
+        max_interaction_pairs = as.integer(input$bshap_max_interaction_pairs %||% 20L),
+        max_interaction_surface_plots = as.integer(input$bshap_max_interaction_surface_plots %||% 10L),
+        numeric_interaction_bins = as.integer(input$bshap_numeric_interaction_bins %||% 5L),
+        min_interaction_cell_n = as.integer(input$bshap_min_interaction_cell_n %||% 5L)
+      )
+    }
+
+    catboost_builder_config <- function() {
+      clean_choices <- function(value) {
+        value <- value %||% character()
+        value <- value[nzchar(value)]
+        as.character(value)
+      }
+
+      normalize_catboost_builder_config(list(
+        problem_type = selected_value(input$catboost_problem_type) %||% "regression",
+        target_col = selected_value(input$catboost_target_col),
+        feature_cols = clean_choices(input$catboost_feature_cols),
+        positive_class = selected_value(input$catboost_positive_class),
+        DateVar = selected_value(input$catboost_date_var),
+        ByVars = clean_choices(input$catboost_by_vars),
+        iterations = as.integer(input$catboost_iterations %||% 100L),
+        depth = as.integer(input$catboost_depth %||% 6L),
+        learning_rate = as.numeric(input$catboost_learning_rate %||% NA_real_),
+        threshold = as.numeric(input$catboost_threshold %||% 0.5),
+        compute_shap = isTRUE(input$catboost_compute_shap),
+        include_plots = TRUE,
+        top_n = 20L
+      ))
+    }
+
+    shap_scaffold_config <- function(module_id) {
+      data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
+      choices <- if (is.null(data)) character() else names(data)
+      numeric_choices <- if (is.null(data)) {
+        character()
+      } else {
+        names(data)[vapply(data, is.numeric, logical(1))]
+      }
+      problem_type <- switch(
+        module_id,
+        autoquant_regression_shap_analysis = "regression",
+        autoquant_binary_shap_analysis = "binary_classification",
+        autoquant_multiclass_shap_analysis = "multiclass",
+        "regression"
+      )
+      target_default <- if (identical(problem_type, "binary_classification")) {
+        if ("target" %in% choices) "target" else if ("y" %in% choices) "y" else NULL
+      } else {
+        if ("y" %in% numeric_choices) "y" else {
+          first_numeric <- numeric_choices[1]
+          if (is.na(first_numeric)) NULL else first_numeric
+        }
+      }
+
+      create_shap_analysis_config(
+        problem_type = problem_type,
+        target_var = target_default,
+        feature_vars = setdiff(choices, c(target_default, "prediction", "Predict", "yhat", "p", "p1")),
+        prediction_type = if (identical(problem_type, "binary_classification")) "probability" else "response",
+        positive_class = if (identical(problem_type, "binary_classification")) "1" else NULL,
+        date_var = if ("Date" %in% choices) "Date" else if ("date" %in% choices) "date" else NULL,
+        date_aggregation = "month",
+        by_vars = intersect(c("Channel", "segment"), choices),
+        sample_size = 10000L,
+        max_features = 20L,
+        max_interaction_pairs = 10L
+      )
+    }
+
     module_config <- function(module_id) {
       if (identical(module_id, "autoquant_model_assessment")) {
         return(model_assessment_config())
@@ -358,6 +786,18 @@ page_analysis_modules_server <- function(id, ctx) {
       }
       if (identical(module_id, "autoquant_binary_model_insights")) {
         return(binary_model_insights_config())
+      }
+      if (identical(module_id, "autoquant_regression_shap_analysis")) {
+        return(regression_shap_config())
+      }
+      if (identical(module_id, "autoquant_binary_shap_analysis")) {
+        return(binary_shap_config())
+      }
+      if (identical(module_id, "autoquant_catboost_builder")) {
+        return(catboost_builder_config())
+      }
+      if (identical(module_id, "autoquant_multiclass_shap_analysis")) {
+        return(shap_scaffold_config(module_id))
       }
 
       eda_config()

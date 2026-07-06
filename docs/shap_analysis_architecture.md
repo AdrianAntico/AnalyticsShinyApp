@@ -308,6 +308,8 @@ The app adapter should own:
 - report plan creation
 - project/export/display integration
 
+AutoQuant must own the functions that generate SHAP analyses and artifact payloads. Analytics Shiny App must not implement SHAP calculations, standalone SHAP report generation, or app-specific SHAP artifact generators.
+
 Backend rules:
 
 - keep the SHAP backend isolated behind an AutoQuant adapter
@@ -404,42 +406,48 @@ This lets future modules expand without changing the core Artifact Library or Re
 
 ## Implementation Phases
 
-Phase 1: shared contracts and documentation.
+Phase 1: shared contracts and documentation. This phase is implemented in the app through `R/autoquant_shap_analysis_contracts.R`, `R/module_autoquant_regression_shap_analysis.R`, and `R/module_autoquant_binary_shap_analysis.R`.
 
 - finalize SHAP config contract
 - define artifact metadata and ID prefixes
 - define report-plan section names
-- add registry entries as planned stubs
-- add QA contract helpers without real computation if useful
+- add registry entries for problem-type-specific SHAP modules
+- add QA contract helpers
+- return structured warnings if a required AutoQuant SHAP generator is unavailable in the active R environment
 
-Phase 2: Regression SHAP Analysis.
+Phase 2: Regression SHAP Analysis. This phase is implemented as an experimental app adapter around `AutoQuant::generate_regression_shap_analysis_artifacts()`.
 
-- add AutoQuant generator support
-- add app adapter
-- normalize plot/table/text artifacts
-- create recommended and full report plans
-- add `qa_autoquant_regression_shap_analysis_integration()`
+- input data must contain precomputed numeric `Shap_` columns
+- AutoQuant owns SHAP artifact generation
+- Analytics Shiny App validates inputs and normalizes returned artifacts
+- AutoPlots-backed plot widgets are preserved as plot artifacts
+- table and text artifacts are preserved through the app artifact model
+- recommended, full, interaction diagnostics, segment/time, local explanations, and diagnostics-only report plans are created when matching artifacts exist
+- `qa_autoquant_regression_shap_analysis_integration()` exercises the real generator when available
 
-Phase 3: Binary Classification SHAP Analysis.
+`AutoQuant::RegressionShapAnalysisReport()` is the optional AutoQuant-native standalone renderer. It is not the primary Analytics Shiny App ingestion path, which must remain generator -> standard artifacts -> report plans -> Artifact Library/Layout/Export.
 
-- add AutoQuant generator support
-- add app adapter
-- require positive class and prediction scale
-- add threshold/context artifacts where available
-- add `qa_autoquant_binary_shap_analysis_integration()`
+Phase 3: Binary Classification SHAP Analysis. This phase is implemented as an experimental app adapter around `AutoQuant::generate_binary_classification_shap_analysis_artifacts()`.
 
-Phase 4: segment, time, and dependence expansion.
+- input data must contain precomputed numeric `Shap_` columns
+- AutoQuant owns SHAP artifact generation
+- Analytics Shiny App validates positive class, prediction scale, threshold, target/prediction columns, and optional context columns
+- AutoPlots-backed plot widgets are preserved as plot artifacts
+- table and text artifacts are preserved through the app artifact model
+- recommended, full, threshold context, class balance / outcome context, interaction diagnostics, segment/time, local explanations, and diagnostics-only report plans are created when matching artifacts exist
+- `qa_autoquant_binary_shap_analysis_integration()` exercises the real generator when available and returns a structured warning when the installed AutoQuant package does not expose it
 
-- add bounded `ByVars` lens artifacts
-- add `DateVar` day/week/month aggregation artifacts
-- expand dependence plots with target/prediction overlays
-- strengthen partial-failure diagnostics
+Phase 4: RC1 polish, persistence, and export hardening.
 
-Phase 5: local explanations and advanced interactions.
+- confirm Artifact Library previews for plot, table, text, threshold, segment, time, local, and interaction artifacts
+- confirm report-plan preview/apply/edit/duplicate flows reference only valid artifact IDs
+- confirm project and bundle persistence for SHAP artifacts, metadata, plans, visibility, ordering, and section assignments
+- confirm export HTML/R code/export all with SHAP artifacts
+- keep plot formatting consistent across Regression and Binary SHAP
 
-- selected-row local explanations
-- local contribution tables
-- two-way interaction surfaces
+Phase 5: advanced interactions.
+
+- exact interaction-specific SHAP outputs if upstream modeling/scoring produces them
 - richer interaction diagnostics
 
 Phase 6: multiclass and future extensions.
@@ -477,4 +485,4 @@ Acceptance criteria:
 - no module-specific artifact state is created
 - no direct layout mutation occurs inside module code
 
-The first implementation task should be shared SHAP contracts and adapter scaffolding, not a broad UI build or a full SHAP backend commitment.
+The next SHAP implementation tasks are RC1 browser/Electron QA with real modeling outputs, project/export persistence hardening, and eventual Multiclass SHAP design. Exact pairwise SHAP interaction-value support remains deferred unless upstream interaction-specific outputs exist.

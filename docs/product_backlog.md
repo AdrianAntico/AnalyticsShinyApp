@@ -11,10 +11,10 @@ This backlog keeps Analytics Shiny App focused as a local-first analytical repor
 Near-term development should stabilize the artifact/report-plan foundation before adding more large analytical modules. The next useful work is:
 
 - make AutoQuant EDA artifacts and recommended report plans feel reliable end to end
-- add Code Runner architecture and a small trusted local prototype
+- stabilize CatBoost Builder v1 app adapter against the AutoQuant generator contract
+- keep CatBoost Builder narrow: training/scoring artifacts plus downstream handoff metadata
 - harden project save/load for artifacts, report plans, and future code runs
 - polish Artifact Library and Layouts report display
-- add the next AutoQuant adapter only after the plan workflow is stable
 
 ## Status Key
 
@@ -81,7 +81,7 @@ Near-term development should stabilize the artifact/report-plan foundation befor
 | BL-044 | Modules | Model Insights adapter | P2 | Analysis Modules | Planned | AutoQuant | High |
 | BL-045 | Modules | SHAP Analysis design | P2 | Analysis Modules | Planned | AutoQuant | Medium |
 | BL-046 | Modules | SHAP Analysis module | P2 | Analysis Modules | Planned | AutoQuant | High |
-| BL-047 | Modules | CatBoost Builder module | P3 | Analysis Modules | Deferred | AutoQuant | High |
+| BL-047 | Modules | CatBoost Builder module | P1 | Analysis Modules | In Progress | AutoQuant | High |
 | BL-048 | Modules | Forecasting module | P2 | Analysis Modules | Planned | New Idea | High |
 | BL-049 | Plans | Recommended report plans for each module | P2 | Analysis Modules | Planned | New App | Medium |
 | BL-050 | GenAI | Data profile object | P1 | GenAI | Planned | New App | Medium |
@@ -132,12 +132,18 @@ Near-term development should stabilize the artifact/report-plan foundation befor
 | BL-095 | Release | Release checklist | P1 | Release | Planned | New App | Low |
 | BL-096 | Release | Electron smoke test | P1 | Release | Planned | New App | Medium |
 | BL-097 | Docs | Known limitations doc | P1 | Release | Planned | New App | Low |
+| BL-098 | Modules | SHAP Phase 1 scaffolding | P2 | Analysis Modules | Done | AutoQuant | Medium |
+| BL-099 | Modules | Regression SHAP app adapter | P1 | Analysis Modules | Done | AutoQuant | Medium |
+| BL-100 | Modules | Binary Classification SHAP app adapter | P1 | Analysis Modules | Done | AutoQuant | Medium |
+| BL-101 | Docs | CatBoost Builder architecture doc | P1 | Analysis Modules | Done | AutoQuant | Medium |
+| BL-102 | Modules | AutoQuant CatBoost Builder generator contract | P0 | Analysis Modules | Done | AutoQuant | High |
+| BL-103 | Modules | Analytics Shiny App CatBoost Builder adapter | P1 | Analysis Modules | Done | AutoQuant | High |
 
 See `docs/product_backlog.csv` for the sortable backlog with descriptions, dependencies, and notes.
 
 ## Do Not Do Yet
 
-- Do not build full CatBoost training before Model Assessment/Insights are stable.
+- Do not build broad CatBoost workbench features before the narrow v1 generator contract is stable.
 - Do not add GenAI Agent Mode before proposal/action/policy scaffolding.
 - Do not build drag/drop canvas before grid/sections/report plans are stable.
 - Do not create module-specific export systems.

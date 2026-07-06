@@ -8,6 +8,7 @@ License: file LICENSE
 Encoding: UTF-8
 Imports:
     AutoPlots,
+    AutoQuant,
     data.table,
     htmltools,
     htmlwidgets,
