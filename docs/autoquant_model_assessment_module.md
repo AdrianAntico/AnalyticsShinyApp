@@ -1,12 +1,14 @@
-# AutoQuant Model Assessment Module
+# AutoQuant Model Readiness Module
 
 ## Purpose
 
-The AutoQuant Model Assessment module is the second analysis-module adapter for Analytics Shiny App. It generates model assessment and model-readiness artifacts from existing data columns by calling `AutoQuant::generate_model_assessment_artifacts()`.
+The AutoQuant Model Readiness module is the second analysis-module adapter for Analytics Shiny App. It generates target diagnostics, model-readiness evidence, drift/readiness checks, and modeling recommendations from existing data columns by calling the legacy-named `AutoQuant::generate_model_assessment_artifacts()`.
 
 ## Ownership Boundary
 
-`AutoQuant::generate_model_assessment_artifacts()` is the source of truth for model assessment generation. Analytics Shiny App must not reimplement assessment metrics, model-readiness diagnostics, target diagnostics, trend/drift checks, or feature engineering guidance.
+`AutoQuant::generate_model_assessment_artifacts()` is the source of truth for model-readiness generation. Analytics Shiny App must not reimplement target diagnostics, model-readiness diagnostics, trend/drift checks, leakage/readiness checks, or feature engineering guidance.
+
+The app currently preserves legacy internal names such as `autoquant_model_assessment` and `generate_model_assessment_artifacts()` for compatibility. User-facing documentation, report plans, and UI copy should refer to this pre-model workflow as Model Readiness.
 
 Analytics Shiny App owns:
 
@@ -37,7 +39,7 @@ Artifacts use:
 - `source_module = "autoquant_model_assessment"`
 - `artifact_id` prefix `aq_ma_`
 - readable labels
-- model assessment sections
+- model readiness sections
 - `module_run_id` metadata
 - run timestamp metadata
 - model name metadata
@@ -48,8 +50,8 @@ Artifacts use:
 
 The adapter can create:
 
-- Recommended Model Assessment Report
-- Full Model Assessment Report
+- Recommended Model Readiness Report
+- Full Model Readiness Report
 - Diagnostics Only
 
 Regression sections may include:
@@ -77,9 +79,9 @@ Report plans reference artifact IDs only. They do not own artifacts and must not
 ## Display Flow
 
 1. User uploads data that already contains actual and prediction columns.
-2. User configures AutoQuant Model Assessment.
+2. User configures AutoQuant Model Readiness.
 3. The adapter validates column existence and basic column types.
-4. If available, AutoQuant generates model assessment outputs.
+4. If available, AutoQuant generates model readiness outputs.
 5. The app converts outputs into artifacts.
 6. The Artifact Library stores all artifacts.
 7. The adapter creates recommended report plans.
@@ -107,9 +109,9 @@ Avoid:
 
 - building CatBoost training in this module
 - building SHAP in this module
-- reimplementing model assessment logic in the app
-- creating model-assessment-specific export systems
-- creating model-assessment-specific layout systems
+- reimplementing model readiness logic in the app
+- creating model-readiness-specific export systems
+- creating model-readiness-specific layout systems
 - bypassing `service_result`
 - bypassing `create_artifact()`
 - using `DT`

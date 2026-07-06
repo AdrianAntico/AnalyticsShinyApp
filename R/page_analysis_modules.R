@@ -14,7 +14,7 @@ page_analysis_modules_ui <- function(id) {
             "Module",
             choices = c(
               "AutoQuant EDA" = "autoquant_eda",
-              "AutoQuant Model Assessment" = "autoquant_model_assessment",
+              "AutoQuant Model Readiness" = "autoquant_model_assessment",
               "AutoQuant Regression Model Insights" = "autoquant_regression_model_insights",
               "AutoQuant Binary Classification Model Insights" = "autoquant_binary_model_insights",
               "AutoQuant Regression SHAP Analysis" = "autoquant_regression_shap_analysis",
@@ -32,6 +32,7 @@ page_analysis_modules_ui <- function(id) {
         ui_card(
           title = "Run Status",
           uiOutput(ns("analysis_module_status")),
+          uiOutput(ns("catboost_handoff_panel")),
           tags$hr(),
           h4("Generated Code"),
           verbatimTextOutput(ns("analysis_module_code"))
@@ -44,6 +45,7 @@ page_analysis_modules_ui <- function(id) {
 page_analysis_modules_server <- function(id, ctx) {
   moduleServer(id, function(input, output, session) {
     module_result <- reactiveVal(NULL)
+    handoff_result <- reactiveVal(NULL)
 
     output$analysis_module_settings <- renderUI({
       module_id <- selected_value(input$analysis_module_id) %||% "autoquant_eda"
@@ -95,7 +97,7 @@ page_analysis_modules_server <- function(id, ctx) {
             selected = if ("Channel" %in% choices) "Channel" else ""
           ),
           textInput(session$ns("model_name"), "Model Name", value = "Model"),
-          textInput(session$ns("artifact_section"), "Artifact Section", value = "Model Assessment"),
+          textInput(session$ns("artifact_section"), "Artifact Section", value = "Model Readiness"),
           selectInput(
             session$ns("assessment_theme"),
             "Theme",
@@ -562,7 +564,7 @@ page_analysis_modules_server <- function(id, ctx) {
         date_var = selected_value(input$assessment_date_var),
         group_var = selected_value(input$assessment_group_var),
         model_name = selected_value(input$model_name) %||% "Model",
-        artifact_section = selected_value(input$artifact_section) %||% "Model Assessment",
+        artifact_section = selected_value(input$artifact_section) %||% "Model Readiness",
         theme = selected_value(input$assessment_theme) %||% "light",
         max_rows = as.integer(input$assessment_max_rows %||% 1000L),
         max_groups = as.integer(input$assessment_max_groups %||% 25L)
@@ -803,6 +805,43 @@ page_analysis_modules_server <- function(id, ctx) {
       eda_config()
     }
 
+    accept_module_result <- function(result) {
+      if (identical(result$status, "success") && length(result$artifacts)) {
+        ctx$add_artifacts(result$artifacts)
+        ctx$add_report_plans(result$metadata$report_plans %||% list())
+      }
+      invisible(result)
+    }
+
+    current_catboost_handoff <- reactive({
+      result <- module_result()
+      if (is.null(result) ||
+          !identical(result$metadata$module_id, "autoquant_catboost_builder") ||
+          is.null(result$metadata$catboost_handoff)) {
+        return(NULL)
+      }
+      result$metadata$catboost_handoff
+    })
+
+    run_catboost_handoff_action <- function(module_id) {
+      handoff <- current_catboost_handoff()
+      if (is.null(handoff)) {
+        result <- service_result(
+          status = "error",
+          errors = "Run CatBoost Builder successfully before using downstream handoff actions.",
+          metadata = list(
+            error_code = "CATBOOST_HANDOFF_MISSING",
+            module_id = module_id
+          )
+        )
+      } else {
+        result <- run_catboost_downstream_handoff(handoff, module_id)
+      }
+      handoff_result(result)
+      accept_module_result(result)
+      invisible(result)
+    }
+
     observeEvent(input$run_analysis_module, {
       data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
       module_id <- selected_value(input$analysis_module_id) %||% "autoquant_eda"
@@ -812,11 +851,42 @@ page_analysis_modules_server <- function(id, ctx) {
         config = module_config(module_id)
       )
       module_result(result)
+      handoff_result(NULL)
+      accept_module_result(result)
+    }, ignoreInit = TRUE)
 
-      if (identical(result$status, "success") && length(result$artifacts)) {
-        ctx$add_artifacts(result$artifacts)
-        ctx$add_report_plans(result$metadata$report_plans %||% list())
+    observeEvent(input$run_catboost_model_assessment, {
+      run_catboost_handoff_action("autoquant_model_assessment")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$run_catboost_model_insights, {
+      handoff <- current_catboost_handoff()
+      if (is.null(handoff)) {
+        run_catboost_handoff_action("autoquant_regression_model_insights")
+        return(invisible(NULL))
       }
+      problem_type <- .autoquant_catboost_problem_type(handoff$problem_type %||% "regression")
+      module_id <- if (identical(problem_type, "binary")) {
+        "autoquant_binary_model_insights"
+      } else {
+        "autoquant_regression_model_insights"
+      }
+      run_catboost_handoff_action(module_id)
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$run_catboost_shap_analysis, {
+      handoff <- current_catboost_handoff()
+      if (is.null(handoff)) {
+        run_catboost_handoff_action("autoquant_regression_shap_analysis")
+        return(invisible(NULL))
+      }
+      problem_type <- .autoquant_catboost_problem_type(handoff$problem_type %||% "regression")
+      module_id <- if (identical(problem_type, "binary")) {
+        "autoquant_binary_shap_analysis"
+      } else {
+        "autoquant_regression_shap_analysis"
+      }
+      run_catboost_handoff_action(module_id)
     }, ignoreInit = TRUE)
 
     output$analysis_module_status <- renderUI({
@@ -848,6 +918,93 @@ page_analysis_modules_server <- function(id, ctx) {
         ui_status_badge(result$status, status = status),
         tags$p(class = "aq-export-message", service_result_message(result)),
         details
+      )
+    })
+
+    output$catboost_handoff_panel <- renderUI({
+      handoff <- current_catboost_handoff()
+      if (is.null(handoff)) {
+        return(NULL)
+      }
+
+      validation <- validate_catboost_handoff(handoff)
+      available <- validation$metadata$available_downstream_modules %||% character()
+      problem_type <- .autoquant_catboost_problem_type(handoff$problem_type %||% "regression")
+      summary <- handoff$scored_data_summary %||% data.table::data.table(
+        rows = 0L,
+        cols = 0L,
+        shap_cols = 0L
+      )
+      run_result <- handoff_result()
+      run_status <- NULL
+      if (!is.null(run_result)) {
+        run_status <- tags$div(
+          class = "aq-control-group",
+          ui_status_badge(run_result$status, status = if (identical(run_result$status, "success")) "success" else if (identical(run_result$status, "error")) "error" else "warning"),
+          tags$p(class = "aq-export-message", service_result_message(run_result))
+        )
+      }
+
+      action_buttons <- list()
+      if ("autoquant_model_assessment" %in% available) {
+        action_buttons <- c(action_buttons, list(
+          actionButton(session$ns("run_catboost_model_assessment"), "Run Model Assessment", class = "btn-secondary")
+        ))
+      }
+      if (any(c("autoquant_regression_model_insights", "autoquant_binary_model_insights") %in% available)) {
+        insights_label <- if (identical(problem_type, "binary")) {
+          "Run Binary Model Insights"
+        } else {
+          "Run Regression Model Insights"
+        }
+        action_buttons <- c(action_buttons, list(
+          actionButton(session$ns("run_catboost_model_insights"), insights_label, class = "btn-secondary")
+        ))
+      }
+      if (any(c("autoquant_regression_shap_analysis", "autoquant_binary_shap_analysis") %in% available)) {
+        shap_label <- if (identical(problem_type, "binary")) {
+          "Run Binary SHAP"
+        } else {
+          "Run Regression SHAP"
+        }
+        action_buttons <- c(action_buttons, list(
+          actionButton(session$ns("run_catboost_shap_analysis"), shap_label, class = "btn-success")
+        ))
+      }
+
+      warnings <- validation$warnings %||% character()
+      warning_ui <- if (length(warnings)) {
+        tags$ul(class = "aq-muted-list", lapply(warnings, tags$li))
+      } else {
+        NULL
+      }
+
+      tags$div(
+        class = "aq-catboost-handoff-panel",
+        ui_section_header(
+          "CatBoost Downstream Handoff",
+          "Run downstream modules from the scored CatBoost output when you choose."
+        ),
+        tags$dl(
+          class = "aq-module-run-summary",
+          tags$dt("Problem Type"),
+          tags$dd(if (identical(problem_type, "binary")) "Binary Classification" else "Regression"),
+          tags$dt("Scored Rows"),
+          tags$dd(summary$rows[[1]] %||% 0L),
+          tags$dt("Scored Columns"),
+          tags$dd(summary$cols[[1]] %||% 0L),
+          tags$dt("SHAP Columns"),
+          tags$dd(summary$shap_cols[[1]] %||% 0L),
+          tags$dt("Available Actions"),
+          tags$dd(if (length(available)) paste(vapply(available, .catboost_downstream_module_label, character(1)), collapse = ", ") else "None")
+        ),
+        warning_ui,
+        if (length(action_buttons)) {
+          do.call(ui_action_row, action_buttons)
+        } else {
+          ui_empty_state("No downstream actions are available for this CatBoost output.")
+        },
+        run_status
       )
     })
 

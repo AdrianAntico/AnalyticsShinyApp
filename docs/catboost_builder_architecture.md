@@ -227,7 +227,26 @@ metadata = list(
 )
 ```
 
-The app may later offer actions such as "Run Model Assessment from this output", but those should remain explicit user actions.
+The app offers Workflow Handoff UX v1 actions after a successful CatBoost Builder run. These actions are explicit user-triggered buttons, not automatic downstream execution:
+
+- Run Model Assessment
+- Run Regression or Binary Model Insights
+- Run Regression or Binary SHAP when `Shap_` columns exist
+
+The app builds a handoff object from the CatBoost Builder scored output and metadata. The handoff stores:
+
+- `source_module`
+- `source_run_id`
+- `problem_type`
+- `scored_data`
+- scored row/column/SHAP summary
+- target, prediction, predicted-class, positive-class, threshold, feature, id, date, and by-variable settings
+- available downstream module IDs
+- recommended downstream configs
+
+When a handoff action runs, the app passes the scored output and recommended config to the existing `run_analysis_module()` path. The downstream result returns normal artifacts and report plans, and those outputs are added to the Artifact Library/report-plan state through the same accepted-result flow used by direct module runs.
+
+The CatBoost Builder run itself must not auto-run downstream modules, mutate downstream page state, or hide downstream failures. If a downstream action fails, it should return a normal `service_result()` failure while preserving the original CatBoost Builder output.
 
 ## Artifact And Report Plan Integration
 
@@ -281,19 +300,20 @@ Analytics Shiny App:
 
 - should not fail startup if CatBoost Builder is unavailable
 - should detect missing AutoQuant generator support and return a friendly `service_result`
-- should keep CatBoost Builder as a planned/experimental module until the AutoQuant generator exists
+- should expose CatBoost Builder as an experimental adapter while the AutoQuant generator continues to stabilize
+- should expose downstream handoff actions only when the scored output validates for those modules
 
 AutoQuant:
 
 - should own `generate_catboost_builder_artifacts()`
 - should use `catboost` only inside the generator/runtime path
-- should expose a QA helper after implementation
+- should expose QA helpers for regression, binary classification, and aggregate CatBoost Builder checks
 
 shinyelectron:
 
 - already supports `catboost` as a URL package in `_shinyelectron.yml`
-- should add AutoQuant post-install validation for `generate_catboost_builder_artifacts()` only after the generator is implemented and exported
-- should not make current Analytics Shiny App startup fail because the future generator is absent
+- should validate `generate_catboost_builder_artifacts()` only when that export is expected in the installed AutoQuant source
+- should not force Analytics Shiny App startup to fail when optional experimental module exports are absent unless the app config marks them required
 
 ## QA Plan
 
@@ -306,9 +326,12 @@ Future AutoQuant QA:
 Future Analytics Shiny App QA:
 
 - `qa_autoquant_catboost_builder_integration()`
+- `qa_catboost_downstream_handoff()`
 - confirm artifacts normalize into `aq_artifact`
 - confirm scored data metadata is present
 - confirm report plans reference artifact IDs only
+- confirm Workflow Handoff UX v1 exposes only valid downstream actions
+- confirm user-triggered handoff actions add downstream artifacts and report plans through the standard accepted-result flow
 - confirm project save/load preserves builder artifacts, plan metadata, and scored-data references
 
 Downstream smoke tests:
@@ -370,6 +393,8 @@ V1 does not include:
 - verify builder output can feed Model Assessment
 - verify builder output can feed Regression/Binary Model Insights
 - verify builder output can feed Regression/Binary SHAP when SHAP columns exist
+- expose user-triggered handoff actions in the Analysis Modules page
+- verify the CatBoost Builder run does not auto-run downstream modules
 
 ### Phase 5: Electron Dependency Smoke
 

@@ -13,9 +13,9 @@ module_registry <- function() {
     ),
     autoquant_model_assessment = list(
       module_id = "autoquant_model_assessment",
-      label = "AutoQuant Model Assessment",
+      label = "AutoQuant Model Readiness",
       category = "Modeling",
-      description = "Generate model assessment artifacts from actuals and predictions using AutoQuant.",
+      description = "Generate target diagnostics, leakage checks, drift/readiness evidence, and modeling recommendations using AutoQuant.",
       status = "experimental",
       output_artifact_types = c("plot", "table", "text"),
       required_packages = c("AutoQuant", "AutoPlots"),

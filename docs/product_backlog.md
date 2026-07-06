@@ -66,8 +66,8 @@ Near-term development should stabilize the artifact/report-plan foundation befor
 | BL-029 | Docs | Report plan architecture doc | P1 | Report Builder | Done | New App | Low |
 | BL-030 | QA | Stabilize AutoQuant EDA adapter/report plan workflow | P0 | Analysis Modules | Planned | AutoQuant | High |
 | BL-031 | Modules | AutoQuant EDA full section support | P1 | Analysis Modules | Planned | AutoQuant | High |
-| BL-032 | Modules | AutoQuant Model Assessment adapter | P1 | Analysis Modules | Planned | AutoQuant | High |
-| BL-033 | Plans | Model Assessment recommended report plan | P1 | Analysis Modules | Planned | AutoQuant | Medium |
+| BL-032 | Modules | AutoQuant Model Readiness adapter | P1 | Analysis Modules | Planned | AutoQuant | High |
+| BL-033 | Plans | Model Readiness recommended report plan | P1 | Analysis Modules | Planned | AutoQuant | Medium |
 | BL-034 | Code Runner | Code Runner architecture doc | P0 | Code Runner | Planned | New App | Medium |
 | BL-035 | Code Runner | code_run_model.R | P0 | Code Runner | Planned | New App | High |
 | BL-036 | Code Runner | Manual local trusted code runner prototype | P1 | Code Runner | Planned | New App | High |
@@ -138,6 +138,7 @@ Near-term development should stabilize the artifact/report-plan foundation befor
 | BL-101 | Docs | CatBoost Builder architecture doc | P1 | Analysis Modules | Done | AutoQuant | Medium |
 | BL-102 | Modules | AutoQuant CatBoost Builder generator contract | P0 | Analysis Modules | Done | AutoQuant | High |
 | BL-103 | Modules | Analytics Shiny App CatBoost Builder adapter | P1 | Analysis Modules | Done | AutoQuant | High |
+| BL-104 | Modules | CatBoost downstream handoff UX | P1 | Analysis Modules | Done | New App | Medium |
 
 See `docs/product_backlog.csv` for the sortable backlog with descriptions, dependencies, and notes.
 

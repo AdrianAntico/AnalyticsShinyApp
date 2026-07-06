@@ -18,7 +18,7 @@ autoquant_model_assessment_available <- function() {
 autoquant_model_assessment_unavailable_result <- function() {
   service_result(
     status = "error",
-    errors = "AutoQuant::generate_model_assessment_artifacts() was not found. Install/update AutoQuant before running this module.",
+    errors = "AutoQuant::generate_model_assessment_artifacts() was not found. Install/update AutoQuant before running AutoQuant Model Readiness.",
     metadata = list(
       error_code = "MODULE_DEPENDENCY_MISSING",
       module_id = "autoquant_model_assessment"
@@ -52,7 +52,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
   if (is.null(data)) {
     return(service_result(
       status = "error",
-      errors = "Upload data before running AutoQuant Model Assessment.",
+      errors = "Upload data before running AutoQuant Model Readiness.",
       metadata = list(
         error_code = "DATA_MISSING",
         module_id = "autoquant_model_assessment"
@@ -67,7 +67,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
   if (!is.list(config)) {
     return(service_result(
       status = "error",
-      errors = "AutoQuant Model Assessment config must be a list.",
+      errors = "AutoQuant Model Readiness config must be a list.",
       metadata = list(
         error_code = "MODULE_CONFIG_INVALID",
         module_id = "autoquant_model_assessment"
@@ -139,7 +139,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
   service_result(
     status = "success",
     value = config,
-    messages = "AutoQuant Model Assessment config is valid.",
+    messages = "AutoQuant Model Readiness config is valid.",
     metadata = list(
       module_id = "autoquant_model_assessment",
       problem_type = problem_type,
@@ -216,7 +216,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
   if (grepl("lift|gain", text)) return("Lift / Gains")
   if (grepl("segment|group|date|time|trend|drift|monitoring|retraining", text)) return("Segment / Time Diagnostics")
   if (grepl("risk|diagnostic|schema|feature|association|encoding", text)) return("Prediction Diagnostics")
-  config$artifact_section %||% "Model Assessment"
+  config$artifact_section %||% "Model Readiness"
 }
 
 .autoquant_ma_slug <- function(value) {
@@ -233,7 +233,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
   clean <- gsub("\\s+", " ", clean)
   clean <- trimws(clean)
   if (!nzchar(clean) || grepl("^item [0-9]+$", tolower(clean))) {
-    return("Model Assessment Artifact")
+    return("Model Readiness Artifact")
   }
 
   label <- tools::toTitleCase(clean)
@@ -367,7 +367,7 @@ normalize_autoquant_model_assessment_artifacts <- function(
 
       section <- .autoquant_ma_section(strsplit(name, "_", fixed = TRUE)[[1]], config)
       label <- .autoquant_ma_label(name)
-      if (tolower(label) %in% c("unnamed", "plot_1", "table_1", "artifact", "model assessment artifact")) {
+      if (tolower(label) %in% c("unnamed", "plot_1", "table_1", "artifact", "model assessment artifact", "model readiness artifact")) {
         label <- paste(section, "Artifact", order)
       }
       artifacts[[artifact_id]] <- create_artifact(
@@ -462,13 +462,13 @@ normalize_autoquant_model_assessment_artifacts <- function(
   }
 
   labels <- c(
-    recommended = "Recommended Model Assessment Report",
-    full = "Full Model Assessment Report",
+    recommended = "Recommended Model Readiness Report",
+    full = "Full Model Readiness Report",
     diagnostics = "Diagnostics Only"
   )
   descriptions <- c(
-    recommended = "Curated model assessment report grouped by assessment sections.",
-    full = "Complete model assessment report containing every generated artifact.",
+    recommended = "Curated model readiness report grouped by readiness sections.",
+    full = "Complete model readiness report containing every generated artifact.",
     diagnostics = "Focused model diagnostics report."
   )
 
@@ -499,7 +499,7 @@ normalize_autoquant_model_assessment_artifacts <- function(
     cols = 2L,
     sections = sections,
     artifact_ids = artifact_ids,
-    rationale = paste("AutoQuant Model Assessment", plan_type, "plan generated from assessment artifacts."),
+    rationale = paste("AutoQuant Model Readiness", plan_type, "plan generated from readiness artifacts."),
     metadata = list(
       module_id = "autoquant_model_assessment",
       module_run_id = module_run_id,
@@ -548,7 +548,7 @@ run_autoquant_model_assessment_module <- function(data, config) {
     error = function(e) {
       service_result(
         status = "error",
-        errors = paste("AutoQuant Model Assessment failed:", conditionMessage(e)),
+        errors = paste("AutoQuant Model Readiness failed:", conditionMessage(e)),
         diagnostics = list(condition = e),
         metadata = list(
           error_code = "RUNTIME_ERROR",
@@ -580,7 +580,7 @@ run_autoquant_model_assessment_module <- function(data, config) {
     value = result,
     artifacts = artifacts,
     messages = sprintf(
-      "Generated %s model assessment artifacts: %s plots, %s tables, %s text blocks. Created %s report plan(s).",
+      "Generated %s model readiness artifacts: %s plots, %s tables, %s text blocks. Created %s report plan(s).",
       counts$artifact_count,
       counts$plot_count,
       counts$table_count,
@@ -637,7 +637,7 @@ qa_autoquant_model_assessment_integration <- function() {
     positive_class = "1",
     group_var = "segment",
     model_name = "QA Binary Model",
-    artifact_section = "Model Assessment",
+    artifact_section = "Model Readiness",
     theme = "light"
   )
   regression_config <- list(
@@ -646,7 +646,7 @@ qa_autoquant_model_assessment_integration <- function() {
     prediction_var = "yhat",
     group_var = "segment",
     model_name = "QA Regression Model",
-    artifact_section = "Model Assessment",
+    artifact_section = "Model Readiness",
     theme = "light"
   )
 
@@ -662,7 +662,7 @@ qa_autoquant_model_assessment_integration <- function() {
       check = c("dependency", "friendly_result", "regression_run"),
       status = c("warning", if (friendly) "success" else "error", if (regression_friendly) "success" else regression_result$status),
       message = c(
-        "AutoQuant model assessment artifact generator is not available.",
+        "AutoQuant model readiness artifact generator is not available.",
         paste(binary_result$errors, collapse = " "),
         paste(c(regression_result$messages, regression_result$errors), collapse = " ")
       )
