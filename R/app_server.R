@@ -78,6 +78,14 @@ server <- function(input, output, session) {
       metadata = list(run_id = request$run_id)
     )
   }
+  ctx$select_code_run <- function(run_id) {
+    ctx$code_runner_state$selected_run_id <- run_id
+    updateTabsetPanel(session, "main_tabs", selected = "Code Runner")
+  }
+  ctx$select_analysis_module <- function(module_id) {
+    updateTabsetPanel(session, "main_tabs", selected = "Analysis Modules")
+    updateSelectInput(session, "analysis_modules-analysis_module_id", selected = module_id)
+  }
   ctx$add_custom_code_hook_request <- function(stage, timing = "standalone", label = NULL, code = "",
                                                requested_outputs = custom_code_hook_output_types(),
                                                context = list()) {
@@ -774,6 +782,7 @@ server <- function(input, output, session) {
 
   page_data_server("data", ctx)
   page_plot_builder_server("plot_builder", ctx)
+  page_workflow_server("workflow", ctx)
   page_analysis_modules_server("analysis_modules", ctx)
   page_code_runner_server("code_runner", ctx)
   page_layouts_server("layouts", ctx)

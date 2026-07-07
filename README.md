@@ -20,6 +20,29 @@ This repository owns the app/product layer:
 
 The AutoPlots package remains an external dependency. AutoPlots plotting internals should not be copied into this repository.
 
+## Ecosystem Operating Model
+
+AnalyticsShinyApp is the central product and coordination repo for the local-first analytics report builder ecosystem.
+
+Start with these docs before architecture-affecting work:
+
+- `docs/architecture_constitution.md`: product principles, boundary rules, QA expectations, and deferred scope.
+- `docs/ecosystem_operating_model.md`: single-developer operating loop, workflow lifecycle, artifact flow, and Code Runner rules.
+- `docs/repo_contracts.md`: ownership boundaries for AnalyticsShinyApp, AutoQuant, AutoPlots, Rodeo, PolarsFE, Benchmarks, and shinyelectron.
+- `docs/api_surface_audit.md`: aggressive pre-product API/product surface audit and cleanup recommendations.
+- `docs/agent_task_template.md`: recommended Codex task framing.
+
+Core operating rules:
+
+- AutoQuant owns analytics, artifact generators, and analytical report rendering.
+- AutoPlots owns high-level plot functions, themes, and display helpers.
+- Rodeo owns R feature engineering/model prep.
+- PolarsFE owns Python feature engineering/model prep.
+- Benchmarks owns performance evidence.
+- shinyelectron owns packaging/runtime.
+- Code Runner is the only custom code execution system.
+- Workflow actions are user-triggered unless explicitly designed otherwise.
+
 ## Dependencies
 
 Required R packages include:

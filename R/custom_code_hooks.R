@@ -1,17 +1,22 @@
 custom_code_hook_stages <- function() {
   c(
     "data",
+    "eda",
+    "feature_engineering",
+    "model_prep",
+    "model_readiness",
     "plot_builder",
     "artifact_library",
     "layouts",
     "analysis_modules",
     "catboost_builder",
-    "model_readiness",
     "model_assessment",
     "model_insights",
     "shap_analysis",
+    "shap_insights",
     "code_runner",
     "export",
+    "report_export",
     "project",
     "settings"
   )

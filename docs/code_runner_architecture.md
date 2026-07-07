@@ -87,6 +87,18 @@ Custom code hooks create ordinary Code Runner requests with `source = "manual"` 
 
 Hooks must not auto-run. A page may create or prefill a draft hook request, but execution still requires the user to use Code Runner controls and pass the existing `local_trusted` policy checks. Output-to-artifact conversion also remains user-triggered through the existing Code Runner conversion flow.
 
+Workflow UX v1 exposes hooks for:
+
+- `eda`
+- `feature_engineering`
+- `model_prep`
+- `model_readiness`
+- `catboost_builder`
+- `model_assessment`
+- `model_insights`
+- `shap_insights`
+- `report_export`
+
 The first hook helper layer is:
 
 - `custom_code_hook_stages()`

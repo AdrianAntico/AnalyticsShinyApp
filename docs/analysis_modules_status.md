@@ -2,6 +2,15 @@
 
 Every analysis module is an artifact generator. The Analytics Shiny App owns orchestration, artifact storage, report plans, display, export, and project persistence. AutoQuant remains the analysis engine for the modules listed here.
 
+## Workflow UX Mapping
+
+Workflow UX v1 organizes implemented and external/future work into the analytical lifecycle documented in `docs/workflow_architecture.md`.
+
+- Model Readiness is pre-model and maps to the existing Target Analysis / readiness adapter, currently `autoquant_model_assessment`.
+- Model Assessment is post-model evaluation only. It must not be used as the user-facing name for pre-model target/readiness diagnostics.
+- Feature Engineering and Model Prep are shown as external/future stages until Rodeo/PolarsFE and model-prep integration are intentionally added.
+- Workflow actions open existing modules or draft Code Runner hooks; they do not run modules or custom code automatically.
+
 ## Current Modules
 
 | module_id | AutoQuant source function | status | supported problem types | expected artifact types | report plans created | QA helper | known limitations |

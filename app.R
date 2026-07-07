@@ -53,6 +53,7 @@ source(file.path("R", "page_code_runner.R"), local = app_env)
 source(file.path("R", "page_artifact_library.R"), local = app_env)
 source(file.path("R", "page_layouts.R"), local = app_env)
 source(file.path("R", "page_export.R"), local = app_env)
+source(file.path("R", "page_workflow.R"), local = app_env)
 source(file.path("R", "app_ui.R"), local = app_env)
 source(file.path("R", "app_server.R"), local = app_env)
 

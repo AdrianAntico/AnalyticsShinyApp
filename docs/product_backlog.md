@@ -64,6 +64,7 @@ Near-term development should stabilize the artifact/report-plan foundation befor
 | BL-027 | Docs | Analysis module architecture doc | P1 | Analysis Modules | Done | AutoQuant | Low |
 | BL-028 | Docs | Table framework doc | P1 | Report Builder | Done | New App | Low |
 | BL-029 | Docs | Report plan architecture doc | P1 | Report Builder | Done | New App | Low |
+| BL-029A | Workflow | Workflow UX v1 lifecycle launchpad | P1 | UI/UX | Done | New App | Medium |
 | BL-030 | QA | Stabilize AutoQuant EDA adapter/report plan workflow | P0 | Analysis Modules | Planned | AutoQuant | High |
 | BL-031 | Modules | AutoQuant EDA full section support | P1 | Analysis Modules | Planned | AutoQuant | High |
 | BL-032 | Modules | AutoQuant Model Readiness adapter | P1 | Analysis Modules | Planned | AutoQuant | High |
