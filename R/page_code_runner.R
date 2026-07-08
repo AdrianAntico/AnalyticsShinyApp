@@ -571,7 +571,7 @@ render_code_run_result_preview <- function(result) {
 
   tags$div(
     class = "aq-code-run-result",
-    tags$h4("Run Output"),
+    tags$h3(class = "aq-card-title", "Run Output"),
     tags$dl(
       tags$dt("Status"), tags$dd(result$status %||% ""),
       tags$dt("Runtime Seconds"), tags$dd(as.character(round(result$runtime_seconds %||% NA_real_, 4))),
@@ -579,7 +579,7 @@ render_code_run_result_preview <- function(result) {
       tags$dt("Warnings"), tags$dd(tags$pre(paste(result$warnings %||% character(), collapse = "\n"))),
       tags$dt("Errors"), tags$dd(tags$pre(paste(result$errors %||% character(), collapse = "\n")))
     ),
-    tags$h4("Returned Value"),
+    tags$h3(class = "aq-card-title", "Returned Value"),
     render_code_run_value(result$value)
   )
 }

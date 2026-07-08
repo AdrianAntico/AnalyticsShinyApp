@@ -2,8 +2,8 @@ build_app_ui <- function() {
   fluidPage(
     tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "app.css")),
     ui_app_shell(
-      theme = "light",
-      titlePanel("Analytics Shiny App"),
+      theme = "dark",
+      titlePanel("Analytics Workstation"),
       tabsetPanel(
         id = "main_tabs",
         page_project_ui("project"),

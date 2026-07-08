@@ -4,11 +4,109 @@ normalize_project_path <- function(path) {
     stop("Project file path is required.", call. = FALSE)
   }
 
+  path <- trimws(as.character(path[[1]]))
+  path <- gsub("^[\"']+|[\"']+$", "", path)
+  path <- trimws(path)
+  if (!nzchar(path)) {
+    stop("Project file path is required.", call. = FALSE)
+  }
+
+  path <- path.expand(chartr("\\", "/", path))
   if (!grepl("\\.rds$", path, ignore.case = TRUE)) {
     path <- paste0(path, ".rds")
   }
 
+  suppressWarnings(normalizePath(path, winslash = "/", mustWork = FALSE))
+}
+
+normalize_project_load_path <- function(path) {
+  path <- normalize_project_path(path)
+  if (file.exists(path)) {
+    return(normalizePath(path, winslash = "/", mustWork = TRUE))
+  }
+
   path
+}
+
+qa_project_load_paths <- function(output_dir = file.path(tempdir(), "project_load_path_qa")) {
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  project_path <- normalizePath(file.path(output_dir, "qa_project.rds"), winslash = "/", mustWork = FALSE)
+  saveRDS(list(app_version = APP_VERSION, saved_at = Sys.time(), plot_configs = list(), plot_code = list(), plot_metadata = list(), layout_type = "Grid", layout_cols = 2L, export_dir = output_dir, export_name = "qa"), project_path)
+  existing_path <- normalizePath(project_path, winslash = "/", mustWork = TRUE)
+  backslash_path <- chartr("/", "\\", existing_path)
+  quoted_backslash_path <- paste0("\"", backslash_path, "\"")
+  quoted_forward_path <- paste0("\"", existing_path, "\"")
+  nonexistent_path <- file.path(output_dir, "missing_project.rds")
+
+  checks <- list(
+    backslash_path = list(
+      path = backslash_path,
+      expected_exists = TRUE,
+      recommendation = "Backslash Windows paths should normalize to a readable RDS path."
+    ),
+    forward_slash_path = list(
+      path = existing_path,
+      expected_exists = TRUE,
+      recommendation = "Forward slash paths should continue to load."
+    ),
+    quoted_backslash_path = list(
+      path = quoted_backslash_path,
+      expected_exists = TRUE,
+      recommendation = "Quoted Windows paths should strip quotes before file checks."
+    ),
+    quoted_forward_slash_path = list(
+      path = quoted_forward_path,
+      expected_exists = TRUE,
+      recommendation = "Quoted forward slash paths should strip quotes before file checks."
+    ),
+    nonexistent_path = list(
+      path = nonexistent_path,
+      expected_exists = FALSE,
+      recommendation = "Missing project files should report a clear missing-file condition."
+    )
+  )
+
+  rows <- lapply(names(checks), function(check_name) {
+    spec <- checks[[check_name]]
+    normalized <- tryCatch(
+      normalize_project_load_path(spec$path),
+      error = function(e) structure(NA_character_, error = conditionMessage(e))
+    )
+    error <- attr(normalized, "error") %||% ""
+    exists <- is.character(normalized) && length(normalized) == 1L && !is.na(normalized) && file.exists(normalized)
+    readable <- if (exists) {
+      tryCatch(is.list(readRDS(normalized)), error = function(e) FALSE)
+    } else {
+      FALSE
+    }
+    status <- if (nzchar(error)) {
+      "error"
+    } else if (isTRUE(spec$expected_exists) && exists && readable) {
+      "success"
+    } else if (!isTRUE(spec$expected_exists) && !exists && grepl("missing_project\\.rds$", normalized)) {
+      "success"
+    } else {
+      "error"
+    }
+
+    data.table::data.table(
+      check = check_name,
+      status = status,
+      message = if (identical(status, "success")) {
+        paste("Normalized path:", normalized)
+      } else if (nzchar(error)) {
+        error
+      } else {
+        paste("Path normalization did not meet expectation. Normalized path:", normalized)
+      },
+      recommendation = spec$recommendation
+    )
+  })
+
+  data.table::rbindlist(rows, use.names = TRUE, fill = TRUE)
 }
 
 plot_config_column_status <- function(config, data = NULL) {

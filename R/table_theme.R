@@ -1,7 +1,7 @@
 .normalize_table_theme <- function(theme = c("auto", "light", "dark", "pimp")) {
   theme <- match.arg(theme)
   if (identical(theme, "auto")) {
-    return(getOption("aq.theme", "light"))
+    return(getOption("aq.theme", "dark"))
   }
 
   theme
@@ -45,22 +45,65 @@ reactable_theme_light <- function() {
 
 reactable_theme_dark <- function() {
   reactable::reactableTheme(
-    color = "#e5e7eb",
-    backgroundColor = "#111827",
-    borderColor = "#334155",
-    stripedColor = "#1f2937",
-    highlightColor = "#1e3a5f",
-    cellPadding = "8px 10px",
+    color = "#E2E8F0",
+    backgroundColor = "#0B1326",
+    borderColor = "rgba(148, 163, 184, 0.22)",
+    stripedColor = "rgba(30, 41, 59, 0.78)",
+    highlightColor = "rgba(59, 130, 246, 0.18)",
+    rowSelectedStyle = list(
+      backgroundColor = "rgba(37, 99, 235, 0.28)",
+      boxShadow = "inset 3px 0 0 #60A5FA"
+    ),
+    cellPadding = "9px 12px",
+    style = list(
+      fontFamily = "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Helvetica, Arial, sans-serif",
+      fontSize = "13px",
+      border = "1px solid rgba(148, 163, 184, 0.22)",
+      borderRadius = "8px",
+      overflow = "hidden",
+      boxShadow = "0 16px 42px rgba(0, 0, 0, 0.28)"
+    ),
+    tableStyle = list(
+      borderCollapse = "separate",
+      borderSpacing = "0"
+    ),
     headerStyle = list(
-      background = "#1f2937",
-      color = "#f8fafc",
-      borderColor = "#334155",
+      background = "#0F1B33",
+      color = "#F8FAFC",
+      borderColor = "rgba(148, 163, 184, 0.28)",
       fontWeight = "600"
     ),
+    rowStyle = list(
+      backgroundColor = "#0B1326"
+    ),
     searchInputStyle = list(
-      background = "#0b1220",
-      color = "#f8fafc",
-      borderColor = "#475569"
+      width = "100%",
+      backgroundColor = "#111C33",
+      color = "#E2E8F0",
+      border = "1px solid rgba(148, 163, 184, 0.34)",
+      borderRadius = "8px",
+      padding = "8px 12px",
+      outline = "none"
+    ),
+    filterInputStyle = list(
+      backgroundColor = "#111C33",
+      color = "#E2E8F0",
+      border = "1px solid rgba(148, 163, 184, 0.34)",
+      borderRadius = "8px",
+      padding = "5px 8px",
+      outline = "none"
+    ),
+    selectStyle = list(
+      backgroundColor = "#111C33",
+      color = "#E2E8F0",
+      border = "1px solid #60A5FA",
+      borderRadius = "8px",
+      padding = "6px 10px",
+      height = "34px",
+      fontSize = "13px",
+      fontWeight = "700",
+      cursor = "pointer",
+      outline = "none"
     )
   )
 }

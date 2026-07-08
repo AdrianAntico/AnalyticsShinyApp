@@ -3,13 +3,34 @@ page_data_ui <- function(id) {
 
   tabPanel(
     "Data",
-    sidebarLayout(
-      sidebarPanel(
-        fileInput(ns("csv_file"), "CSV", accept = c(".csv", "text/csv"))
-      ),
-      mainPanel(
-        textOutput(ns("data_summary")),
-        tableOutput(ns("data_preview"))
+    ui_page(
+      title = "Data Workspace",
+      subtitle = "Load the project dataset and inspect the working preview before running modules.",
+      eyebrow = "Data",
+      ui_split_panel(
+        side = "left",
+        side_content = tagList(
+          ui_card(
+            title = "Dataset Source",
+            subtitle = "CSV upload or project-loaded data.",
+            fileInput(ns("csv_file"), "CSV", accept = c(".csv", "text/csv")),
+            ui_callout(
+              "Next",
+              "After data loads, use Workflow or Analysis Modules to generate artifacts.",
+              status = "info"
+            )
+          )
+        ),
+        main = tagList(
+          ui_card(
+            title = "Dataset Status",
+            textOutput(ns("data_summary"))
+          ),
+          ui_card(
+            title = "Data Preview",
+            uiOutput(ns("data_preview"))
+          )
+        )
       )
     )
   )
@@ -100,13 +121,12 @@ page_data_server <- function(id, ctx) {
       })
     })
 
-    output$data_preview <- renderTable({
-      tryCatch(
+    output$data_preview <- renderUI({
+      data <- tryCatch(
         head(ctx$uploaded_data(), 25),
-        error = function(e) {
-          data.table::data.table(Message = conditionMessage(e))
-        }
+        error = function(e) data.table::data.table(Message = conditionMessage(e))
       )
+      render_table(data, engine = "html", searchable = FALSE, sortable = FALSE)
     })
   })
 }

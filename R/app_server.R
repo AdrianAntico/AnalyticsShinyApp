@@ -29,6 +29,7 @@ server <- function(input, output, session) {
     run_index = 0L,
     last_result = NULL,
     last_run_id = NULL,
+    restored_summary = NULL,
     message = NULL
   )
 
@@ -155,6 +156,7 @@ server <- function(input, output, session) {
       output_dir = ctx$project_collector_output_dir()
     )
     ctx$project_collector_state$collector <- collector
+    ctx$project_collector_state$restored_summary <- NULL
     ctx$project_collector_state$message <- "Project Artifact Collector created."
     collector
   }
@@ -229,6 +231,12 @@ server <- function(input, output, session) {
   ctx$project_collector_summary <- function() {
     collector <- ctx$project_collector_state$collector
     result <- ctx$project_collector_state$last_result
+    restored_summary <- ctx$project_collector_state$restored_summary
+    if (!inherits(collector, "project_artifact_collector") &&
+        data.table::is.data.table(restored_summary) &&
+        nrow(restored_summary)) {
+      return(restored_summary)
+    }
     manifest_file <- if (inherits(collector, "project_artifact_collector")) collector$manifest_file else NA_character_
     docx_file <- if (inherits(collector, "project_artifact_collector")) collector$collector_docx else NA_character_
     normalize_collector_path <- function(path) {
@@ -247,6 +255,7 @@ server <- function(input, output, session) {
       current_run_id = ctx$project_collector_state$last_run_id %||% NA_character_,
       artifact_count = artifact_count,
       bundle_count = if (inherits(collector, "project_artifact_collector")) length(collector$bundles) else 0L,
+      render_target = if (inherits(collector, "project_artifact_collector")) collector$render_target %||% NA_character_ else NA_character_,
       collector_docx = normalize_collector_path(docx_file),
       manifest_status = if (!is.na(manifest_file) && file.exists(manifest_file)) "ready" else "not_written",
       manifest_file = normalize_collector_path(manifest_file)
@@ -838,6 +847,7 @@ server <- function(input, output, session) {
     ctx$project_collector_state$collector <- NULL
     ctx$project_collector_state$last_result <- NULL
     ctx$project_collector_state$last_run_id <- NULL
+    ctx$project_collector_state$restored_summary <- NULL
     ctx$project_collector_state$message <- "Project loaded. Collector will be recreated when the next module runs."
     ctx$code_runner_state$records <- project_state$code_run_records %||% list()
     ctx$code_runner_state$requests <- project_state$code_run_requests %||% list()
@@ -857,6 +867,25 @@ server <- function(input, output, session) {
       path = project_state$data_path,
       name = project_state$data_name
     ))
+
+    restored_collector <- project_state$project_collector %||% NULL
+    if (data.table::is.data.table(restored_collector) && nrow(restored_collector)) {
+      manifest_file <- restored_collector$manifest_file[[1]] %||% NA_character_
+      docx_file <- restored_collector$collector_docx[[1]] %||% NA_character_
+      manifest_ready <- !is.na(manifest_file) && file.exists(manifest_file)
+      docx_ready <- !is.na(docx_file) && file.exists(docx_file)
+      restored_status <- if (manifest_ready || docx_ready) "restored" else restored_collector$collector_status[[1]] %||% "not_created"
+      ctx$project_collector_state$restored_summary <- data.table::data.table(
+        collector_status = restored_status,
+        current_run_id = restored_collector$run_id[[nrow(restored_collector)]] %||% restored_collector$current_run_id[[1]] %||% NA_character_,
+        artifact_count = sum(suppressWarnings(as.integer(restored_collector$artifacts_added %||% restored_collector$artifact_count %||% 0L)), na.rm = TRUE),
+        bundle_count = nrow(restored_collector),
+        render_target = restored_collector$render_target[[1]] %||% "llm_docx",
+        collector_docx = docx_file,
+        manifest_status = if (manifest_ready) "ready" else "not_written",
+        manifest_file = manifest_file
+      )
+    }
 
     if (!is.null(project_state$data_path) && file.exists(project_state$data_path)) {
       data <- tryCatch(

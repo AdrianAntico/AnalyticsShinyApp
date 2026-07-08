@@ -3,105 +3,136 @@ page_layouts_ui <- function(id) {
 
   tabPanel(
     "Layout",
-    h4("Layout"),
-    sidebarLayout(
-      sidebarPanel(
-        selectInput(ns("layout_type"), "Layout", choices = c("Grid", "Sections"), selected = "Grid"),
-        numericInput(ns("layout_cols"), "Columns", value = 2, min = 1, max = 4, step = 1),
-        textInput(ns("section_name"), "Section Name", value = "Analysis"),
-        actionButton(ns("assign_section"), "Assign All Saved Plots to Section"),
-        tags$hr(),
-        ui_card(
-          title = "Add Text Block",
-          textInput(ns("text_artifact_label"), "Label", value = "Text Block"),
-          textInput(ns("text_artifact_section"), "Section", value = "Analysis"),
-          selectInput(
-            ns("text_artifact_subtype"),
-            "Subtype",
-            choices = c("markdown", "note", "summary", "caveat", "methodology"),
-            selected = "markdown"
+    ui_page(
+      title = "Layout Studio",
+      subtitle = "Compose artifacts, text blocks, table blocks, and report plans into reusable report structures.",
+      eyebrow = "Reports",
+      ui_split_panel(
+        side = "left",
+        side_content = tagList(
+          ui_card(
+            title = "Layout Controls",
+            selectInput(ns("layout_type"), "Layout", choices = c("Grid", "Sections"), selected = "Grid"),
+            numericInput(ns("layout_cols"), "Columns", value = 2, min = 1, max = 4, step = 1),
+            textInput(ns("section_name"), "Section Name", value = "Analysis"),
+            ui_action_row(
+              actionButton(ns("assign_section"), "Assign All Saved Plots to Section", class = "btn-primary")
+            )
           ),
-          textAreaInput(
-            ns("text_artifact_content"),
-            "Content",
-            value = "",
-            rows = 6,
-            width = "100%"
+          ui_disclosure(
+            "Add Text Block",
+            textInput(ns("text_artifact_label"), "Label", value = "Text Block"),
+            textInput(ns("text_artifact_section"), "Section", value = "Analysis"),
+            selectInput(
+              ns("text_artifact_subtype"),
+              "Subtype",
+              choices = c("markdown", "note", "summary", "caveat", "methodology"),
+              selected = "markdown"
+            ),
+            textAreaInput(
+              ns("text_artifact_content"),
+              "Content",
+              value = "",
+              rows = 6,
+              width = "100%"
+            ),
+            ui_action_row(
+              actionButton(ns("add_text_artifact"), "Add Text Artifact", class = "btn-primary"),
+              actionButton(ns("preview_text_artifact"), "Preview Text Artifact", class = "btn-secondary")
+            ),
+            textOutput(ns("text_artifact_message")),
+            level = "common"
           ),
-          ui_action_row(
-            actionButton(ns("add_text_artifact"), "Add Text Artifact", class = "btn-primary"),
-            actionButton(ns("preview_text_artifact"), "Preview Text Artifact", class = "btn-secondary")
+          ui_disclosure(
+            "Add Table Block",
+            textInput(ns("table_artifact_label"), "Label", value = "Table Block"),
+            textInput(ns("table_artifact_section"), "Section", value = "Analysis"),
+            selectInput(
+              ns("table_artifact_type"),
+              "Table Type",
+              choices = c("Data Preview", "Summary Statistics", "Frequency Table"),
+              selected = "Data Preview"
+            ),
+            uiOutput(ns("table_artifact_vars_ui")),
+            numericInput(ns("table_artifact_max_rows"), "Max Rows", value = 25, min = 1, step = 1),
+            numericInput(ns("table_artifact_page_size"), "Page Size", value = 10, min = 1, step = 1),
+            selectInput(
+              ns("table_artifact_theme"),
+              "Theme",
+              choices = c("auto", "light", "dark", "pimp"),
+              selected = "auto"
+            ),
+            ui_action_row(
+              actionButton(ns("preview_table_artifact"), "Preview Table", class = "btn-secondary"),
+              actionButton(ns("add_table_artifact"), "Add Table Artifact", class = "btn-primary")
+            ),
+            tags$hr(),
+            selectInput(ns("selected_table_artifact"), "Saved Table", choices = character()),
+            ui_action_row(
+              actionButton(ns("export_table_artifact_csv"), "Export CSV", class = "btn-secondary"),
+              actionButton(ns("export_table_artifact_xlsx"), "Export XLSX", class = "btn-secondary"),
+              actionButton(ns("export_all_tables_xlsx"), "Export All Tables XLSX", class = "btn-success")
+            ),
+            textOutput(ns("table_artifact_message")),
+            level = "artifact"
           ),
-          textOutput(ns("text_artifact_message"))
+          ui_disclosure(
+            "Report Plans",
+            uiOutput(ns("report_plan_summary")),
+            selectInput(ns("selected_report_plan"), "Plan", choices = character()),
+            uiOutput(ns("selected_report_plan_status")),
+            uiOutput(ns("active_report_plan_indicator")),
+            ui_action_row(
+              actionButton(ns("preview_report_plan"), "Preview Plan", class = "btn-secondary"),
+              actionButton(ns("apply_report_plan"), "Apply Plan", class = "btn-primary")
+            ),
+            textOutput(ns("report_plan_message")),
+            level = "artifact",
+            open = TRUE
+          ),
+          ui_disclosure(
+            "Plan Editor",
+            uiOutput(ns("report_plan_editor")),
+            level = "advanced"
+          )
         ),
-        tags$hr(),
-        ui_card(
-          title = "Add Table Block",
-          textInput(ns("table_artifact_label"), "Label", value = "Table Block"),
-          textInput(ns("table_artifact_section"), "Section", value = "Analysis"),
-          selectInput(
-            ns("table_artifact_type"),
-            "Table Type",
-            choices = c("Data Preview", "Summary Statistics", "Frequency Table"),
-            selected = "Data Preview"
+        main = tagList(
+          ui_workspace_grid(
+            columns = "two",
+            ui_preview_panel(
+              title = "Text Artifact Preview",
+              uiOutput(ns("text_artifact_preview"))
+            ),
+            ui_preview_panel(
+              title = "Table Artifact Preview",
+              uiOutput(ns("table_artifact_preview"))
+            )
           ),
-          uiOutput(ns("table_artifact_vars_ui")),
-          numericInput(ns("table_artifact_max_rows"), "Max Rows", value = 25, min = 1, step = 1),
-          numericInput(ns("table_artifact_page_size"), "Page Size", value = 10, min = 1, step = 1),
-          selectInput(
-            ns("table_artifact_theme"),
-            "Theme",
-            choices = c("auto", "light", "dark", "pimp"),
-            selected = "auto"
+          ui_card(
+            title = "Artifact Summary",
+            uiOutput(ns("artifact_summary"))
           ),
-          ui_action_row(
-            actionButton(ns("preview_table_artifact"), "Preview Table", class = "btn-secondary"),
-            actionButton(ns("add_table_artifact"), "Add Table Artifact", class = "btn-primary")
+          ui_preview_panel(
+            title = "Report Plan Preview",
+            uiOutput(ns("report_plan_preview"))
           ),
-          tags$hr(),
-          selectInput(ns("selected_table_artifact"), "Saved Table", choices = character()),
-          ui_action_row(
-            actionButton(ns("export_table_artifact_csv"), "Export CSV", class = "btn-secondary"),
-            actionButton(ns("export_table_artifact_xlsx"), "Export XLSX", class = "btn-secondary"),
-            actionButton(ns("export_all_tables_xlsx"), "Export All Tables XLSX", class = "btn-success")
+          ui_preview_panel(
+            title = "Saved Layout Preview",
+            uiOutput(ns("saved_layout_preview"))
           ),
-          textOutput(ns("table_artifact_message"))
-        ),
-        tags$hr(),
-        ui_card(
-          title = "Report Plans",
-          tableOutput(ns("report_plan_summary")),
-          selectInput(ns("selected_report_plan"), "Plan", choices = character()),
-          uiOutput(ns("selected_report_plan_status")),
-          uiOutput(ns("active_report_plan_indicator")),
-          ui_action_row(
-            actionButton(ns("preview_report_plan"), "Preview Plan", class = "btn-secondary"),
-            actionButton(ns("apply_report_plan"), "Apply Plan", class = "btn-primary")
-          ),
-          textOutput(ns("report_plan_message"))
-        ),
-        tags$hr(),
-        ui_card(
-          title = "Plan Editor",
-          uiOutput(ns("report_plan_editor"))
+          ui_workspace_grid(
+            columns = "two",
+            ui_code_panel(
+              "Layout Code",
+              verbatimTextOutput(ns("layout_code")),
+              collapsed = FALSE
+            ),
+            ui_code_panel(
+              "Report Code",
+              verbatimTextOutput(ns("report_code"))
+            )
+          )
         )
-      ),
-      mainPanel(
-        uiOutput(ns("text_artifact_preview")),
-        uiOutput(ns("table_artifact_preview")),
-        tags$hr(),
-        h4("Artifact Summary"),
-        tableOutput(ns("artifact_summary")),
-        tags$hr(),
-        uiOutput(ns("report_plan_preview")),
-        tags$hr(),
-        uiOutput(ns("saved_layout_preview")),
-        tags$hr(),
-        h4("Layout Code"),
-        verbatimTextOutput(ns("layout_code")),
-        tags$hr(),
-        h4("Report Code"),
-        verbatimTextOutput(ns("report_code"))
       )
     )
   )
@@ -493,8 +524,13 @@ page_layouts_server <- function(id, ctx) {
       render_artifact(artifact)
     })
 
-    output$artifact_summary <- renderTable({
-      ctx$combined_artifact_summary()
+    output$artifact_summary <- renderUI({
+      render_table(
+        ctx$combined_artifact_summary(),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
     })
 
     selected_report_plan <- function() {
@@ -567,13 +603,18 @@ page_layouts_server <- function(id, ctx) {
       )
     })
 
-    output$report_plan_summary <- renderTable({
+    output$report_plan_summary <- renderUI({
       summary <- ctx$report_plan_summary()
       if (!nrow(summary)) {
-        return(data.table::data.table(Message = "No report plans have been created yet."))
+        return(render_table(
+          data.table::data.table(Message = "No report plans have been created yet."),
+          engine = "html",
+          searchable = FALSE,
+          sortable = FALSE
+        ))
       }
 
-      summary
+      render_table(summary, engine = "html", searchable = FALSE, sortable = FALSE)
     })
 
     output$selected_report_plan_status <- renderUI({

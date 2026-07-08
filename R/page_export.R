@@ -5,6 +5,8 @@ page_export_ui <- function(id) {
     "Export",
     ui_page(
       title = "Export",
+      subtitle = "Write human-facing report outputs and reproducible R code from the current project state.",
+      eyebrow = "Reports",
       tags$div(
         class = "aq-export-layout",
         ui_card(

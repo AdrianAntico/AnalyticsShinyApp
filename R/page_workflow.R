@@ -308,9 +308,12 @@ page_workflow_ui <- function(id) {
         title = "Workflow Summary",
         uiOutput(ns("workflow_message")),
         uiOutput(ns("workflow_summary")),
-        tags$hr(),
-        h4("Project Artifact Collector"),
-        uiOutput(ns("collector_summary"))
+        ui_disclosure(
+          "Project Artifact Collector",
+          uiOutput(ns("collector_summary")),
+          level = "artifact",
+          open = TRUE
+        )
       ),
       uiOutput(ns("workflow_stages"))
     )
@@ -367,6 +370,7 @@ page_workflow_server <- function(id, ctx) {
           current_run_id,
           artifact_count,
           bundle_count,
+          render_target,
           manifest_status,
           collector_docx
         )],

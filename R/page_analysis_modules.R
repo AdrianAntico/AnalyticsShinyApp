@@ -33,9 +33,11 @@ page_analysis_modules_ui <- function(id) {
           title = "Run Status",
           uiOutput(ns("analysis_module_status")),
           uiOutput(ns("catboost_handoff_panel")),
-          tags$hr(),
-          h4("Generated Code"),
-          verbatimTextOutput(ns("analysis_module_code"))
+          ui_code_panel(
+            "Generated Code",
+            verbatimTextOutput(ns("analysis_module_code")),
+            collapsed = FALSE
+          )
         )
       )
     )
@@ -102,7 +104,7 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("assessment_theme"),
             "Theme",
             choices = c("light", "dark", "pimp"),
-            selected = "light"
+            selected = "dark"
           ),
           numericInput(session$ns("assessment_max_rows"), "Max Rows", value = 1000, min = 1, step = 1),
           numericInput(session$ns("assessment_max_groups"), "Max Groups", value = 25, min = 1, step = 1)
@@ -155,7 +157,7 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("rmi_theme"),
             "Theme",
             choices = c("light", "dark", "pimp"),
-            selected = "light"
+            selected = "dark"
           ),
           numericInput(session$ns("rmi_sample_size"), "Sample Size", value = 100000, min = 1, step = 1),
           numericInput(session$ns("rmi_max_pdp_features"), "Max PDP Features", value = 10, min = 1, step = 1),
@@ -198,7 +200,7 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("bmi_theme"),
             "Theme",
             choices = c("light", "dark", "pimp"),
-            selected = "light"
+            selected = "dark"
           )),
           bmi_input("SampleSize", numericInput(session$ns("bmi_sample_size"), "Sample Size", value = 100000, min = 1, step = 1)),
           bmi_input("Threshold", numericInput(session$ns("bmi_threshold"), "Threshold", value = 0.5, min = 0, max = 1, step = 0.01)),
@@ -552,7 +554,7 @@ page_analysis_modules_server <- function(id, ctx) {
           session$ns("eda_theme"),
           "Theme",
           choices = c("light", "dark", "pimp"),
-          selected = "light"
+          selected = "dark"
         ),
         numericInput(session$ns("eda_max_categorical_levels"), "Max Categorical Levels", value = 25, min = 1, step = 1),
         numericInput(session$ns("eda_max_discrete_numeric_levels"), "Max Discrete Numeric Levels", value = 20, min = 1, step = 1),
@@ -569,7 +571,7 @@ page_analysis_modules_server <- function(id, ctx) {
         TrendDateVar = selected_value(input$eda_trend_date_var),
         TrendGroupVar = selected_value(input$eda_trend_group_var),
         TargetVar = selected_value(input$eda_target_var),
-        Theme = selected_value(input$eda_theme) %||% "light",
+        Theme = selected_value(input$eda_theme) %||% "dark",
         MaxCategoricalLevels = as.integer(input$eda_max_categorical_levels %||% 25L),
         MaxDiscreteNumericLevels = as.integer(input$eda_max_discrete_numeric_levels %||% 20L),
         MaxCorrelationPairsToPlot = as.integer(input$eda_max_correlation_pairs %||% 25L)

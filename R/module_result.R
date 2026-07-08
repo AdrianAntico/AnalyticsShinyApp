@@ -254,7 +254,10 @@ qa_analysis_modules_integration <- function() {
     render_targets = qa_render_targets,
     table_artifact_policy = qa_table_artifact_policy,
     artifact_producer_semantics = qa_artifact_producer_semantics,
-    artifact_quality_policy = qa_artifact_quality_policy
+    artifact_quality_policy = qa_artifact_quality_policy,
+    project_load_paths = qa_project_load_paths,
+    artifact_studio = qa_artifact_studio,
+    ui_consistency = qa_ui_consistency
   )
 
   rows <- lapply(names(helpers), function(module_id) {

@@ -41,38 +41,74 @@ page_plot_builder_ui <- function(id) {
 
   tabPanel(
     "Plots",
-    sidebarLayout(
-      sidebarPanel(
-        selectInput(ns("plot_type"), "PlotType", choices = plot_types),
-        uiOutput(ns("mapping_inputs")),
-        tags$hr(),
-        uiOutput(ns("option_inputs")),
-        tags$hr(),
-        actionButton(ns("build_plot"), "Build / Refresh Plot", class = "btn-primary"),
-        actionButton(ns("add_plot"), "Add Plot", class = "btn-success"),
-        actionButton(ns("remove_last_plot"), "Remove Last Plot"),
-        helpText("Plot preview updates only when this button is clicked.")
-      ),
-      mainPanel(
-        uiOutput(ns("preview_plot")),
-        textOutput(ns("plot_list_message")),
-        tags$hr(),
-        h4("Current Plot Code"),
-        verbatimTextOutput(ns("generated_code")),
-        tags$hr(),
-        h4("Saved Plots"),
-        selectInput(ns("selected_saved_plot"), "Saved Plot", choices = character()),
-        actionButton(ns("load_saved_plot"), "Load Plot for Editing"),
-        actionButton(ns("update_saved_plot"), "Update Saved Plot"),
-        actionButton(ns("duplicate_saved_plot"), "Duplicate Plot"),
-        selectInput(ns("section_for_plot"), "Section", choices = character()),
-        textInput(ns("new_section_name"), "New Section", value = ""),
-        actionButton(ns("assign_plot_section"), "Assign Plot to Section"),
-        actionButton(ns("move_plot_up"), "Move Up"),
-        actionButton(ns("move_plot_down"), "Move Down"),
-        tableOutput(ns("saved_plot_list")),
-        h4("All Saved Plots Code"),
-        verbatimTextOutput(ns("saved_plots_code"))
+    ui_page(
+      title = "Plot Builder",
+      subtitle = "Create production AutoPlots widgets, save them as artifacts, and assign them to report sections.",
+      eyebrow = "Artifacts",
+      ui_split_panel(
+        side = "left",
+        side_content = ui_card(
+          title = "Plot Controls",
+          selectInput(ns("plot_type"), "PlotType", choices = plot_types),
+          ui_control_group(
+            "Mappings",
+            uiOutput(ns("mapping_inputs"))
+          ),
+          ui_disclosure(
+            "Plot Options",
+            uiOutput(ns("option_inputs")),
+            level = "advanced",
+            open = TRUE
+          ),
+          ui_action_row(
+            actionButton(ns("build_plot"), "Build / Refresh Plot", class = "btn-primary"),
+            actionButton(ns("add_plot"), "Add Plot", class = "btn-success"),
+            actionButton(ns("remove_last_plot"), "Remove Last Plot", class = "btn-secondary")
+          ),
+          ui_callout(
+            "Preview cadence",
+            "Plot preview updates only when Build / Refresh Plot is clicked.",
+            status = "info"
+          )
+        ),
+        main = tagList(
+          ui_preview_panel(
+            title = "Current Plot Preview",
+            uiOutput(ns("preview_plot")),
+            textOutput(ns("plot_list_message"))
+          ),
+          ui_workspace_grid(
+            columns = "two",
+            ui_card(
+              title = "Saved Plots",
+              selectInput(ns("selected_saved_plot"), "Saved Plot", choices = character()),
+              ui_action_row(
+                actionButton(ns("load_saved_plot"), "Load Plot for Editing", class = "btn-secondary"),
+                actionButton(ns("update_saved_plot"), "Update Saved Plot", class = "btn-primary"),
+                actionButton(ns("duplicate_saved_plot"), "Duplicate Plot", class = "btn-secondary")
+              ),
+              selectInput(ns("section_for_plot"), "Section", choices = character()),
+              textInput(ns("new_section_name"), "New Section", value = ""),
+              ui_action_row(
+                actionButton(ns("assign_plot_section"), "Assign Plot to Section", class = "btn-primary"),
+                actionButton(ns("move_plot_up"), "Move Up", class = "btn-secondary"),
+                actionButton(ns("move_plot_down"), "Move Down", class = "btn-secondary")
+              ),
+              uiOutput(ns("saved_plot_list"))
+            ),
+            tagList(
+              ui_code_panel(
+                "Current Plot Code",
+                verbatimTextOutput(ns("generated_code")),
+                collapsed = FALSE
+              ),
+              ui_code_panel(
+                "All Saved Plots Code",
+                verbatimTextOutput(ns("saved_plots_code"))
+              )
+            )
+          )
+        )
       )
     )
   )
@@ -491,13 +527,18 @@ page_plot_builder_server <- function(id, ctx) {
       ctx$plot_list_message()
     })
 
-    output$saved_plot_list <- renderTable({
+    output$saved_plot_list <- renderUI({
       plot_names <- ctx$ordered_plot_names()
       if (!length(plot_names)) {
-        return(data.table::data.table(Message = "No saved plots yet."))
+        return(render_table(
+          data.table::data.table(Message = "No saved plots yet."),
+          engine = "html",
+          searchable = FALSE,
+          sortable = FALSE
+        ))
       }
 
-      data.table::rbindlist(
+      data <- data.table::rbindlist(
         lapply(plot_names, function(plot_name) {
           plot_config_summary(
             name = plot_name,
@@ -508,6 +549,7 @@ page_plot_builder_server <- function(id, ctx) {
         }),
         use.names = TRUE
       )
+      render_table(data, engine = "html", searchable = FALSE, sortable = FALSE)
     })
 
     output$saved_plots_code <- renderText({
