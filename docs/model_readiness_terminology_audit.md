@@ -1,5 +1,11 @@
 # Model Readiness Terminology Audit
 
+## Current Migration
+
+AnalyticsShinyApp now uses `autoquant_model_readiness` as the preferred pre-model adapter id, with `module_autoquant_model_readiness.R` and `qa_autoquant_model_readiness_integration()` as the preferred implementation and QA names. The old `autoquant_model_assessment` id and related helper names are retained only as lightweight compatibility aliases.
+
+The true post-model `model_assessment` registry entry remains planned until an evaluator adapter exists.
+
 ## Rule
 
 `Model Assessment` is reserved for evaluation of an already-trained model.
@@ -10,20 +16,20 @@ Pre-model diagnostics should use `Model Readiness`. This includes target diagnos
 
 ### AnalyticsShinyApp
 
-- `R/module_autoquant_model_assessment.R`
+- `R/module_autoquant_model_readiness.R`
   - Updated user-facing messages, fallback artifact labels, default artifact section, report-plan labels, report-plan descriptions, rationale text, generated-result message, QA fixture section names, and missing-generator text from Model Assessment to Model Readiness.
-  - Preserved legacy internal names such as `autoquant_model_assessment`, `normalize_autoquant_model_assessment_artifacts()`, and `qa_autoquant_model_assessment_integration()`.
+  - Preserved legacy internal names such as `autoquant_model_readiness`, `normalize_autoquant_model_readiness_artifacts()`, and `qa_autoquant_model_readiness_integration()`.
 - `R/page_analysis_modules.R`
   - Updated the Analysis Modules page label from `AutoQuant Model Assessment` to `AutoQuant Model Readiness`.
   - Updated the default artifact section for the readiness adapter to `Model Readiness`.
 - `R/registry_modules.R`
-  - Updated the `autoquant_model_assessment` registry label and description to describe model readiness.
+  - Updated the `autoquant_model_readiness` registry label and description to describe model readiness.
   - Left the separate planned `model_assessment` registry entry unchanged because it refers to post-model model performance diagnostics.
-- `docs/autoquant_model_assessment_module.md`
+- `docs/autoquant_model_readiness_module.md`
   - Reframed the document as AutoQuant Model Readiness.
   - Added a compatibility note that legacy internal names are preserved.
 - `docs/analysis_modules_status.md`
-  - Updated the `autoquant_model_assessment` row to Model Readiness terminology.
+  - Updated the `autoquant_model_readiness` row to Model Readiness terminology.
   - Clarified the legacy `aq_ma_` artifact prefix.
 - `docs/product_backlog.md`
   - Updated backlog item labels for the pre-model AutoQuant adapter and recommended report plan to Model Readiness.
@@ -80,19 +86,16 @@ These references use `Model Assessment` for post-model evaluation of an already-
 
 ## Legacy Identifiers Intentionally Preserved
 
-The following names are historically established identifiers and were not renamed in this pass:
+The following names are historically established identifiers and remain compatibility-only:
 
 - `AutoQuant::generate_model_assessment_artifacts()`
 - `model_assessment_artifacts` class name in AutoQuant
-- `autoquant_model_assessment` module ID in AnalyticsShinyApp
-- `aq_ma_` artifact ID prefix
-- `qa_autoquant_model_assessment_integration()`
-- related internal helper names such as `run_autoquant_model_assessment_module()`
+- `autoquant_model_assessment` module ID alias in AnalyticsShinyApp
+- legacy helper aliases such as `qa_autoquant_model_assessment_integration()`
 
-These should be treated as compatibility names for the pre-model Model Readiness workflow until a deliberate API migration is planned.
+These should be treated as compatibility names for the pre-model Model Readiness workflow. New app code should use `autoquant_model_readiness`, `aq_mr_`, and `qa_autoquant_model_readiness_integration()`.
 
 ## Remaining Ambiguous Terminology
 
 - `AutoQuant::generate_model_assessment_artifacts()` is still a misleading exported function name because it generates Model Readiness artifacts. A future API pass could introduce `generate_model_readiness_artifacts()` and keep the old name as a compatibility wrapper.
-- `autoquant_model_assessment` remains a misleading app module ID for the same reason. A future migration could introduce `autoquant_model_readiness` while keeping project-state compatibility for existing saved projects.
-- CatBoost Builder currently exposes a post-model `Run Model Assessment` handoff action. That wording is correct, but the app should eventually ensure that the downstream target is a true post-model assessment adapter rather than the legacy readiness adapter.
+- CatBoost Builder exposes a post-model `Run Model Assessment` handoff action. That wording is correct, and the downstream target is the planned `model_assessment` placeholder until a true post-model evaluator adapter is implemented.

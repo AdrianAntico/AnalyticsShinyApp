@@ -31,6 +31,14 @@ code_output_to_artifact_candidates <- function(
   label_prefix <- label_prefix %||% run_record$label %||% "Code Output"
   run_id <- run_record$run_id %||% "code_run"
   metadata <- list(
+    module_id = "code_runner",
+    module_run_id = run_id,
+    source_module = "code_runner",
+    original_name = label_prefix,
+    original_section = "Code Runner",
+    normalized_section = "Code Runner",
+    artifact_index = NA_integer_,
+    created_by_module = TRUE,
     run_id = run_id,
     code_hash = run_record$code_hash %||% NA_character_,
     source = run_record$source %||% "manual",

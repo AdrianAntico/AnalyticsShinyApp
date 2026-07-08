@@ -127,6 +127,34 @@ validate_autoquant_eda_config <- function(data, config) {
   )
 }
 
+.autoquant_eda_grouped_trend_preflight <- function(data, config, min_rows_per_group = 4L) {
+  trend_vars <- config$TrendVars %||% character()
+  trend_group <- config$TrendGroupVar %||% NULL
+  if (is.null(trend_group) || !nzchar(trend_group) || !length(trend_vars)) {
+    return(list(config = config, warnings = character()))
+  }
+  if (is.null(data) || !trend_group %in% names(data)) {
+    return(list(config = config, warnings = character()))
+  }
+
+  group_counts <- data.table::as.data.table(data)[!is.na(get(trend_group)), .N, by = trend_group]
+  if (!nrow(group_counts) || min(group_counts$N, na.rm = TRUE) < min_rows_per_group) {
+    config$TrendGroupVar <- NULL
+    return(list(
+      config = config,
+      warnings = paste(
+        "Grouped EDA trend artifacts skipped because TrendGroupVar",
+        trend_group,
+        "has fewer than",
+        min_rows_per_group,
+        "usable rows in at least one group. Overall trend artifacts were still generated."
+      )
+    ))
+  }
+
+  list(config = config, warnings = character())
+}
+
 .autoquant_eda_r_string <- function(value) {
   if (is.null(value) || identical(value, "")) {
     return("NULL")
@@ -515,6 +543,10 @@ run_autoquant_eda_module <- function(data, config) {
     return(validation)
   }
 
+  trend_preflight <- .autoquant_eda_grouped_trend_preflight(data, config)
+  config <- trend_preflight$config
+  preflight_warnings <- trend_preflight$warnings
+
   generated_at <- Sys.time()
   module_run_id <- .autoquant_eda_run_id(generated_at)
 
@@ -561,6 +593,7 @@ run_autoquant_eda_module <- function(data, config) {
       counts$text_count,
       length(plans)
     ),
+    warnings = preflight_warnings,
     metadata = module_run_metadata(
       module_id = "autoquant_eda",
       module_run_id = module_run_id,

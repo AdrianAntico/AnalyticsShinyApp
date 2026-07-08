@@ -13,13 +13,126 @@
 
 artifact_types <- c(
   "plot", "table", "text", "metric", "section_header",
-  "model_summary", "forecast_block", "genai_narrative"
+  "model_summary", "forecast_block", "genai_narrative",
+  "diagnostic", "recommendation", "json", "narrative"
 )
 
 artifact_statuses <- c(
   "ready", "draft", "needs_data", "missing_columns",
   "rebuild_failed", "hidden"
 )
+
+artifact_importance_levels <- c("critical", "recommended", "supplementary")
+
+artifact_intents <- c(
+  "Ranking", "Comparison", "Relationship", "Distribution", "Diagnostic",
+  "Forecast", "Optimization", "Segmentation", "Time Series", "Prediction",
+  "Importance", "Interaction", "Narrative", "Recommendation", "Data"
+)
+
+.artifact_semantic_text <- function(...) {
+  tolower(paste(vapply(list(...), function(value) {
+    paste(as.character(value %||% ""), collapse = " ")
+  }, character(1)), collapse = " "))
+}
+
+infer_artifact_intent <- function(artifact_type, label = NULL, section = NULL, original_name = NULL) {
+  text <- .artifact_semantic_text(label, section, original_name)
+  if (grepl("interaction", text)) return("Interaction")
+  if (grepl("importance|shap", text)) return("Importance")
+  if (grepl("correlation|relationship|dependence|association", text)) return("Relationship")
+  if (grepl("distribution|histogram|box|missing|summary|describe", text)) return("Distribution")
+  if (grepl("trend|time|date|drift", text)) return("Time Series")
+  if (grepl("prediction|actual|residual|error|calibration|threshold|confusion|metric|lift|gain|risk|diagnostic|readiness", text)) return("Diagnostic")
+  if (grepl("segment|group|by", text)) return("Segmentation")
+  if (grepl("recommend", text)) return("Recommendation")
+  if (artifact_type %in% c("text", "narrative", "genai_narrative")) return("Narrative")
+  if (artifact_type %in% c("table", "metric")) return("Data")
+  "Comparison"
+}
+
+infer_artifact_importance <- function(module_id, artifact_type, label = NULL, section = NULL, original_name = NULL) {
+  text <- .artifact_semantic_text(module_id, artifact_type, label, section, original_name)
+  if (grepl("overview|summary|metric|threshold|confusion|importance|shap|risk|readiness|diagnostic|collector|quality", text)) {
+    return("critical")
+  }
+  if (grepl("appendix|qa|metadata|context|local|supplement", text)) {
+    return("supplementary")
+  }
+  "recommended"
+}
+
+producer_artifact_semantics <- function(
+  module_id,
+  artifact_type,
+  label = NULL,
+  section = NULL,
+  original_name = NULL,
+  object = NULL,
+  render_targets = c("human_report", "llm_docx")
+) {
+  intent <- infer_artifact_intent(artifact_type, label, section, original_name)
+  importance <- infer_artifact_importance(module_id, artifact_type, label, section, original_name)
+  purpose <- paste(intent, "artifact produced by", module_id)
+  text <- .artifact_semantic_text(label, section, original_name)
+  table_policy <- NULL
+  policy_source <- "not_applicable"
+
+  if (identical(artifact_type, "table") && exists("infer_table_artifact_policy", mode = "function")) {
+    table_policy <- infer_table_artifact_policy(
+      artifact_id = original_name %||% label %||% "table",
+      label = label %||% "Table",
+      source_module = module_id,
+      object = object,
+      metadata = list(original_name = original_name, normalized_section = section),
+      section = section %||% "Analysis",
+      render_target = "llm_docx"
+    )
+    policy_source <- if (grepl("shap|importance|risk|diagnostic|threshold|metric|performance|confusion|lift|gain|calibration|residual|error|interaction|correlation|missing|drift|group", text)) {
+      "explicit"
+    } else {
+      "inferred"
+    }
+  }
+
+  plot_policy <- if (identical(artifact_type, "plot")) {
+    list(
+      purpose = purpose,
+      expected_interpretation = intent,
+      recommended_caption = label %||% paste(intent, "Plot"),
+      importance = importance,
+      quality_expectations = "Use production rendering for LLM screenshots; preserve interactive widget for human reports.",
+      render_targets = render_targets,
+      future_interaction_capabilities = "Preserve source widget metadata for future interactive renderers."
+    )
+  } else {
+    NULL
+  }
+
+  narrative_policy <- if (artifact_type %in% c("text", "narrative", "genai_narrative", "diagnostic", "recommendation")) {
+    list(
+      purpose = purpose,
+      priority = importance,
+      quality_level = if (identical(importance, "critical")) "high" else "standard",
+      audience = "human_and_llm",
+      render_targets = render_targets
+    )
+  } else {
+    NULL
+  }
+
+  list(
+    analytical_intent = intent,
+    artifact_importance = importance,
+    artifact_purpose = purpose,
+    render_targets = render_targets,
+    policy_source = "explicit_producer_metadata",
+    table_policy = table_policy,
+    table_policy_source = policy_source,
+    plot_policy = plot_policy,
+    narrative_policy = narrative_policy
+  )
+}
 
 create_artifact <- function(
   artifact_id,
@@ -38,6 +151,38 @@ create_artifact <- function(
   created_at = Sys.time(),
   updated_at = Sys.time()
 ) {
+  if (isTRUE((metadata %||% list())$created_by_module) &&
+      exists("producer_artifact_semantics", mode = "function")) {
+    semantics <- producer_artifact_semantics(
+      module_id = metadata$module_id %||% source_module,
+      artifact_type = artifact_type,
+      label = label,
+      section = section,
+      original_name = metadata$original_name %||% artifact_id,
+      object = object
+    )
+    for (name in names(semantics)) {
+      if (is.null(metadata[[name]]) && !is.null(semantics[[name]])) {
+        metadata[[name]] <- semantics[[name]]
+      }
+    }
+  }
+
+  if (identical(artifact_type, "table") &&
+      exists("attach_table_artifact_policy", mode = "function")) {
+    policy_payload <- attach_table_artifact_policy(
+      artifact_id = artifact_id,
+      label = label,
+      source_module = source_module,
+      object = object,
+      config = config,
+      metadata = metadata,
+      section = section
+    )
+    config <- policy_payload$config
+    metadata <- policy_payload$metadata
+  }
+
   structure(
     list(
       artifact_id = artifact_id,
@@ -238,7 +383,11 @@ artifact_type_label <- function(artifact_type) {
     section_header = "Section",
     model_summary = "Model",
     forecast_block = "Forecast",
-    genai_narrative = "Narrative"
+    genai_narrative = "Narrative",
+    diagnostic = "Diagnostic",
+    recommendation = "Recommendation",
+    json = "JSON",
+    narrative = "Narrative"
   )
 
   labels[[artifact_type]] %||% artifact_type
@@ -346,6 +495,140 @@ render_artifact <- function(artifact, chrome = TRUE) {
     htmltools::tags$div(
       class = "aq-report-artifact-body",
       render_artifact_body(artifact)
+    )
+  )
+}
+
+artifact_semantics_audit <- function(artifacts) {
+  if (inherits(artifacts, "aq_artifact")) {
+    artifacts <- list(artifacts)
+  }
+  if (is.null(artifacts) || !length(artifacts)) {
+    return(data.table::data.table(
+      module = character(),
+      artifact_id = character(),
+      artifact_type = character(),
+      policy_source = character(),
+      analytical_intent = character(),
+      artifact_importance = character(),
+      render_targets = character(),
+      status = character(),
+      recommendation = character()
+    ))
+  }
+
+  rows <- lapply(artifacts, function(artifact) {
+    metadata <- artifact$metadata %||% list()
+    table_architecture <- metadata$table_architecture %||% list()
+    policy_source <- metadata$policy_source %||%
+      if (!is.null(metadata$table_policy) || !is.null(artifact$config$table_policy)) {
+        paste0("table_policy_", table_architecture$policy_source %||% "unknown")
+      } else {
+        "missing"
+      }
+    intent <- metadata$analytical_intent %||% NA_character_
+    importance <- metadata$artifact_importance %||% NA_character_
+    render_targets <- metadata$render_targets %||% character()
+    has_required <- nzchar(as.character(intent %||% "")) &&
+      nzchar(as.character(importance %||% "")) &&
+      length(render_targets)
+    data.table::data.table(
+      module = artifact$source_module %||% metadata$module_id %||% NA_character_,
+      artifact_id = artifact$artifact_id %||% NA_character_,
+      artifact_type = artifact$artifact_type %||% NA_character_,
+      policy_source = policy_source,
+      analytical_intent = intent,
+      artifact_importance = importance,
+      render_targets = paste(render_targets, collapse = ", "),
+      status = if (has_required) {
+        if (grepl("inferred", policy_source)) "Inferred" else "Explicit"
+      } else {
+        "Missing"
+      },
+      recommendation = if (has_required) {
+        "No action required."
+      } else {
+        "Declare analytical_intent, artifact_importance, and render_targets at production time."
+      }
+    )
+  })
+  data.table::rbindlist(rows, use.names = TRUE, fill = TRUE)
+}
+
+qa_artifact_producer_semantics <- function() {
+  table_artifacts <- if (exists("table_artifact_module_audit_fixtures", mode = "function")) {
+    table_artifact_module_audit_fixtures()
+  } else {
+    list()
+  }
+  plot_artifact <- create_artifact(
+    artifact_id = "qa_semantics_plot",
+    artifact_type = "plot",
+    label = "Variable Importance Plot",
+    source_module = "qa_artifact_producer_semantics",
+    object = NULL,
+    metadata = module_artifact_metadata(
+      module_id = "qa_artifact_producer_semantics",
+      module_run_id = "run_semantics",
+      source_module = "qa_artifact_producer_semantics",
+      original_name = "variable_importance_plot",
+      original_section = "Global Importance",
+      normalized_section = "Global Importance"
+    ),
+    section = "Global Importance"
+  )
+  narrative_artifact <- create_artifact(
+    artifact_id = "qa_semantics_narrative",
+    artifact_type = "narrative",
+    label = "Model Readiness Narrative",
+    source_module = "qa_artifact_producer_semantics",
+    content = "Readiness summary.",
+    metadata = module_artifact_metadata(
+      module_id = "qa_artifact_producer_semantics",
+      module_run_id = "run_semantics",
+      source_module = "qa_artifact_producer_semantics",
+      original_name = "model_readiness_narrative",
+      original_section = "Model Overview",
+      normalized_section = "Model Overview"
+    ),
+    section = "Model Overview"
+  )
+  artifacts <- c(table_artifacts, list(plot_artifact, narrative_artifact))
+  audit <- artifact_semantics_audit(artifacts)
+  missing_artifact <- plot_artifact
+  missing_artifact$metadata$analytical_intent <- NULL
+  missing_artifact$metadata$artifact_importance <- NULL
+  missing_artifact$metadata$render_targets <- NULL
+  missing_audit <- artifact_semantics_audit(list(missing_artifact))
+  summary_by_module <- audit[, .N, by = .(module, artifact_type, status, analytical_intent, artifact_importance)]
+
+  data.table::data.table(
+    check = c(
+      "artifact_semantics_available",
+      "policy_source_reported",
+      "intent_reported",
+      "importance_reported",
+      "render_targets_reported",
+      "coverage_summary_available",
+      "missing_semantics_reported"
+    ),
+    status = c(
+      if (nrow(audit) == length(artifacts)) "success" else "error",
+      if (all(nzchar(audit$policy_source))) "success" else "error",
+      if (all(nzchar(audit$analytical_intent))) "success" else "error",
+      if (all(audit$artifact_importance %in% artifact_importance_levels)) "success" else "error",
+      if (all(nzchar(audit$render_targets))) "success" else "error",
+      if (nrow(summary_by_module) > 0L) "success" else "error",
+      if (identical(missing_audit$status[[1]], "Missing")) "success" else "error"
+    ),
+    message = c(
+      paste("Artifacts audited:", nrow(audit)),
+      paste("Policy sources:", paste(unique(audit$policy_source), collapse = ", ")),
+      paste("Intents:", paste(unique(audit$analytical_intent), collapse = ", ")),
+      paste("Importance:", paste(unique(audit$artifact_importance), collapse = ", ")),
+      paste("Render targets:", paste(unique(audit$render_targets), collapse = " | ")),
+      paste("Coverage rows:", nrow(summary_by_module)),
+      paste("Missing audit status:", missing_audit$status[[1]])
     )
   )
 }

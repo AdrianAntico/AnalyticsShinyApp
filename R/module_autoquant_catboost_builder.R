@@ -544,7 +544,7 @@ create_catboost_handoff <- function(
 
 .catboost_downstream_module_label <- function(module_id) {
   labels <- c(
-    autoquant_model_assessment = "Model Assessment",
+    model_assessment = "Model Assessment",
     autoquant_regression_model_insights = "Regression Model Insights",
     autoquant_binary_model_insights = "Binary Classification Model Insights",
     autoquant_regression_shap_analysis = "Regression SHAP Analysis",
@@ -571,7 +571,7 @@ create_catboost_downstream_configs <- function(handoff) {
     handoff_source_run_id = handoff$source_run_id
   )
 
-  configs <- list(autoquant_model_assessment = common_assessment)
+  configs <- list(model_assessment = common_assessment)
 
   if (identical(problem_type, "regression")) {
     configs$autoquant_regression_model_insights <- list(
@@ -718,8 +718,8 @@ validate_catboost_handoff <- function(handoff) {
     warnings <- c(warnings, paste("CatBoost handoff context columns missing and will be ignored:", paste(missing_context, collapse = ", ")))
   }
 
-  if (!length(errors) && autoquant_model_assessment_available()) {
-    available <- c(available, "autoquant_model_assessment")
+  if (!length(errors)) {
+    available <- c(available, "model_assessment")
   }
   if (identical(problem_type, "regression") && !length(errors)) {
     if (autoquant_regression_model_insights_available()) {
@@ -1115,7 +1115,7 @@ qa_autoquant_catboost_builder_integration <- function() {
   configs <- create_catboost_downstream_configs(handoff)
   available <- validation$metadata$available_downstream_modules %||% character()
   desired <- c(
-    "autoquant_model_assessment",
+    "model_assessment",
     if (identical(problem_type, "binary")) "autoquant_binary_model_insights" else "autoquant_regression_model_insights",
     if (identical(problem_type, "binary")) "autoquant_binary_shap_analysis" else "autoquant_regression_shap_analysis"
   )

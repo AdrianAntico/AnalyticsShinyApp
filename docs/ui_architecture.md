@@ -186,6 +186,10 @@ It should track:
 
 Generator modules add or update artifacts in the library. Display pages read from the library to compose reports. Project save/load should persist enough artifact metadata, configuration, and generated code to rebuild or repair report state without storing fragile runtime-only objects.
 
+The Project Artifact Collector sits beside the Artifact Library as the project-level aggregation owner. Modules still produce standard artifacts; the app shell appends accepted module results to the collector, groups module bundles by project/run/module, writes the manifest, and creates `Project_Artifact_Collector.docx` through the production screenshot path. The Workflow page exposes the current collector status, run id, bundle/artifact counts, DOCX path, and manifest status.
+
+Human report display and LLM collector display are separate render targets. The Layouts/Export human path continues to use interactive artifacts; the collector path creates static screenshots and supporting context without replacing those artifacts.
+
 ### Forecasting Example
 
 A Forecasting module may generate several artifacts from one workflow:

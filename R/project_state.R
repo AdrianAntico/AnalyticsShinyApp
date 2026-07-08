@@ -103,6 +103,7 @@ validate_project_state <- function(project_state, data = NULL) {
     "data_path", "data_name", "current_plot_type",
     "current_mappings", "current_options", "section_names", "selected_theme",
     "module_artifacts", "text_artifacts", "table_artifacts", "report_plans", "active_plan_id",
+    "project_collector",
     "code_run_records", "code_run_requests", "code_run_results",
     "code_runner_policy", "code_execution_policy"
   )

@@ -15,6 +15,7 @@ shap_sections <- function() {
     "Interaction Importance",
     "Single Feature Effects",
     "SHAP Dependence",
+    "Marginal Value / Effect Curves",
     "Segment Effects",
     "Time Effects",
     "Local Explanations",
@@ -31,6 +32,7 @@ shap_lenses <- function() {
     "interaction_importance",
     "single_feature_effects",
     "shap_dependence",
+    "shap_effect_curves",
     "segment_effects",
     "time_effects",
     "local_explanations",
@@ -139,6 +141,13 @@ create_shap_analysis_config <- function(
   include_threshold_context = TRUE,
   include_class_balance = TRUE,
   include_plots = TRUE,
+  include_effect_curves = TRUE,
+  effect_curve_backend = c("none", "autonls"),
+  effect_curve_models = "stable",
+  effect_curve_sample_size = 50000L,
+  effect_curve_max_features = 20L,
+  effect_curve_validation_fraction = 0.20,
+  effect_curve_theme = NULL,
   max_feature_effect_plots = 5L,
   max_dependence_plots = 5L,
   max_segment_plots = 5L,
@@ -162,6 +171,7 @@ create_shap_analysis_config <- function(
   normalized_DateVar <- DateVar %||% date_var
   normalized_ByVars <- .shap_clean_character_vector(c(ByVars, by_vars))
   normalized_backend <- shap_backend %||% backend %||% "auto"
+  normalized_effect_curve_backend <- match.arg(as.character(effect_curve_backend)[1L], c("none", "autonls"))
   normalized_target <- target_col %||% target_var
   normalized_features <- .shap_clean_character_vector(c(feature_cols, feature_vars))
 
@@ -204,6 +214,13 @@ create_shap_analysis_config <- function(
     include_threshold_context = isTRUE(include_threshold_context),
     include_class_balance = isTRUE(include_class_balance),
     include_plots = isTRUE(include_plots),
+    include_effect_curves = isTRUE(include_effect_curves),
+    effect_curve_backend = normalized_effect_curve_backend,
+    effect_curve_models = .shap_clean_character_vector(effect_curve_models %||% "stable"),
+    effect_curve_sample_size = as.integer(effect_curve_sample_size %||% 50000L),
+    effect_curve_max_features = as.integer(effect_curve_max_features %||% 20L),
+    effect_curve_validation_fraction = as.numeric(effect_curve_validation_fraction %||% 0.20),
+    effect_curve_theme = effect_curve_theme,
     max_feature_effect_plots = as.integer(max_feature_effect_plots %||% 5L),
     max_dependence_plots = as.integer(max_dependence_plots %||% 5L),
     max_segment_plots = as.integer(max_segment_plots %||% 5L),
@@ -300,13 +317,24 @@ validate_shap_analysis_config <- function(config, data = NULL, problem_type = NU
     "max_interaction_surface_plots", "numeric_interaction_bins",
     "max_interaction_levels", "min_interaction_cell_n",
     "max_feature_effect_plots", "max_dependence_plots",
-    "max_segment_plots", "max_time_plots", "max_local_plots"
+    "max_segment_plots", "max_time_plots", "max_local_plots",
+    "effect_curve_sample_size", "effect_curve_max_features"
   )
   for (limit_name in numeric_limits) {
     limit_value <- suppressWarnings(as.integer(config[[limit_name]] %||% NA_integer_))
     if (!is.na(limit_value) && limit_value < 1L) {
       errors <- c(errors, paste(limit_name, "must be a positive integer."))
     }
+  }
+  if (!is.null(config$effect_curve_backend)) {
+    backend <- as.character(config$effect_curve_backend[[1L]])
+    if (!backend %in% c("none", "autonls")) {
+      errors <- c(errors, "effect_curve_backend must be one of: none, autonls.")
+    }
+  }
+  validation_fraction <- suppressWarnings(as.numeric(config$effect_curve_validation_fraction %||% NA_real_))
+  if (!is.na(validation_fraction) && (validation_fraction < 0 || validation_fraction > 0.5)) {
+    errors <- c(errors, "effect_curve_validation_fraction must be between 0 and 0.5.")
   }
 
   if (!is.null(data)) {
@@ -467,6 +495,13 @@ create_shap_artifact_metadata <- function(config, lens = NULL, section = NULL, e
     threshold_bands = config$threshold_bands %||% NULL,
     include_threshold_context = isTRUE(config$include_threshold_context),
     include_class_balance = isTRUE(config$include_class_balance),
+    include_effect_curves = isTRUE(config$include_effect_curves),
+    effect_curve_backend = config$effect_curve_backend %||% "none",
+    effect_curve_models = config$effect_curve_models %||% "stable",
+    effect_curve_sample_size = config$effect_curve_sample_size %||% NULL,
+    effect_curve_max_features = config$effect_curve_max_features %||% NULL,
+    effect_curve_validation_fraction = config$effect_curve_validation_fraction %||% NULL,
+    effect_curve_theme = config$effect_curve_theme %||% NULL,
     feature_cols = config$feature_cols %||% config$feature_vars %||% character(),
     feature_vars = config$feature_vars %||% character(),
     shap_prefix = config$shap_prefix %||% "Shap_",
@@ -677,6 +712,7 @@ create_shap_report_plan_specs <- function(problem_type, available_sections = NUL
           "Global Importance",
           "Single Feature Effects",
           "SHAP Dependence",
+          "Marginal Value / Effect Curves",
           "Appendix"
         ), available_sections)
       ),
@@ -691,6 +727,12 @@ create_shap_report_plan_specs <- function(problem_type, available_sections = NUL
         layout_type = "sections",
         cols = 2L,
         sections = intersect(c("Interaction Importance", "SHAP Dependence", "Appendix"), available_sections)
+      ),
+      effect_curves = list(
+        label = "Marginal Value / Effect Curves Report",
+        layout_type = "sections",
+        cols = 2L,
+        sections = intersect(c("Marginal Value / Effect Curves", "SHAP Dependence", "Appendix"), available_sections)
       ),
       segment_time = list(
         label = "Segment And Time Effects Report",
@@ -726,6 +768,7 @@ create_shap_report_plan_specs <- function(problem_type, available_sections = NUL
           "Class Balance / Outcome Context",
           "Single Feature Effects",
           "SHAP Dependence",
+          "Marginal Value / Effect Curves",
           "Appendix"
         ), available_sections)
       ),
@@ -752,6 +795,12 @@ create_shap_report_plan_specs <- function(problem_type, available_sections = NUL
         layout_type = "sections",
         cols = 2L,
         sections = intersect(c("Interaction Importance", "SHAP Dependence", "Appendix"), available_sections)
+      ),
+      effect_curves = list(
+        label = "Marginal Value / Effect Curves Report",
+        layout_type = "sections",
+        cols = 2L,
+        sections = intersect(c("Marginal Value / Effect Curves", "SHAP Dependence", "Appendix"), available_sections)
       ),
       segment_time = list(
         label = "Segment And Time Effects Report",
@@ -786,7 +835,13 @@ qa_shap_artifact_contract <- function() {
     shap_prefix = "Shap_",
     date_var = "date",
     date_aggregation = "month",
-    by_vars = "segment"
+    by_vars = "segment",
+    include_effect_curves = TRUE,
+    effect_curve_backend = "autonls",
+    effect_curve_models = "stable",
+    effect_curve_sample_size = 50000L,
+    effect_curve_max_features = 20L,
+    effect_curve_validation_fraction = 0.20
   )
   binary_config <- create_shap_analysis_config(
     problem_type = "binary",
@@ -826,18 +881,20 @@ qa_shap_artifact_contract <- function() {
       "lenses",
       "regression_plan_specs",
       "binary_plan_specs",
-      "artifact_metadata"
+      "artifact_metadata",
+      "effect_curve_config"
     ),
     status = c(
       regression_validation$status,
       binary_validation$status,
       if (identical(shap_artifact_id_prefix("regression"), "aq_rshap_")) "success" else "error",
       if (identical(shap_artifact_id_prefix("binary_classification"), "aq_bshap_")) "success" else "error",
-      if (length(shap_sections()) == 11L) "success" else "error",
-      if (all(c("global_importance", "shap_dependence") %in% shap_lenses())) "success" else "error",
+      if (length(shap_sections()) == 12L) "success" else "error",
+      if (all(c("global_importance", "shap_dependence", "shap_effect_curves") %in% shap_lenses())) "success" else "error",
       if (length(regression_specs) >= 3L) "success" else "error",
       if (length(binary_specs) >= 3L) "success" else "error",
-      if (identical(metadata$lens, "global_importance") && identical(metadata$normalized_section, "Global Importance")) "success" else "error"
+      if (identical(metadata$lens, "global_importance") && identical(metadata$normalized_section, "Global Importance")) "success" else "error",
+      if (identical(regression_config$effect_curve_backend, "autonls") && identical(regression_config$effect_curve_models, "stable")) "success" else "error"
     ),
     message = c(
       service_result_message(regression_validation),
@@ -848,7 +905,8 @@ qa_shap_artifact_contract <- function() {
       "SHAP lens contract is available.",
       "Regression SHAP report plan specs are available.",
       "Binary SHAP report plan specs are available.",
-      "SHAP artifact metadata includes lens and section context."
+      "SHAP artifact metadata includes lens and section context.",
+      "AutoNLS effect-curve controls are normalized into SHAP config."
     )
   )
 }

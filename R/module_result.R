@@ -172,6 +172,7 @@ module_result_convention_checks <- function(result, artifact_id_prefix) {
 }
 
 validate_module_config <- function(module_id, config, data) {
+  module_id <- normalize_module_id(module_id)
   module <- get_module_definition(module_id)
   if (is.null(module)) {
     return(service_result(
@@ -202,8 +203,8 @@ validate_module_config <- function(module_id, config, data) {
   if (identical(module_id, "autoquant_eda")) {
     return(validate_autoquant_eda_config(data = data, config = config))
   }
-  if (identical(module_id, "autoquant_model_assessment")) {
-    return(validate_autoquant_model_assessment_config(data = data, config = config))
+  if (identical(module_id, "autoquant_model_readiness")) {
+    return(validate_autoquant_model_readiness_config(data = data, config = config))
   }
   if (identical(module_id, "autoquant_regression_model_insights")) {
     return(validate_autoquant_regression_model_insights_config(data = data, config = config))
@@ -241,13 +242,19 @@ validate_module_config <- function(module_id, config, data) {
 qa_analysis_modules_integration <- function() {
   helpers <- list(
     autoquant_eda = qa_autoquant_eda_integration,
-    autoquant_model_assessment = qa_autoquant_model_assessment_integration,
+    autoquant_model_readiness = qa_autoquant_model_readiness_integration,
     autoquant_regression_model_insights = qa_autoquant_regression_model_insights_integration,
     autoquant_binary_model_insights = qa_autoquant_binary_model_insights_integration,
     autoquant_regression_shap_analysis = qa_autoquant_regression_shap_analysis_integration,
     autoquant_binary_shap_analysis = qa_autoquant_binary_shap_analysis_integration,
     autoquant_catboost_builder = qa_autoquant_catboost_builder_integration,
-    shap_artifact_contract = qa_shap_artifact_contract
+    shap_artifact_contract = qa_shap_artifact_contract,
+    module_terminology_consistency = qa_module_terminology_consistency,
+    project_artifact_collector = qa_project_artifact_collector,
+    render_targets = qa_render_targets,
+    table_artifact_policy = qa_table_artifact_policy,
+    artifact_producer_semantics = qa_artifact_producer_semantics,
+    artifact_quality_policy = qa_artifact_quality_policy
   )
 
   rows <- lapply(names(helpers), function(module_id) {
@@ -285,6 +292,7 @@ qa_analysis_modules_integration <- function() {
 }
 
 run_analysis_module <- function(module_id, data, config = list()) {
+  module_id <- normalize_module_id(module_id)
   module <- get_module_definition(module_id)
   if (is.null(module)) {
     return(service_result(
@@ -305,8 +313,8 @@ run_analysis_module <- function(module_id, data, config = list()) {
   if (identical(module_id, "autoquant_eda")) {
     return(run_autoquant_eda_module(data = data, config = config))
   }
-  if (identical(module_id, "autoquant_model_assessment")) {
-    return(run_autoquant_model_assessment_module(data = data, config = config))
+  if (identical(module_id, "autoquant_model_readiness")) {
+    return(run_autoquant_model_readiness_module(data = data, config = config))
   }
   if (identical(module_id, "autoquant_regression_model_insights")) {
     return(run_autoquant_regression_model_insights_module(data = data, config = config))

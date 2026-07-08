@@ -8,7 +8,7 @@ The AutoQuant Model Readiness module is the second analysis-module adapter for A
 
 `AutoQuant::generate_model_assessment_artifacts()` is the source of truth for model-readiness generation. Analytics Shiny App must not reimplement target diagnostics, model-readiness diagnostics, trend/drift checks, leakage/readiness checks, or feature engineering guidance.
 
-The app currently preserves legacy internal names such as `autoquant_model_assessment` and `generate_model_assessment_artifacts()` for compatibility. User-facing documentation, report plans, and UI copy should refer to this pre-model workflow as Model Readiness.
+The app uses `autoquant_model_readiness` as the preferred adapter id. The old `autoquant_model_assessment` id is a legacy compatibility alias only. AutoQuant's exported generator is still named `generate_model_assessment_artifacts()`, so the adapter calls that upstream function while keeping app-facing readiness terminology.
 
 Analytics Shiny App owns:
 
@@ -36,8 +36,8 @@ The module returns a `service_result` with:
 
 Artifacts use:
 
-- `source_module = "autoquant_model_assessment"`
-- `artifact_id` prefix `aq_ma_`
+- `source_module = "autoquant_model_readiness"`
+- `artifact_id` prefix `aq_mr_`
 - readable labels
 - model readiness sections
 - `module_run_id` metadata
@@ -89,7 +89,7 @@ Report plans reference artifact IDs only. They do not own artifacts and must not
 
 ## QA Helper
 
-`qa_autoquant_model_assessment_integration()` creates synthetic binary classification and regression data.
+`qa_autoquant_model_readiness_integration()` creates synthetic binary classification and regression data.
 
 When `AutoQuant::generate_model_assessment_artifacts()` is available, the helper verifies:
 

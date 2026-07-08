@@ -39,7 +39,7 @@ workflow_stage_registry <- function() {
       label = "Model Readiness",
       subtitle = "Target Analysis",
       status = "implemented",
-      modules = list("autoquant_model_assessment"),
+      modules = list("autoquant_model_readiness"),
       page = "Analysis Modules",
       purpose = "Review target diagnostics, leakage/collider risk, drift, class balance, and modeling recommendations.",
       recommended_next_stage = "CatBoost Builder"
@@ -60,10 +60,10 @@ workflow_stage_registry <- function() {
       stage_id = "model_assessment",
       label = "Model Assessment",
       subtitle = "Post-model evaluation",
-      status = "external_or_future",
+      status = "planned",
       modules = list(NULL),
       page = NULL,
-      purpose = "Evaluate trained/scored model performance. This stage is reserved for post-model assessment only.",
+      purpose = "Evaluate trained/scored model performance. A true post-model assessment adapter is reserved for this stage; do not use the pre-model readiness adapter here.",
       recommended_next_stage = "Model Insights"
     ),
     list(
@@ -141,7 +141,7 @@ workflow_status_badge_status <- function(status) {
   if (identical(status, "external_or_future")) {
     return("info")
   }
-  if (identical(status, "deferred")) {
+  if (status %in% c("deferred", "planned")) {
     return("neutral")
   }
   "warning"
@@ -190,7 +190,7 @@ workflow_state_summary <- function(ctx = NULL) {
   if (length(plans)) {
     plan_rows <- lapply(plans, function(plan) {
       metadata <- plan$metadata %||% list()
-      module_id <- metadata$module_id %||% metadata$source_module %||% NA_character_
+      module_id <- metadata$module_id %||% metadata$source_module %||% plan$source_module %||% NA_character_
       data.table::data.table(stage_id = workflow_stage_for_module(module_id))
     })
     plan_summary <- data.table::rbindlist(plan_rows, use.names = TRUE, fill = TRUE)
@@ -307,7 +307,10 @@ page_workflow_ui <- function(id) {
       ui_card(
         title = "Workflow Summary",
         uiOutput(ns("workflow_message")),
-        uiOutput(ns("workflow_summary"))
+        uiOutput(ns("workflow_summary")),
+        tags$hr(),
+        h4("Project Artifact Collector"),
+        uiOutput(ns("collector_summary"))
       ),
       uiOutput(ns("workflow_stages"))
     )
@@ -348,6 +351,27 @@ page_workflow_server <- function(id, ctx) {
         )],
         title = NULL,
         page_size = 9,
+        searchable = FALSE,
+        filterable = FALSE
+      )
+    })
+
+    output$collector_summary <- renderUI({
+      if (!is.function(ctx$project_collector_summary)) {
+        return(ui_empty_state("Collector status is unavailable."))
+      }
+      summary <- ctx$project_collector_summary()
+      render_table(
+        summary[, list(
+          collector_status,
+          current_run_id,
+          artifact_count,
+          bundle_count,
+          manifest_status,
+          collector_docx
+        )],
+        title = NULL,
+        page_size = 1,
         searchable = FALSE,
         filterable = FALSE
       )
@@ -488,8 +512,11 @@ qa_workflow_custom_code_hooks_integration <- function() {
         status = if (
           identical(validation$status, "success") &&
             isTRUE(context$custom_code_hook) &&
+            isTRUE(request$metadata$custom_code_hook) &&
             identical(context$workflow_stage, stage) &&
+            identical(request$metadata$workflow_stage, stage) &&
             identical(context$hook_timing, timing) &&
+            identical(request$metadata$hook_timing, timing) &&
             identical(request$source, "manual") &&
             !isTRUE(context$auto_run)
         ) "success" else "error",
@@ -501,6 +528,68 @@ qa_workflow_custom_code_hooks_integration <- function() {
   data.table::rbindlist(rows, use.names = TRUE, fill = TRUE)
 }
 
+qa_workflow_state_summary <- function() {
+  ctx <- new.env(parent = emptyenv())
+  ctx$all_artifacts <- function() {
+    list(
+      artifact_1 = structure(list(
+        artifact_id = "artifact_1",
+        source_module = "autoquant_eda",
+        metadata = list(module_id = "autoquant_eda")
+      ), class = c("aq_artifact", "list")),
+      artifact_2 = structure(list(
+        artifact_id = "artifact_2",
+        source_module = "autoquant_catboost_builder",
+        metadata = list(module_id = "autoquant_catboost_builder", downstream_handoff = list(available = TRUE))
+      ), class = c("aq_artifact", "list"))
+    )
+  }
+  ctx$report_plan_state <- list(plans = list(
+    plan_1 = list(plan_id = "plan_1", metadata = list(module_id = "autoquant_eda")),
+    plan_2 = list(plan_id = "plan_2", source_module = "autoquant_catboost_builder")
+  ))
+  ctx$code_runner_state <- list(
+    requests = list(
+      hook_1 = create_custom_code_hook_request(
+        run_id = "hook_1",
+        stage = "eda",
+        timing = "pre_stage",
+        label = "QA hook",
+        code = "# QA hook\n",
+        status = "draft"
+      )
+    ),
+    records = list()
+  )
+
+  summary <- workflow_state_summary(ctx)
+  data.table::data.table(
+    check = c(
+      "summary_rows",
+      "artifact_counts",
+      "report_plan_counts",
+      "handoff_available",
+      "hook_counts"
+    ),
+    status = c(
+      if (nrow(summary) == length(workflow_stage_registry())) "success" else "error",
+      if (summary[stage_id == "eda", artifact_count][[1L]] == 1L &&
+          summary[stage_id == "catboost_builder", artifact_count][[1L]] == 1L) "success" else "error",
+      if (summary[stage_id == "eda", report_plan_count][[1L]] == 1L &&
+          summary[stage_id == "catboost_builder", report_plan_count][[1L]] == 1L) "success" else "error",
+      if (isTRUE(summary[stage_id == "catboost_builder", catboost_handoff_available][[1L]])) "success" else "error",
+      if (summary[stage_id == "eda", custom_code_hook_count][[1L]] == 1L) "success" else "error"
+    ),
+    message = c(
+      paste("Summary rows:", nrow(summary)),
+      "Artifact counts map through source module metadata.",
+      "Report plan counts map through source module metadata.",
+      "CatBoost handoff availability is detected from artifact metadata.",
+      "Custom hook drafts/history are counted from Code Runner requests."
+    )
+  )
+}
+
 qa_workflow_page_contract <- function() {
   ui <- page_workflow_ui("workflow")
   summary <- workflow_state_summary()
@@ -509,18 +598,22 @@ qa_workflow_page_contract <- function() {
   registry <- get_module_registry()
 
   data.table::data.table(
-    check = c("ui_constructs", "server_exists", "implemented_modules_valid", "summary_returns_rows"),
+    check = c("ui_constructs", "server_exists", "implemented_modules_valid", "summary_returns_rows", "no_autonls_direct_call", "no_dt_usage"),
     status = c(
       if (inherits(ui, "shiny.tag")) "success" else "error",
       if (exists("page_workflow_server", mode = "function")) "success" else "error",
       if (all(modules %in% names(registry))) "success" else "error",
-      if (nrow(summary) == length(workflow_stage_registry())) "success" else "error"
+      if (nrow(summary) == length(workflow_stage_registry())) "success" else "error",
+      if (!any(grepl(paste0("AutoNLS", "::"), readLines("R/page_workflow.R", warn = FALSE), ignore.case = TRUE))) "success" else "error",
+      if (!any(grepl("\\bDT::|datatable\\(", readLines("R/page_workflow.R", warn = FALSE)))) "success" else "error"
     ),
     message = c(
       "Workflow UI tab constructs.",
       "Workflow server module exists.",
       paste(modules, collapse = ", "),
-      paste("Summary rows:", nrow(summary))
+      paste("Summary rows:", nrow(summary)),
+      "Workflow page does not call AutoNLS directly.",
+      "Workflow page does not add DT usage."
     )
   )
 }

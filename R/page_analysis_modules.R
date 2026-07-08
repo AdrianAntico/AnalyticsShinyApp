@@ -14,7 +14,7 @@ page_analysis_modules_ui <- function(id) {
             "Module",
             choices = c(
               "AutoQuant EDA" = "autoquant_eda",
-              "AutoQuant Model Readiness" = "autoquant_model_assessment",
+              "AutoQuant Model Readiness" = "autoquant_model_readiness",
               "AutoQuant Regression Model Insights" = "autoquant_regression_model_insights",
               "AutoQuant Binary Classification Model Insights" = "autoquant_binary_model_insights",
               "AutoQuant Regression SHAP Analysis" = "autoquant_regression_shap_analysis",
@@ -57,7 +57,7 @@ page_analysis_modules_server <- function(id, ctx) {
         names(data)[vapply(data, is.numeric, logical(1))]
       }
 
-      if (identical(module_id, "autoquant_model_assessment")) {
+      if (identical(module_id, "autoquant_model_readiness")) {
         return(tagList(
           selectInput(
             session$ns("assessment_problem_type"),
@@ -299,6 +299,17 @@ page_analysis_modules_server <- function(id, ctx) {
           checkboxInput(session$ns("rshap_include_local"), "Include Local Explanations", value = FALSE),
           checkboxInput(session$ns("rshap_include_interactions"), "Include Interactions", value = TRUE),
           checkboxInput(session$ns("rshap_include_plots"), "Include Plots", value = TRUE),
+          checkboxInput(session$ns("rshap_include_effect_curves"), "Include AutoNLS Effect Curves", value = TRUE),
+          selectInput(
+            session$ns("rshap_effect_curve_backend"),
+            "Effect Curve Backend",
+            choices = c("none", "autonls"),
+            selected = "none"
+          ),
+          textInput(session$ns("rshap_effect_curve_models"), "Effect Curve Models", value = "stable"),
+          numericInput(session$ns("rshap_effect_curve_sample_size"), "Effect Curve Sample Size", value = 50000, min = 10, step = 1000),
+          numericInput(session$ns("rshap_effect_curve_max_features"), "Effect Curve Max Features", value = 20, min = 1, step = 1),
+          numericInput(session$ns("rshap_effect_curve_validation_fraction"), "Effect Curve Validation Fraction", value = 0.20, min = 0, max = 0.5, step = 0.05),
           numericInput(session$ns("rshap_max_feature_effect_plots"), "Max Feature Effect Plots", value = 5, min = 1, step = 1),
           numericInput(session$ns("rshap_max_dependence_plots"), "Max Dependence Plots", value = 5, min = 1, step = 1),
           numericInput(session$ns("rshap_max_segment_plots"), "Max Segment Plots", value = 5, min = 1, step = 1),
@@ -405,6 +416,17 @@ page_analysis_modules_server <- function(id, ctx) {
           checkboxInput(session$ns("bshap_include_local"), "Include Local Explanations", value = FALSE),
           checkboxInput(session$ns("bshap_include_interactions"), "Include Interactions", value = TRUE),
           checkboxInput(session$ns("bshap_include_plots"), "Include Plots", value = TRUE),
+          checkboxInput(session$ns("bshap_include_effect_curves"), "Include AutoNLS Effect Curves", value = TRUE),
+          selectInput(
+            session$ns("bshap_effect_curve_backend"),
+            "Effect Curve Backend",
+            choices = c("none", "autonls"),
+            selected = "none"
+          ),
+          textInput(session$ns("bshap_effect_curve_models"), "Effect Curve Models", value = "stable"),
+          numericInput(session$ns("bshap_effect_curve_sample_size"), "Effect Curve Sample Size", value = 50000, min = 10, step = 1000),
+          numericInput(session$ns("bshap_effect_curve_max_features"), "Effect Curve Max Features", value = 20, min = 1, step = 1),
+          numericInput(session$ns("bshap_effect_curve_validation_fraction"), "Effect Curve Validation Fraction", value = 0.20, min = 0, max = 0.5, step = 0.05),
           numericInput(session$ns("bshap_max_feature_effect_plots"), "Max Feature Effect Plots", value = 5, min = 1, step = 1),
           numericInput(session$ns("bshap_max_dependence_plots"), "Max Dependence Plots", value = 5, min = 1, step = 1),
           numericInput(session$ns("bshap_max_segment_plots"), "Max Segment Plots", value = 5, min = 1, step = 1),
@@ -554,7 +576,7 @@ page_analysis_modules_server <- function(id, ctx) {
       )
     }
 
-    model_assessment_config <- function() {
+    model_readiness_config <- function() {
       list(
         assessment_problem_type = selected_value(input$assessment_problem_type) %||% "Regression",
         actual_var = selected_value(input$actual_var),
@@ -654,6 +676,12 @@ page_analysis_modules_server <- function(id, ctx) {
         include_local = isTRUE(input$rshap_include_local),
         include_interactions = isTRUE(input$rshap_include_interactions),
         include_plots = isTRUE(input$rshap_include_plots),
+        include_effect_curves = isTRUE(input$rshap_include_effect_curves),
+        effect_curve_backend = selected_value(input$rshap_effect_curve_backend) %||% "none",
+        effect_curve_models = clean_choices(unlist(strsplit(selected_value(input$rshap_effect_curve_models) %||% "stable", "[,[:space:]]+"))),
+        effect_curve_sample_size = as.integer(input$rshap_effect_curve_sample_size %||% 50000L),
+        effect_curve_max_features = as.integer(input$rshap_effect_curve_max_features %||% 20L),
+        effect_curve_validation_fraction = as.numeric(input$rshap_effect_curve_validation_fraction %||% 0.20),
         max_feature_effect_plots = as.integer(input$rshap_max_feature_effect_plots %||% 5L),
         max_dependence_plots = as.integer(input$rshap_max_dependence_plots %||% 5L),
         max_segment_plots = as.integer(input$rshap_max_segment_plots %||% 5L),
@@ -704,6 +732,12 @@ page_analysis_modules_server <- function(id, ctx) {
         include_local = isTRUE(input$bshap_include_local),
         include_interactions = isTRUE(input$bshap_include_interactions),
         include_plots = isTRUE(input$bshap_include_plots),
+        include_effect_curves = isTRUE(input$bshap_include_effect_curves),
+        effect_curve_backend = selected_value(input$bshap_effect_curve_backend) %||% "none",
+        effect_curve_models = clean_choices(unlist(strsplit(selected_value(input$bshap_effect_curve_models) %||% "stable", "[,[:space:]]+"))),
+        effect_curve_sample_size = as.integer(input$bshap_effect_curve_sample_size %||% 50000L),
+        effect_curve_max_features = as.integer(input$bshap_effect_curve_max_features %||% 20L),
+        effect_curve_validation_fraction = as.numeric(input$bshap_effect_curve_validation_fraction %||% 0.20),
         max_feature_effect_plots = as.integer(input$bshap_max_feature_effect_plots %||% 5L),
         max_dependence_plots = as.integer(input$bshap_max_dependence_plots %||% 5L),
         max_segment_plots = as.integer(input$bshap_max_segment_plots %||% 5L),
@@ -780,8 +814,8 @@ page_analysis_modules_server <- function(id, ctx) {
     }
 
     module_config <- function(module_id) {
-      if (identical(module_id, "autoquant_model_assessment")) {
-        return(model_assessment_config())
+      if (identical(module_id, "autoquant_model_readiness")) {
+        return(model_readiness_config())
       }
       if (identical(module_id, "autoquant_regression_model_insights")) {
         return(regression_model_insights_config())
@@ -809,6 +843,14 @@ page_analysis_modules_server <- function(id, ctx) {
       if (identical(result$status, "success") && length(result$artifacts)) {
         ctx$add_artifacts(result$artifacts)
         ctx$add_report_plans(result$metadata$report_plans %||% list())
+      }
+      module_id <- result$metadata$module_id %||% selected_value(input$analysis_module_id) %||% "unknown_module"
+      collector_result <- ctx$append_module_result_to_collector(result, module_id = module_id)
+      if (!identical(collector_result$status, "success")) {
+        result$warnings <- unique(c(
+          result$warnings %||% character(),
+          paste("Project Artifact Collector warning:", paste(collector_result$errors %||% collector_result$warnings %||% character(), collapse = " | "))
+        ))
       }
       invisible(result)
     }
@@ -856,7 +898,7 @@ page_analysis_modules_server <- function(id, ctx) {
     }, ignoreInit = TRUE)
 
     observeEvent(input$run_catboost_model_assessment, {
-      run_catboost_handoff_action("autoquant_model_assessment")
+      run_catboost_handoff_action("model_assessment")
     }, ignoreInit = TRUE)
 
     observeEvent(input$run_catboost_model_insights, {
@@ -946,7 +988,7 @@ page_analysis_modules_server <- function(id, ctx) {
       }
 
       action_buttons <- list()
-      if ("autoquant_model_assessment" %in% available) {
+      if ("model_assessment" %in% available) {
         action_buttons <- c(action_buttons, list(
           actionButton(session$ns("run_catboost_model_assessment"), "Run Model Assessment", class = "btn-secondary")
         ))

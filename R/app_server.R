@@ -24,6 +24,13 @@ server <- function(input, output, session) {
     records = list(),
     selected_run_id = NULL
   )
+  ctx$project_collector_state <- reactiveValues(
+    collector = NULL,
+    run_index = 0L,
+    last_result = NULL,
+    last_run_id = NULL,
+    message = NULL
+  )
 
   ctx$plot_result <- reactiveVal(NULL)
   ctx$plot_error <- reactiveVal(NULL)
@@ -124,6 +131,127 @@ server <- function(input, output, session) {
   ctx$get_export_name <- function() "autoplots_report"
   ctx$export_name_value <- function() "autoplots_report"
   ctx$set_export_settings <- function(export_dir = NULL, export_name = NULL) invisible(NULL)
+
+  ctx$project_collector_output_dir <- function() {
+    export_dir <- tryCatch(selected_value(ctx$get_export_dir()), error = function(e) NULL)
+    if (is.null(export_dir) || !nzchar(export_dir)) {
+      export_dir <- getwd()
+    }
+    file.path(export_dir, "project_artifact_collector")
+  }
+  ctx$project_collector_project_id <- function() {
+    raw <- ctx$current_data_name() %||% "analytics_project"
+    .project_collector_slug(tools::file_path_sans_ext(basename(raw)))
+  }
+  ctx$ensure_project_collector <- function() {
+    collector <- ctx$project_collector_state$collector
+    if (inherits(collector, "project_artifact_collector")) {
+      return(collector)
+    }
+
+    collector <- create_project_artifact_collector(
+      project_id = ctx$project_collector_project_id(),
+      project_name = ctx$current_data_name() %||% "Analytics Project",
+      output_dir = ctx$project_collector_output_dir()
+    )
+    ctx$project_collector_state$collector <- collector
+    ctx$project_collector_state$message <- "Project Artifact Collector created."
+    collector
+  }
+  ctx$next_project_run_id <- function() {
+    current <- suppressWarnings(as.integer(ctx$project_collector_state$run_index %||% 0L))
+    current <- if (is.na(current)) 0L else current
+    current <- current + 1L
+    ctx$project_collector_state$run_index <- current
+    sprintf("run_%03d", current)
+  }
+  ctx$project_collector_implemented_modules <- function() {
+    stages <- workflow_stage_registry()
+    unique(unlist(lapply(stages, function(stage) {
+      if (!stage$status %in% c("implemented", "experimental")) {
+        return(character())
+      }
+      workflow_stage_module_ids(stage)
+    }), use.names = FALSE))
+  }
+  ctx$append_module_result_to_collector <- function(result, module_id, run_id = NULL, record_skipped = TRUE) {
+    collector <- ctx$ensure_project_collector()
+    module_id <- normalize_module_id(module_id)
+    module <- get_module_definition(module_id)
+    run_id <- run_id %||% ctx$next_project_run_id()
+
+    append_result <- project_collector_append_result(
+      collector = collector,
+      result = result,
+      project_id = collector$project_id,
+      project_name = collector$project_name,
+      run_id = run_id,
+      module_id = module_id,
+      module_label = module$label %||% module_id,
+      write = FALSE
+    )
+    if (!is.null(append_result$value)) {
+      collector <- append_result$value
+    }
+
+    if (isTRUE(record_skipped)) {
+      skipped_modules <- setdiff(ctx$project_collector_implemented_modules(), module_id)
+      for (skipped_module_id in skipped_modules) {
+        skipped_module <- get_module_definition(skipped_module_id)
+        skipped_bundle <- project_artifact_bundle(
+          project_id = collector$project_id,
+          project_name = collector$project_name,
+          run_id = run_id,
+          module_id = skipped_module_id,
+          module_label = skipped_module$label %||% skipped_module_id,
+          artifacts = list(),
+          status = "not_requested",
+          warnings = paste("Module was not requested for", run_id)
+        )
+        skipped_result <- project_collector_append_bundle(collector, skipped_bundle, write = FALSE)
+        if (!is.null(skipped_result$value)) {
+          collector <- skipped_result$value
+        }
+      }
+    }
+
+    write_result <- project_collector_write(collector)
+    ctx$project_collector_state$collector <- collector
+    ctx$project_collector_state$last_result <- write_result
+    ctx$project_collector_state$last_run_id <- run_id
+    ctx$project_collector_state$message <- if (identical(write_result$status, "success")) {
+      paste("Project Artifact Collector updated for", run_id)
+    } else {
+      paste("Project Artifact Collector update failed:", paste(write_result$errors %||% character(), collapse = " | "))
+    }
+    write_result
+  }
+  ctx$project_collector_summary <- function() {
+    collector <- ctx$project_collector_state$collector
+    result <- ctx$project_collector_state$last_result
+    manifest_file <- if (inherits(collector, "project_artifact_collector")) collector$manifest_file else NA_character_
+    docx_file <- if (inherits(collector, "project_artifact_collector")) collector$collector_docx else NA_character_
+    normalize_collector_path <- function(path) {
+      if (is.null(path) || is.na(path) || !nzchar(path)) {
+        return(NA_character_)
+      }
+      normalizePath(path, winslash = "/", mustWork = FALSE)
+    }
+    artifact_count <- if (inherits(collector, "project_artifact_collector")) {
+      sum(vapply(collector$bundles, function(bundle) length(bundle$artifacts %||% list()), integer(1)))
+    } else {
+      0L
+    }
+    data.table::data.table(
+      collector_status = result$status %||% if (inherits(collector, "project_artifact_collector")) "created" else "not_created",
+      current_run_id = ctx$project_collector_state$last_run_id %||% NA_character_,
+      artifact_count = artifact_count,
+      bundle_count = if (inherits(collector, "project_artifact_collector")) length(collector$bundles) else 0L,
+      collector_docx = normalize_collector_path(docx_file),
+      manifest_status = if (!is.na(manifest_file) && file.exists(manifest_file)) "ready" else "not_written",
+      manifest_file = normalize_collector_path(manifest_file)
+    )
+  }
   ctx$get_current_plot_type <- function() NULL
   ctx$current_plot_options <- function() list()
   ctx$load_config_into_builder <- function(config) invisible(NULL)
@@ -323,7 +451,7 @@ server <- function(input, output, session) {
       } else if (identical(artifact$artifact_type, "plot")) {
         ctx$saved_module_artifacts$artifacts[[artifact$artifact_id]] <- artifact
         added <- added + 1L
-      } else if (identical(artifact$artifact_type, "text")) {
+      } else if (artifact$artifact_type %in% c("text", "genai_narrative", "narrative", "diagnostic", "recommendation", "json")) {
         ctx$saved_text_artifacts$artifacts[[artifact$artifact_id]] <- artifact
         added <- added + 1L
       } else if (identical(artifact$artifact_type, "table")) {
@@ -625,6 +753,7 @@ server <- function(input, output, session) {
       table_artifacts = ctx$saved_table_artifacts$artifacts,
       report_plans = ctx$report_plan_state$plans,
       active_plan_id = ctx$report_plan_state$active_plan_id,
+      project_collector = ctx$project_collector_summary(),
       code_run_records = ctx$code_runner_state$records,
       code_run_requests = ctx$code_runner_state$requests,
       code_run_results = lapply(ctx$code_runner_state$results, code_run_result_summary),
@@ -706,6 +835,10 @@ server <- function(input, output, session) {
     ctx$saved_table_artifacts$artifacts <- project_state$table_artifacts %||% list()
     ctx$report_plan_state$plans <- repair_report_plan_collection(project_state$report_plans %||% list())
     ctx$report_plan_state$active_plan_id <- project_state$active_plan_id %||% NULL
+    ctx$project_collector_state$collector <- NULL
+    ctx$project_collector_state$last_result <- NULL
+    ctx$project_collector_state$last_run_id <- NULL
+    ctx$project_collector_state$message <- "Project loaded. Collector will be recreated when the next module runs."
     ctx$code_runner_state$records <- project_state$code_run_records %||% list()
     ctx$code_runner_state$requests <- project_state$code_run_requests %||% list()
     ctx$code_runner_state$results <- project_state$code_run_results %||% list()

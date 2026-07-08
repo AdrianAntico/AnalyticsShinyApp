@@ -75,7 +75,7 @@ create_custom_code_hook_request <- function(
   hook_context$data_name <- data_name %||% hook_context$data_name
   hook_context$auto_run <- FALSE
 
-  create_code_run_request(
+  request <- create_code_run_request(
     run_id = run_id,
     label = label %||% paste("Custom code", timing, "for", stage),
     code = code,
@@ -88,6 +88,8 @@ create_custom_code_hook_request <- function(
     created_at = created_at,
     updated_at = created_at
   )
+  request$metadata <- hook_context
+  request
 }
 
 validate_custom_code_hook_request <- function(request, policy = NULL) {

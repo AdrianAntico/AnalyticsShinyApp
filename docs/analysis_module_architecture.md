@@ -11,12 +11,14 @@ They may:
 - run analysis, modeling, or forecasting
 - preview generated artifacts internally
 - return artifacts to the Artifact Library
+- submit standardized artifacts to the Project Artifact Collector through the app/workflow layer
 
 They may not:
 
 - own final report layout
 - directly mutate Display or Layout page state
 - export reports directly
+- write directly to the project collector DOCX
 - bypass artifact validation
 - bypass `service_result`
 - create ad hoc rendering systems
@@ -122,6 +124,10 @@ Run results should use:
 
 The page module or app shell may decide whether to add returned artifacts to the Artifact Library, but the analysis module should not mutate the library directly.
 
+The page module, workflow coordinator, or app shell appends accepted module results to the Project Artifact Collector with `project_collector_append_result()`. Modules remain producers; the collector owns project-level aggregation and the primary project DOCX.
+
+Render targets are presentation-layer decisions. Modules should produce one standard artifact object; human reports may render it interactively while the Project Artifact Collector renders an LLM-ready screenshot/context representation.
+
 ## Module Artifact Contract
 
 Modules should return standard artifacts created with `create_artifact()`.
@@ -135,6 +141,10 @@ Artifact types may include:
 - `model_summary`
 - `forecast_block`
 - `genai_narrative`
+- `diagnostic`
+- `recommendation`
+- `json`
+- `narrative`
 
 Artifacts should include enough metadata to support validation, display, export, project save/load, and future GenAI reasoning. At minimum, modules should set:
 

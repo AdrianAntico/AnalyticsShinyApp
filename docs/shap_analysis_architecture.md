@@ -106,6 +106,8 @@ Two-way interaction surfaces:
 - support heatmap, contour-like, or binned surface artifacts when available
 - reserve metadata for future three-way extensions
 
+Interaction analysis is optional. If AutoQuant cannot generate interaction ranking, surface, or heatmap artifacts because pair columns, source feature columns, SHAP columns, row counts, or unique value combinations are unavailable, it returns an `interaction_diagnostics` artifact instead of failing the SHAP run. AnalyticsShinyApp should normalize and display that diagnostics artifact, keep report plans valid, and avoid empty broken interaction sections. AutoNLS effect curves are independent of interaction diagnostics; selecting effect curves only must not require interaction inputs.
+
 By-variable and segment importance:
 
 - compare global or feature-specific SHAP behavior across segments
@@ -150,6 +152,8 @@ A useful dependence view includes:
 - binned summaries for dense data
 
 This is different from global importance. Importance says which variables matter overall. Dependence says how a variable contributes across its observed range and whether that contribution differs by target behavior, prediction level, segment, or interaction.
+
+Optional AutoNLS effect curves are configured in the Analytics Shiny App and executed by AutoQuant. The app passes `effect_curve_*` controls through to the AutoQuant SHAP generators, then normalizes returned `shap_effect_curve_values`, `shap_effect_curve_diagnostics`, and `shap_effect_curve_summary` artifacts without refitting curves or reimplementing AutoNLS logic.
 
 For regression, dependence text should use response-unit language when the prediction scale supports it. For binary classification, dependence text should state whether the contribution is on probability or logit scale and always name the positive class.
 

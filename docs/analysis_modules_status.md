@@ -6,7 +6,7 @@ Every analysis module is an artifact generator. The Analytics Shiny App owns orc
 
 Workflow UX v1 organizes implemented and external/future work into the analytical lifecycle documented in `docs/workflow_architecture.md`.
 
-- Model Readiness is pre-model and maps to the existing Target Analysis / readiness adapter, currently `autoquant_model_assessment`.
+- Model Readiness is pre-model and maps to the existing Target Analysis / readiness adapter, `autoquant_model_readiness`.
 - Model Assessment is post-model evaluation only. It must not be used as the user-facing name for pre-model target/readiness diagnostics.
 - Feature Engineering and Model Prep are shown as external/future stages until Rodeo/PolarsFE and model-prep integration are intentionally added.
 - Workflow actions open existing modules or draft Code Runner hooks; they do not run modules or custom code automatically.
@@ -16,7 +16,7 @@ Workflow UX v1 organizes implemented and external/future work into the analytica
 | module_id | AutoQuant source function | status | supported problem types | expected artifact types | report plans created | QA helper | known limitations |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | autoquant_eda | `generate_eda_artifacts()` | Experimental adapter | General tabular EDA | plot, table, text | Recommended, Full, Diagnostics Only | `qa_autoquant_eda_integration()` | Depends on available EDA inputs selected by the user; exported replay code still marks app-side conversion as TODO. |
-| autoquant_model_assessment | `generate_model_assessment_artifacts()` | Experimental adapter | Model readiness / target diagnostics | plot, table, text | Recommended Model Readiness, Full Model Readiness, Diagnostics Only | `qa_autoquant_model_assessment_integration()` | Uses the current legacy-named AutoQuant model readiness artifact generator contract; exported replay code still marks app-side conversion as TODO. |
+| autoquant_model_readiness | `generate_model_assessment_artifacts()` | Experimental adapter | Model readiness / target diagnostics | plot, table, text | Recommended Model Readiness, Full Model Readiness, Diagnostics Only | `qa_autoquant_model_readiness_integration()` | Uses the current legacy-named AutoQuant model readiness artifact generator contract; exported replay code still marks app-side conversion as TODO. |
 | autoquant_regression_model_insights | `generate_regression_model_insights_artifacts()` | Experimental adapter | Regression model diagnostics from model outputs/predictions | plot, table, text | Recommended, Full, Feature Effects Only, Diagnostics Only | `qa_autoquant_regression_model_insights_integration()` | Requires regression target/prediction columns and available AutoQuant support; richer model-object integration is deferred. |
 | autoquant_binary_model_insights | `generate_binary_classification_model_insights_artifacts()` | Experimental adapter | Binary classification model diagnostics from target and prediction scores | plot, table, text | Recommended, Full, Threshold Diagnostics, Feature Effects Only | `qa_autoquant_binary_model_insights_integration()` | Uses structured AutoQuant artifacts as the source of truth; `BinaryClassificationModelInsightsReport()` remains the optional AutoQuant-native standalone renderer, not the primary app integration path. |
 | autoquant_regression_shap_analysis | `generate_regression_shap_analysis_artifacts()` | Experimental adapter | Regression SHAP analysis from precomputed `Shap_` columns | plot, table, text | Recommended, Full, Interaction Diagnostics, Segment And Time Effects, Local Explanations, Diagnostics Only when artifacts exist | `qa_autoquant_regression_shap_analysis_integration()` | AutoQuant owns SHAP artifact generation. The app validates precomputed SHAP inputs, normalizes AutoQuant artifacts, and creates report plans. `RegressionShapAnalysisReport()` remains an optional AutoQuant-native standalone renderer, not the app ingestion path. |
@@ -66,7 +66,7 @@ Each adapter may add module-specific metadata such as selected variables, model 
 Module artifacts use run-scoped prefixes to avoid collisions across repeated runs:
 
 - AutoQuant EDA: `aq_eda_`
-- Model Readiness: `aq_ma_` legacy prefix retained for `autoquant_model_assessment`
+- Model Readiness: `aq_mr_`
 - Regression Model Insights: `aq_rmi_`
 - Binary Classification Model Insights: `aq_bmi_`
 - Regression SHAP Analysis: `aq_rshap_`
@@ -91,9 +91,9 @@ AutoQuant owns the functions that generate SHAP analyses and SHAP artifact paylo
 
 Regression and Binary Classification SHAP input data must already contain numeric columns whose names start with `Shap_`. For example, `Shap_Impressions` maps to source feature `Impressions`. AutoQuant modeling functions are responsible for creating SHAP values upstream when requested; Analytics Shiny App does not compute SHAP values, call model prediction functions, or call SHAP backend packages.
 
-Regression SHAP artifacts include AutoPlots-backed plot widgets, data.table-compatible tables, and text artifacts. Interaction diagnostics use binned or leveled combinations from ordinary `Shap_` columns and source variables; exact pairwise SHAP interaction values remain deferred unless upstream interaction-specific outputs exist.
+Regression SHAP artifacts include AutoPlots-backed plot widgets, data.table-compatible tables, and text artifacts. Interaction diagnostics use binned or leveled combinations from ordinary `Shap_` columns and source variables; exact pairwise SHAP interaction values remain deferred unless upstream interaction-specific outputs exist. The app exposes AutoQuant's optional AutoNLS effect-curve controls for numeric SHAP dependence data, but AutoQuant remains responsible for fitting curves and returning `shap_effect_curve_*` artifacts.
 
-Binary Classification SHAP artifacts include threshold context and class balance / outcome context when AutoQuant returns those sections. Multiclass SHAP remains deferred. SHAP module runners return structured warnings when required AutoQuant generators are unavailable, which prevents the app from pretending to compute SHAP values before the AutoQuant engines exist.
+Binary Classification SHAP artifacts include threshold context and class balance / outcome context when AutoQuant returns those sections. Binary SHAP also exposes the same optional AutoNLS effect-curve controls as regression SHAP. Multiclass SHAP remains deferred. SHAP module runners return structured warnings when required AutoQuant generators are unavailable, which prevents the app from pretending to compute SHAP values before the AutoQuant engines exist.
 
 ## Project Persistence
 

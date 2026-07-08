@@ -15,18 +15,18 @@ The Workflow page is a launchpad, not a wizard. It does not run modules automati
 | 1 | `eda` | EDA | implemented | `autoquant_eda` | Understand data structure, distributions, correlations, and trends. |
 | 2 | `feature_engineering` | Feature Engineering | external/future | external today | Create modeling features. Rodeo/PolarsFE app integration is future work. |
 | 3 | `model_prep` | Model Prep | external/future | external today | Define partitions, folds, train/test splits, and leakage-safe model data. |
-| 4 | `model_readiness` | Model Readiness | implemented | `autoquant_model_assessment` | Target diagnostics, leakage/collider risk, drift, class balance, and modeling recommendations. |
+| 4 | `model_readiness` | Model Readiness | implemented | `autoquant_model_readiness` | Target diagnostics, leakage/collider risk, drift, class balance, and modeling recommendations. |
 | 5 | `catboost_builder` | CatBoost Builder | experimental | `autoquant_catboost_builder` | Train and score CatBoost regression or binary classification models. |
-| 6 | `model_assessment` | Model Assessment | external/future | post-model evaluation only | Evaluate trained/scored model performance. |
+| 6 | `model_assessment` | Model Assessment | planned | post-model evaluation only | Evaluate trained/scored model performance when a true post-model assessment adapter is wired. |
 | 7 | `model_insights` | Model Insights | implemented | `autoquant_regression_model_insights`, `autoquant_binary_model_insights` | Understand model behavior, diagnostics, and feature effects. |
 | 8 | `shap_insights` | SHAP Insights | implemented | `autoquant_regression_shap_analysis`, `autoquant_binary_shap_analysis` | Understand prediction-surface behavior using precomputed SHAP columns. |
 | 9 | `report_export` | Report / Export | implemented | Layouts and Export pages | Compose, export, and share artifacts. |
 
 ## Terminology Rule
 
-Model Readiness is pre-model. In the current app it maps to the existing Target Analysis / readiness adapter, whose internal module id remains `autoquant_model_assessment` until a future rename is worth the churn.
+Model Readiness is pre-model. In the current app it maps directly to the Target Analysis / readiness adapter, `autoquant_model_readiness`.
 
-Model Assessment is post-model. It is reserved for evaluation of an already trained/scored model and must not be used as the user-facing label for target/readiness diagnostics.
+Model Assessment is post-model. It is reserved for evaluation of an already trained/scored model and must not be used as the user-facing label for target/readiness diagnostics. The current `model_assessment` registry entry is a planned placeholder. The legacy `autoquant_model_assessment` id is compatibility only and aliases to `autoquant_model_readiness`.
 
 ## Module Actions
 

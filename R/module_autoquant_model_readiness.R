@@ -1,4 +1,4 @@
-autoquant_model_assessment_function_name <- function() {
+autoquant_model_readiness_function_name <- function() {
   if (!requireNamespace("AutoQuant", quietly = TRUE)) {
     return(NULL)
   }
@@ -11,17 +11,17 @@ autoquant_model_assessment_function_name <- function() {
   "generate_model_assessment_artifacts"
 }
 
-autoquant_model_assessment_available <- function() {
-  !is.null(autoquant_model_assessment_function_name())
+autoquant_model_readiness_available <- function() {
+  !is.null(autoquant_model_readiness_function_name())
 }
 
-autoquant_model_assessment_unavailable_result <- function() {
+autoquant_model_readiness_unavailable_result <- function() {
   service_result(
     status = "error",
     errors = "AutoQuant::generate_model_assessment_artifacts() was not found. Install/update AutoQuant before running AutoQuant Model Readiness.",
     metadata = list(
       error_code = "MODULE_DEPENDENCY_MISSING",
-      module_id = "autoquant_model_assessment"
+      module_id = "autoquant_model_readiness"
     )
   )
 }
@@ -44,9 +44,9 @@ autoquant_model_assessment_unavailable_result <- function() {
   "Regression"
 }
 
-validate_autoquant_model_assessment_config <- function(data, config) {
+validate_autoquant_model_readiness_config <- function(data, config) {
   if (!requireNamespace("AutoQuant", quietly = TRUE)) {
-    return(autoquant_model_assessment_unavailable_result())
+    return(autoquant_model_readiness_unavailable_result())
   }
 
   if (is.null(data)) {
@@ -55,7 +55,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
       errors = "Upload data before running AutoQuant Model Readiness.",
       metadata = list(
         error_code = "DATA_MISSING",
-        module_id = "autoquant_model_assessment"
+        module_id = "autoquant_model_readiness"
       )
     ))
   }
@@ -70,7 +70,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
       errors = "AutoQuant Model Readiness config must be a list.",
       metadata = list(
         error_code = "MODULE_CONFIG_INVALID",
-        module_id = "autoquant_model_assessment"
+        module_id = "autoquant_model_readiness"
       )
     ))
   }
@@ -127,13 +127,13 @@ validate_autoquant_model_assessment_config <- function(data, config) {
       value = config,
       metadata = list(
         error_code = "MODULE_CONFIG_INVALID",
-        module_id = "autoquant_model_assessment"
+        module_id = "autoquant_model_readiness"
       )
     ))
   }
 
-  if (!autoquant_model_assessment_available()) {
-    return(autoquant_model_assessment_unavailable_result())
+  if (!autoquant_model_readiness_available()) {
+    return(autoquant_model_readiness_unavailable_result())
   }
 
   service_result(
@@ -141,7 +141,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
     value = config,
     messages = "AutoQuant Model Readiness config is valid.",
     metadata = list(
-      module_id = "autoquant_model_assessment",
+      module_id = "autoquant_model_readiness",
       problem_type = problem_type,
       n_rows = nrow(data),
       n_cols = ncol(data)
@@ -150,7 +150,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
 }
 
 .autoquant_ma_run_id <- function(timestamp = Sys.time()) {
-  paste0("autoquant_model_assessment_", format(timestamp, "%Y%m%d%H%M%S"))
+  paste0("autoquant_model_readiness_", format(timestamp, "%Y%m%d%H%M%S"))
 }
 
 .autoquant_ma_r_string <- function(value) {
@@ -161,7 +161,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
   deparse(value, width.cutoff = 500L)
 }
 
-.autoquant_ma_code <- function(config, function_name = autoquant_model_assessment_function_name()) {
+.autoquant_ma_code <- function(config, function_name = autoquant_model_readiness_function_name()) {
   function_name <- function_name %||% "generate_model_assessment_artifacts"
   paste(
     "assessment_result <- AutoQuant::generate_model_assessment_artifacts(",
@@ -326,7 +326,7 @@ validate_autoquant_model_assessment_config <- function(data, config) {
   NULL
 }
 
-normalize_autoquant_model_assessment_artifacts <- function(
+normalize_autoquant_model_readiness_artifacts <- function(
   autoquant_result,
   config,
   module_run_id = .autoquant_ma_run_id(),
@@ -346,7 +346,7 @@ normalize_autoquant_model_assessment_artifacts <- function(
         next
       }
 
-      base_id <- paste("aq_ma", module_run_id, .autoquant_ma_slug(name), sep = "_")
+      base_id <- paste("aq_mr", module_run_id, .autoquant_ma_slug(name), sep = "_")
       artifact_id <- base_id
       suffix <- 2L
       while (artifact_id %in% used_ids) {
@@ -374,15 +374,15 @@ normalize_autoquant_model_assessment_artifacts <- function(
         artifact_id = artifact_id,
         artifact_type = artifact_type,
         label = label,
-        source_module = "autoquant_model_assessment",
+        source_module = "autoquant_model_readiness",
         object = object,
         content = content,
         config = config,
         code = .autoquant_ma_code(config),
         metadata = module_artifact_metadata(
-          module_id = "autoquant_model_assessment",
+          module_id = "autoquant_model_readiness",
           module_run_id = module_run_id,
-          source_module = "autoquant_model_assessment",
+          source_module = "autoquant_model_readiness",
           original_name = name,
           original_section = root,
           normalized_section = section,
@@ -493,7 +493,7 @@ normalize_autoquant_model_assessment_artifacts <- function(
   create_report_plan(
     plan_id = paste(module_run_id, plan_type, sep = "_"),
     label = labels[[plan_type]],
-    source_module = "autoquant_model_assessment",
+    source_module = "autoquant_model_readiness",
     description = descriptions[[plan_type]],
     layout_type = "sections",
     cols = 2L,
@@ -501,7 +501,7 @@ normalize_autoquant_model_assessment_artifacts <- function(
     artifact_ids = artifact_ids,
     rationale = paste("AutoQuant Model Readiness", plan_type, "plan generated from readiness artifacts."),
     metadata = list(
-      module_id = "autoquant_model_assessment",
+      module_id = "autoquant_model_readiness",
       module_run_id = module_run_id,
       model_name = config$model_name %||% "Model",
       problem_type = .autoquant_ma_problem_type(config),
@@ -511,7 +511,7 @@ normalize_autoquant_model_assessment_artifacts <- function(
   )
 }
 
-build_autoquant_model_assessment_report_plans <- function(artifacts, config = list(), module_run_id = NULL) {
+build_autoquant_model_readiness_report_plans <- function(artifacts, config = list(), module_run_id = NULL) {
   if (is.null(artifacts) || !length(artifacts)) {
     return(list())
   }
@@ -529,8 +529,8 @@ build_autoquant_model_assessment_report_plans <- function(artifacts, config = li
   plans
 }
 
-run_autoquant_model_assessment_module <- function(data, config) {
-  validation <- validate_autoquant_model_assessment_config(data, config)
+run_autoquant_model_readiness_module <- function(data, config) {
+  validation <- validate_autoquant_model_readiness_config(data, config)
   if (!identical(validation$status, "success")) {
     validation$code <- .autoquant_ma_code(config)
     return(validation)
@@ -538,7 +538,7 @@ run_autoquant_model_assessment_module <- function(data, config) {
 
   generated_at <- Sys.time()
   module_run_id <- .autoquant_ma_run_id(generated_at)
-  function_name <- autoquant_model_assessment_function_name()
+  function_name <- autoquant_model_readiness_function_name()
 
   result <- tryCatch(
     do.call(
@@ -552,7 +552,7 @@ run_autoquant_model_assessment_module <- function(data, config) {
         diagnostics = list(condition = e),
         metadata = list(
           error_code = "RUNTIME_ERROR",
-          module_id = "autoquant_model_assessment",
+          module_id = "autoquant_model_readiness",
           module_run_id = module_run_id,
           generated_at = generated_at,
           run_timestamp = generated_at
@@ -566,13 +566,13 @@ run_autoquant_model_assessment_module <- function(data, config) {
     return(result)
   }
 
-  artifacts <- normalize_autoquant_model_assessment_artifacts(
+  artifacts <- normalize_autoquant_model_readiness_artifacts(
     result,
     config,
     module_run_id = module_run_id,
     generated_at = generated_at
   )
-  plans <- build_autoquant_model_assessment_report_plans(artifacts, config, module_run_id = module_run_id)
+  plans <- build_autoquant_model_readiness_report_plans(artifacts, config, module_run_id = module_run_id)
   counts <- module_artifact_counts(artifacts)
 
   service_result(
@@ -588,7 +588,7 @@ run_autoquant_model_assessment_module <- function(data, config) {
       length(plans)
     ),
     metadata = module_run_metadata(
-      module_id = "autoquant_model_assessment",
+      module_id = "autoquant_model_readiness",
       module_run_id = module_run_id,
       generated_at = generated_at,
       data_name = config$model_name %||% "Model",
@@ -616,7 +616,7 @@ run_autoquant_model_assessment_module <- function(data, config) {
   )
 }
 
-qa_autoquant_model_assessment_integration <- function() {
+qa_autoquant_model_readiness_integration <- function() {
   binary_data <- data.table::data.table(
     y = rep(c(0L, 1L), 50L),
     p = seq(0.01, 0.99, length.out = 100L),
@@ -650,10 +650,10 @@ qa_autoquant_model_assessment_integration <- function() {
     theme = "light"
   )
 
-  binary_result <- run_autoquant_model_assessment_module(binary_data, binary_config)
-  regression_result <- run_autoquant_model_assessment_module(regression_data, regression_config)
+  binary_result <- run_autoquant_model_readiness_module(binary_data, binary_config)
+  regression_result <- run_autoquant_model_readiness_module(regression_data, regression_config)
 
-  if (!autoquant_model_assessment_available()) {
+  if (!autoquant_model_readiness_available()) {
     friendly <- identical(binary_result$status, "error") &&
       identical(binary_result$metadata$error_code, "MODULE_DEPENDENCY_MISSING")
     regression_friendly <- identical(regression_result$status, "error") &&
@@ -707,8 +707,21 @@ qa_autoquant_model_assessment_integration <- function() {
     )
   )
   data.table::rbindlist(
-    list(base_checks, module_result_convention_checks(binary_result, "aq_ma_")),
+    list(base_checks, module_result_convention_checks(binary_result, "aq_mr_")),
     use.names = TRUE,
     fill = TRUE
   )
 }
+
+# Legacy compatibility only. The preferred app adapter id and helper names use
+# "model_readiness"; these wrappers keep older project state and QA scripts
+# landing on the same implementation without duplicating logic.
+autoquant_model_assessment_function_name <- autoquant_model_readiness_function_name
+autoquant_model_assessment_available <- autoquant_model_readiness_available
+autoquant_model_assessment_unavailable_result <- autoquant_model_readiness_unavailable_result
+validate_autoquant_model_assessment_config <- validate_autoquant_model_readiness_config
+normalize_autoquant_model_assessment_artifacts <- normalize_autoquant_model_readiness_artifacts
+build_autoquant_model_assessment_report_plans <- build_autoquant_model_readiness_report_plans
+run_autoquant_model_assessment_module <- run_autoquant_model_readiness_module
+qa_autoquant_model_assessment_integration <- qa_autoquant_model_readiness_integration
+
