@@ -1498,11 +1498,67 @@ Current state: Speculative.
 
 Open research: Relationship to report builder, story builder, collector, and render target preview.
 
-Future evolution: Phase 4 report/evidence storytelling.
+Future evolution: Phase 6 report/evidence storytelling.
 
 Maturity: Speculative.
 
-### 52. Agentic Lab
+### 52. Analytics Workstation Guide
+
+Canonical definition: The Analytics Workstation Guide is the cross-cutting mentor layer that helps users understand where they are, what they know, what remains unknown, what evidence exists, what evidence is missing, and what to do next.
+
+Parent concepts: Workstation UX, Knowledge State, Mission Control.
+
+Child concepts: First-Run Orientation, Contextual Guidance, Next-Step Recommendation, Guide Explanation.
+
+Dependencies: Project state, Knowledge State, Mission Control, Artifact Studio, Collector, Evidence Strategy, Execution Mode, GenAI status, async job status.
+
+Origin: The workstation became sophisticated enough that users needed architecture-aware guidance rather than feature exposure.
+
+Why it appeared: Users need help thinking inside an evidence-centered analytical operating environment.
+
+Problem it solved: Prevents Analytics Workstation from feeling like a collection of pages or hidden architecture.
+
+Implementation: Architecture only.
+
+Validation: Design review only.
+
+Current state: Designed.
+
+Open research: Best UI placement, deterministic recommendation rules, GenAI-assisted teaching, and onboarding effectiveness.
+
+Future evolution: First-run orientation, persistent guide cue, docked panel, Mission Control widget, and contextual Artifact Studio explanations.
+
+Maturity: Emerging.
+
+### 53. Knowledge Library
+
+Canonical definition: The Knowledge Library is the authoritative in-app knowledge surface that exposes Analytics Workstation concepts, architecture, research, source chapters, timelines, downloads, and cross-links as a navigable body of institutional knowledge.
+
+Parent concepts: Knowledge Product System, Workstation UX, Book Compiler.
+
+Child concepts: Concept Page, Learning Path, Architecture Browser, Book Reader, Research Index, Timeline, Knowledge Pack.
+
+Dependencies: Product Vision, Manifesto, Concept Ontology, Chapter Mapping, Book Compiler, Source Packs, Guide Architecture, architecture docs, research docs.
+
+Origin: The repository accumulated enough product philosophy, ontology, architecture, research, and manuscript source that users needed an authoritative in-app way to browse and understand it.
+
+Why it appeared: The Guide teaches in context, but the system also needs a durable library that preserves, explains, and cross-links the architecture.
+
+Problem it solved: Prevents the workstation's institutional knowledge from existing only as repository documentation or conversational memory.
+
+Implementation: Architecture only.
+
+Validation: Design review only.
+
+Current state: Designed.
+
+Open research: Knowledge object metadata, ontology-aware search, concept page generation, stale documentation detection, and custom knowledge pack generation.
+
+Future evolution: Library mode, concept explorer, book reader, research index, timeline, downloads, Guide deep links, and GPT knowledge-base packs.
+
+Maturity: Emerging.
+
+### 54. Agentic Lab
 
 Canonical definition: Agentic Lab is the future workstation mode where AI proposes plans, explains evidence, previews actions before execution, and remains grounded in project artifacts and evidence plans.
 
@@ -1528,7 +1584,7 @@ Future evolution: AI plan panel, evidence grounding panel, trace panel.
 
 Maturity: Speculative.
 
-### 53. Model Landscape
+### 55. Model Landscape
 
 Canonical definition: Model Landscape is a future spatial or graph-based workstation mode for viewing models, runs, artifacts, diagnostics, metrics, and relationships as an analytical landscape.
 
@@ -1550,11 +1606,11 @@ Current state: Speculative.
 
 Open research: Spatial metaphors, graph layout, model comparison.
 
-Future evolution: Phase 6 spatial model landscape.
+Future evolution: Phase 8 spatial model landscape.
 
 Maturity: Speculative.
 
-### 54. Report Plan
+### 56. Report Plan
 
 Canonical definition: A Report Plan is the structured description of what sections, artifacts, tables, diagnostics, and narratives should render in a report.
 
@@ -1580,7 +1636,7 @@ Future evolution: Report plans become one input to delivery workflows.
 
 Maturity: Stable.
 
-### 55. Human Report
+### 57. Human Report
 
 Canonical definition: Human Report is a render target optimized for human interpretation, presentation quality, readability, and narrative structure.
 
@@ -1606,7 +1662,7 @@ Future evolution: Better report preview and artifact-based story assembly.
 
 Maturity: Stable.
 
-### 56. LLM DOCX
+### 58. LLM DOCX
 
 Canonical definition: LLM DOCX is a render target optimized for feeding compressed analytical evidence to LLMs or custom GPT knowledge workflows, prioritizing completeness and interpretability over human presentation aesthetics.
 
@@ -1632,7 +1688,7 @@ Future evolution: Token-aware LLM evidence compiler.
 
 Maturity: Research/emerging.
 
-### 57. AutoPlots
+### 59. AutoPlots
 
 Canonical definition: AutoPlots is the production visualization package that owns chart rendering primitives and should be called through high-level public functions from Analytics Workstation.
 
@@ -1660,7 +1716,7 @@ Future evolution: Composite functions and information encoding profiles.
 
 Maturity: Foundational.
 
-### 58. AutoQuant
+### 60. AutoQuant
 
 Canonical definition: AutoQuant is the analytics/modeling engine layer that provides modules and adapters such as EDA, Model Readiness, SHAP, Model Insights, and CatBoost Builder to Analytics Workstation.
 
@@ -1688,7 +1744,7 @@ Future evolution: More modules and richer artifact producers.
 
 Maturity: Foundational.
 
-### 59. AutoNLS
+### 61. AutoNLS
 
 Canonical definition: AutoNLS is an optional nonlinear modeling engine used for effect curves and model fitting, intended to accept original-scale data while using internal transformations or scaling when needed for optimizer stability.
 
@@ -1714,7 +1770,7 @@ Future evolution: More robust fitting diagnostics and strategy selection.
 
 Maturity: Emerging.
 
-### 60. SHAP Analysis
+### 62. SHAP Analysis
 
 Canonical definition: SHAP Analysis is the module family for producing SHAP importance, dependence, interaction, grouped summaries, effect curves, diagnostics, and report artifacts.
 
@@ -1742,7 +1798,7 @@ Future evolution: SHAP-specific LLM encodings and evidence routing rules.
 
 Maturity: Stable.
 
-### 61. SHAP Interaction Guard
+### 63. SHAP Interaction Guard
 
 Canonical definition: SHAP Interaction Guard is the validation layer that prevents missing or insufficient interaction inputs from failing an otherwise successful SHAP run, emitting diagnostics and skipped artifacts instead.
 
@@ -1768,7 +1824,7 @@ Future evolution: Better interaction recommendation workflows.
 
 Maturity: Stable.
 
-### 62. Model Readiness
+### 64. Model Readiness
 
 Canonical definition: Model Readiness is the pre-model workflow stage that determines whether data are suitable for modeling, including target analysis, leakage detection, collider diagnostics, drift, class balance, missingness, and recommendations.
 
@@ -1796,7 +1852,7 @@ Future evolution: Feeds CatBoost Builder and Mission Control alerts.
 
 Maturity: Stable.
 
-### 63. Model Assessment
+### 65. Model Assessment
 
 Canonical definition: Model Assessment is the future or separate post-model evaluation stage for trained/scored models, including RMSE, MAE, ROC, PR, lift, gains, calibration, residual diagnostics, and holdout performance.
 
@@ -1822,7 +1878,7 @@ Future evolution: True post-model evaluator module.
 
 Maturity: Emerging.
 
-### 64. CatBoost Builder
+### 66. CatBoost Builder
 
 Canonical definition: CatBoost Builder is the modeling workflow stage that trains/builds CatBoost models after model readiness and before assessment/insights/SHAP.
 
@@ -1848,7 +1904,7 @@ Future evolution: More model build artifacts and diagnostics.
 
 Maturity: Stable.
 
-### 65. Model Insights
+### 67. Model Insights
 
 Canonical definition: Model Insights is the post-model interpretability and diagnostics stage for explaining trained model behavior beyond assessment metrics.
 
@@ -1874,7 +1930,7 @@ Future evolution: Evidence routing for model insight artifacts.
 
 Maturity: Stable.
 
-### 66. Workflow Registry
+### 68. Workflow Registry
 
 Canonical definition: Workflow Registry is the canonical mapping of workflow stages, module IDs, routes, labels, statuses, and launch behavior.
 
@@ -1900,7 +1956,7 @@ Future evolution: Workflow graph mode and command palette integration.
 
 Maturity: Stable.
 
-### 67. Service Result
+### 69. Service Result
 
 Canonical definition: Service Result is the standardized result object pattern for operations to report success, errors, warnings, data, and diagnostics without uncontrolled exceptions.
 
@@ -1926,7 +1982,7 @@ Future evolution: Service-result style should be used for GenAI, collector, and 
 
 Maturity: Stable.
 
-### 68. QA Contract
+### 70. QA Contract
 
 Canonical definition: QA Contract is a named test or validation routine that protects an architectural expectation, module integration, artifact contract, rendering path, or terminology rule.
 
@@ -1952,13 +2008,13 @@ Future evolution: QA mode in workstation and command palette.
 
 Maturity: Stable.
 
-### 69. Book Compiler
+### 71. Book Compiler
 
 Canonical definition: Book Compiler is the future pipeline that converts conversations, architecture docs, experiments, QA, git history, and source packs into manuscript render targets and knowledge products.
 
 Parent concepts: Knowledge Product System.
 
-Child concepts: Source Pack, Chapter Mapping, Architecture Synthesis, Concept Ontology.
+Child concepts: Source Pack, Chapter Mapping, Architecture Synthesis, Concept Ontology, Knowledge Library.
 
 Dependencies: corpus extraction, ontology, source packs.
 
@@ -1980,7 +2036,7 @@ Future evolution: Book, website, GPT knowledge base, white papers, talks.
 
 Maturity: Emerging.
 
-### 70. Source Pack
+### 72. Source Pack
 
 Canonical definition: A Source Pack is a structured collection of source material, excerpts, decisions, empirical findings, examples, and open questions for one concept or chapter.
 
@@ -2006,7 +2062,7 @@ Future evolution: Source packs should feed chapter drafts mechanically.
 
 Maturity: Emerging.
 
-### 71. Concept Ontology
+### 73. Concept Ontology
 
 Canonical definition: Concept Ontology is the canonical knowledge model of Analytics Workstation concepts, relationships, maturity, evolution, overlaps, and future research paths.
 
@@ -2032,7 +2088,7 @@ Future evolution: Should become the backbone for docs, book, GPT knowledge, talk
 
 Maturity: Emerging/foundational.
 
-### 72. Knowledge State
+### 74. Knowledge State
 
 Canonical definition: Knowledge State is the project-level representation of what is currently known, believed, assumed, unknown, contradicted, decision-ready, and still requiring evidence.
 
@@ -2062,7 +2118,7 @@ Future evolution: Knowledge State should guide evidence acquisition, context opt
 
 Maturity: Emerging/foundational.
 
-### 73. Knowledge
+### 75. Knowledge
 
 Canonical definition: Knowledge is a project-level conclusion, belief, or understanding supported by evidence and accompanied by confidence, assumptions, provenance, and limitations.
 
@@ -2092,7 +2148,7 @@ Future evolution: Knowledge claims should become graph nodes with supporting and
 
 Maturity: Emerging.
 
-### 74. Unknown
+### 76. Unknown
 
 Canonical definition: An Unknown is a question, relationship, risk, condition, or variable state whose truth is not currently established by available evidence.
 
@@ -2122,7 +2178,7 @@ Future evolution: Unknowns should drive next-question and future-evidence recomm
 
 Maturity: Emerging.
 
-### 75. Assumption
+### 77. Assumption
 
 Canonical definition: An Assumption is a statement currently treated as true or acceptable for reasoning despite incomplete validation.
 
@@ -2152,7 +2208,7 @@ Future evolution: Assumptions should connect to evidence and decision readiness.
 
 Maturity: Emerging.
 
-### 76. Hypothesis
+### 78. Hypothesis
 
 Canonical definition: A Hypothesis is a plausible but unvalidated claim that requires evidence.
 
@@ -2182,7 +2238,7 @@ Future evolution: Hypotheses should connect to experiments and future evidence.
 
 Maturity: Emerging.
 
-### 77. Validated Finding
+### 79. Validated Finding
 
 Canonical definition: A Validated Finding is a claim supported by sufficient evidence for the current decision context.
 
@@ -2212,7 +2268,7 @@ Future evolution: Validated findings should become reportable and routable proje
 
 Maturity: Emerging.
 
-### 78. Open Question
+### 80. Open Question
 
 Canonical definition: An Open Question is an explicit unresolved analytical question that should guide future evidence acquisition.
 
@@ -2242,7 +2298,7 @@ Future evolution: Open questions should feed Mission Control, Agentic Lab, and c
 
 Maturity: Emerging.
 
-### 79. Decision Readiness
+### 81. Decision Readiness
 
 Canonical definition: Decision Readiness is the degree to which available knowledge and evidence are sufficient to support a decision under the current stakes and constraints.
 
@@ -2272,7 +2328,7 @@ Future evolution: Decision Readiness should be surfaced in Mission Control and r
 
 Maturity: Emerging/foundational.
 
-### 80. Knowledge Gap
+### 82. Knowledge Gap
 
 Canonical definition: A Knowledge Gap is the difference between what is currently known and what must be known to reach the desired decision readiness.
 
@@ -2302,7 +2358,7 @@ Future evolution: Knowledge gaps should drive next highest-value questions.
 
 Maturity: Emerging.
 
-### 81. Contradiction
+### 83. Contradiction
 
 Canonical definition: A Contradiction is evidence or a finding that conflicts with another finding, assumption, hypothesis, or recommendation.
 
@@ -2332,7 +2388,7 @@ Future evolution: Contradictions should lower confidence and drive future eviden
 
 Maturity: Emerging.
 
-### 82. Future Evidence
+### 84. Future Evidence
 
 Canonical definition: Future Evidence is evidence that could be generated, collected, or requested to reduce uncertainty or increase decision readiness.
 
@@ -2359,6 +2415,276 @@ Current state: Emerging.
 Open research: Ranking future evidence by marginal information gain.
 
 Future evolution: Future Evidence should feed Mission Control and Agentic Lab planning.
+
+Maturity: Emerging.
+
+### 85. Investigation
+
+Canonical definition: An Investigation is a bounded analytical effort to answer a business question, test hypotheses, reduce uncertainty, and determine whether a decision is ready.
+
+Parent concepts: Analytical Intelligence Loop.
+
+Child concepts: Investigation Plan, Investigation State, Investigation Strategy, Investigation Completion, Investigation Failure.
+
+Dependencies: Business Question, Knowledge State, Hypothesis, Knowledge Gap, Evidence Requirement, Decision Readiness, Marginal Information Gain.
+
+Origin: Introduced after Ontology v1 validation showed the loop was complete but the analyst's planning process remained implicit.
+
+Why it appeared: Business questions do not map directly to artifacts; analysts conduct investigations before collecting or routing evidence.
+
+Problem it solved: Made the transformation from question to analytical plan explicit.
+
+Alternative ideas: Let Evidence Routing receive business questions directly, or let Agentic Lab improvise plans later.
+
+Implementation: Architecture-only in `docs/investigation_planning_architecture.md` and `book/source/investigation_planning.md`.
+
+Validation: Mentally re-run against Ontology v1; integrates without replacing existing layers.
+
+Current state: Emerging.
+
+Open research: Investigation state persistence, UI presentation, and agent preview-before-commit behavior.
+
+Future evolution: Investigation Plans should become first-class artifacts and Mission Control work items.
+
+Maturity: Emerging.
+
+### 86. Investigation Plan
+
+Canonical definition: An Investigation Plan is the structured plan that translates a business question and Knowledge State into hypotheses, evidence requirements, required analyses, required artifacts, stopping criteria, decision criteria, risks, cost, time, and alternative paths.
+
+Parent concepts: Investigation.
+
+Child concepts: Evidence Requirement, Required Analysis, Required Artifact, Stopping Criterion, Decision Criterion, Evidence Escalation.
+
+Dependencies: Knowledge State, Hypothesis, Unknown, Assumption, Knowledge Gap, Evidence Sufficiency, Decision Readiness.
+
+Origin: Investigation Planning Architecture.
+
+Why it appeared: The first artifact after a question should be the plan for answering it.
+
+Problem it solved: Prevented vague questions from being routed directly to arbitrary artifacts.
+
+Alternative ideas: Evidence Plan as first plan; however Evidence Plan is downstream and concrete, while Investigation Plan is analytical and abstract.
+
+Implementation: Architecture-only.
+
+Validation: Scenario walkthroughs show it fits between Knowledge State and evidence work.
+
+Current state: Emerging.
+
+Open research: Plan schema, authoring UI, plan-as-artifact conventions.
+
+Future evolution: Future AI agents should propose Investigation Plans before execution.
+
+Maturity: Emerging/foundational.
+
+### 87. Evidence Requirement
+
+Canonical definition: An Evidence Requirement is an abstract statement of what evidence is needed to test a hypothesis, resolve an unknown, or reach a decision-readiness threshold.
+
+Parent concepts: Investigation Plan.
+
+Child concepts: Required Analysis, Required Artifact, Missing Evidence, Future Evidence.
+
+Dependencies: Hypothesis, Knowledge Gap, Decision Criterion, Stopping Criterion.
+
+Origin: Investigation Planning Architecture.
+
+Why it appeared: Investigation Planning needed a concept between abstract knowledge gaps and concrete routed artifacts.
+
+Problem it solved: Preserved evidence needs even when artifacts are missing.
+
+Alternative ideas: Use Required Artifact only; too concrete and unable to express analytical need.
+
+Implementation: Architecture-only.
+
+Validation: Creative attribute example.
+
+Current state: Emerging.
+
+Open research: Mapping evidence requirements to artifact types and module capabilities.
+
+Future evolution: Evidence Requirements should become inputs to Evidence Routing.
+
+Maturity: Emerging.
+
+### 88. Required Analysis
+
+Canonical definition: Required Analysis is an analysis that must be run to produce evidence needed by an investigation.
+
+Parent concepts: Evidence Requirement.
+
+Child concepts: Required Artifact, Future Evidence.
+
+Dependencies: module availability, data availability, investigation strategy.
+
+Origin: Investigation Planning Architecture.
+
+Why it appeared: Some evidence does not exist yet and must be generated.
+
+Problem it solved: Distinguished missing artifacts from missing analytical work.
+
+Alternative ideas: Treat all missing analysis as Future Evidence.
+
+Implementation: Architecture-only.
+
+Validation: Examples include SHAP interaction, segment stability, calibration, drift, and residual diagnostics.
+
+Current state: Emerging.
+
+Open research: Module capability registry integration.
+
+Future evolution: Required Analysis may become planned but non-autonomous work items.
+
+Maturity: Emerging.
+
+### 89. Required Artifact
+
+Canonical definition: A Required Artifact is an artifact type or specific artifact needed by an Investigation Plan.
+
+Parent concepts: Evidence Requirement.
+
+Child concepts: Missing Evidence, Artifact Request.
+
+Dependencies: artifact inventory, producer semantics, table policy, investigation strategy.
+
+Origin: Investigation Planning Architecture.
+
+Why it appeared: Plans need to specify artifacts needed before routing can select concrete instances.
+
+Problem it solved: Clarified which artifacts are available, missing, or future.
+
+Alternative ideas: Evidence Routing discovers all needed artifacts without a plan.
+
+Implementation: Architecture-only.
+
+Validation: Creative attribute testing example.
+
+Current state: Emerging.
+
+Open research: Required artifact schema and matching rules.
+
+Future evolution: Required Artifacts should be resolvable against collector inventory.
+
+Maturity: Emerging.
+
+### 90. Decision Criterion
+
+Canonical definition: A Decision Criterion is a condition that must be satisfied before an investigation can support a decision.
+
+Parent concepts: Investigation Plan.
+
+Child concepts: Decision Readiness, Investigation Completion.
+
+Dependencies: business question, decision criticality, Knowledge State, evidence sufficiency.
+
+Origin: Investigation Planning Architecture.
+
+Why it appeared: Investigations need explicit conditions for action, not only evidence collection.
+
+Problem it solved: Prevented analysis from ending with evidence but no action standard.
+
+Alternative ideas: Use Decision Readiness only; readiness is state, criterion is rule.
+
+Implementation: Architecture-only.
+
+Validation: Deployment and creative testing examples.
+
+Current state: Emerging.
+
+Open research: Criteria libraries by workflow and decision type.
+
+Future evolution: Decision Criteria should be visible in Mission Control and reports.
+
+Maturity: Emerging.
+
+### 91. Evidence Escalation
+
+Canonical definition: Evidence Escalation is the planned movement from cheaper, weaker, or already available evidence to deeper, more expensive, or higher-confidence evidence when current evidence is insufficient.
+
+Parent concepts: Investigation Plan.
+
+Child concepts: Evidence Sufficiency, Future Evidence, Marginal Information Gain.
+
+Dependencies: Investigation Strategy, MIG, context constraints, provider capability.
+
+Origin: Investigation Planning Architecture.
+
+Why it appeared: Investigations often proceed in layers rather than gathering maximum evidence immediately.
+
+Problem it solved: Connected investigation depth to confidence and cost.
+
+Alternative ideas: Fixed evidence checklist or always send everything.
+
+Implementation: Architecture-only.
+
+Validation: Quick vs Critical Decision strategy examples.
+
+Current state: Emerging.
+
+Open research: Escalation thresholds by decision criticality.
+
+Future evolution: Evidence Escalation should guide future agent planning.
+
+Maturity: Emerging.
+
+### 92. Investigation Strategy
+
+Canonical definition: Investigation Strategy is the analytical posture that controls investigation depth, confidence threshold, evidence budget, stopping behavior, and presentation style.
+
+Parent concepts: Investigation Plan.
+
+Child concepts: Quick, Balanced, Thorough, Critical Decision, Scientific, Executive.
+
+Dependencies: business question, user constraints, decision criticality, Evidence Strategy.
+
+Origin: Investigation Planning Architecture.
+
+Why it appeared: Not every question deserves the same investigative depth.
+
+Problem it solved: Separated analytical planning posture from technical context strategies.
+
+Alternative ideas: Reuse Evidence Strategy; overlaps but Evidence Strategy governs routing posture while Investigation Strategy governs planning depth.
+
+Implementation: Architecture-only.
+
+Validation: Scenario examples.
+
+Current state: Emerging.
+
+Open research: Relationship between Investigation Strategy and Evidence Strategy.
+
+Future evolution: Investigation Strategy should map to Evidence Strategy and Context Optimization defaults.
+
+Maturity: Emerging.
+
+### 93. Investigation State
+
+Canonical definition: Investigation State is the lifecycle status of an investigation, such as Not Started, Planning, Collecting Evidence, Reasoning, Decision Ready, Needs More Evidence, Blocked, Completed, or Archived.
+
+Parent concepts: Investigation.
+
+Child concepts: Investigation Completion, Investigation Failure.
+
+Dependencies: plan status, evidence availability, reasoning status, decision readiness.
+
+Origin: Investigation Planning Architecture.
+
+Why it appeared: Investigations need lifecycle visibility for humans and future agents.
+
+Problem it solved: Made analytical work trackable.
+
+Alternative ideas: Use workflow stage status only; too coarse.
+
+Implementation: Architecture-only.
+
+Validation: State model defined.
+
+Current state: Emerging.
+
+Open research: UI/state persistence and integration with Mission Control.
+
+Future evolution: Investigation State should appear in project health and run timeline.
 
 Maturity: Emerging.
 
@@ -2392,6 +2718,12 @@ Decision Readiness: Now canonical. It represents evidence confidence for action,
 
 Future Evidence: Now canonical. It represents evidence that does not yet exist but would reduce uncertainty or increase readiness.
 
+Investigation Planning: Now canonical as the reasoning layer that transforms business questions into Investigation Plans before evidence routing.
+
+Evidence Requirement: Now canonical as the bridge between knowledge gaps and concrete artifacts.
+
+Execution Mode / Delegation Policy: Keep as an execution policy over the analytical intelligence loop rather than a new top-level ontology concept. It defines who advances the loop, where delegation gates appear, and how autonomy remains auditable. It is orthogonal to Evidence Strategy, which governs how much evidence should be gathered.
+
 ## Foundational Chain
 
 The highest-level conceptual hierarchy is:
@@ -2403,6 +2735,8 @@ Project
 -> Evidence
 
 -> Knowledge State
+
+-> Investigation Plan
 
 -> Information Encoding
 
@@ -2421,3 +2755,5 @@ Project
 -> Learning
 
 This chain should guide future book structure, documentation, and software development.
+
+Execution Mode / Delegation Policy overlays this chain. It does not replace any step. It determines whether each transition is manual, guided, assisted, autonomous under policy, or exposed in research step-by-step mode.

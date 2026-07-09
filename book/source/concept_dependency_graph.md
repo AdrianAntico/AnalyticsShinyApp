@@ -79,9 +79,35 @@ Evidence
   derived from -> Artifact
   scored by -> Artifact Quality
   scored by -> Trustworthiness
+  interpreted by -> Knowledge State
   selected by -> Evidence Routing
   encoded by -> Information Encoding
   packaged into -> Evidence Plan
+
+Knowledge State
+  consumes -> Evidence
+  consumes -> Collector Manifest
+  contains -> Knowledge
+  contains -> Unknowns
+  contains -> Assumptions
+  contains -> Hypotheses
+  contains -> Decision Readiness
+  emits -> Knowledge Gaps
+  emits -> Future Evidence
+  informs -> Investigation Plan
+
+Investigation Plan
+  consumes -> Business Question
+  consumes -> Knowledge State
+  defines -> Competing Hypotheses
+  defines -> Evidence Requirements
+  defines -> Required Analyses
+  defines -> Required Artifacts
+  defines -> Stopping Criteria
+  defines -> Decision Criteria
+  defines -> Evidence Escalation
+  feeds -> Context Optimization
+  feeds -> Evidence Routing
 
 Information Encoding
   transforms -> Artifact Representation
@@ -102,6 +128,8 @@ Render Target
   differs from -> Information Encoding
 
 Evidence Routing
+  consumes -> Evidence Requirements
+  consumes -> Required Artifacts
   consumes -> Artifact Inventory
   consumes -> Producer Semantics
   consumes -> Artifact Quality
@@ -347,4 +375,3 @@ Book Compiler
   emits -> White Papers
   emits -> Talks
 ```
-

@@ -33,6 +33,8 @@ Business Question
 
 The loop can be executed with or without GenAI. GenAI is an optional reasoning participant, not the owner of the loop.
 
+The loop can also be executed under different delegation postures. Execution Mode / Delegation Policy governs who advances each stage of the loop: the user, the system with approval, the system with major decision gates, or a future bounded autonomous process. This policy is orthogonal to Evidence Strategy. Evidence Strategy controls how much evidence to gather; Execution Mode controls who moves the work forward.
+
 ## Canonical Loop
 
 ### 1. Business Question
@@ -463,6 +465,26 @@ The loop closes because every reasoning act can update Knowledge State.
 
 The system does not end at a report, answer, or generated artifact. It ends when project understanding is updated and made available for the next question.
 
+## Execution Mode Overlay
+
+The same loop supports multiple execution modes:
+
+- Manual: the system explains options and the user advances each step.
+- Guided: the system recommends the next step and asks approval.
+- Assisted: the system performs routine steps and pauses at major decision gates.
+- Autonomous: the system runs a bounded investigation end-to-end where policy permits and returns an audit trail.
+- Research / Step-by-Step: the system exposes intermediate reasoning, evidence decisions, uncertainty, and telemetry.
+
+Execution Mode does not change the loop. It controls delegation gates such as Knowledge State review, Investigation Plan approval, Evidence Plan approval, expensive GenAI calls, full table inclusion, paid provider usage, promotion of GenAI output to Knowledge State, and delivery/export.
+
+This preserves a clean separation:
+
+```text
+Analytical loop = what happens
+Evidence Strategy = how much evidence to gather
+Execution Mode = who controls progression
+```
+
 ## Minimal Loop Without GenAI
 
 ```text
@@ -494,4 +516,3 @@ Business Question
 ```
 
 This validates that GenAI has a governed position inside the analytical loop.
-

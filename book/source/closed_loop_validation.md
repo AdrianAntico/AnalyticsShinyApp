@@ -8,6 +8,8 @@ The loop holds.
 
 The ontology can explain both successful and failing workflows using existing concepts. The main issues are implementation gaps and calibration gaps, not missing foundational concepts.
 
+Execution Mode / Delegation Policy does not invalidate this verdict. It overlays the loop with delegation rules rather than adding a new analytical layer. The same loop can run manually, with guided approval, with assisted automation, autonomously under policy, or in research step-by-step mode.
+
 ## Stress Test 1: Poor Model
 
 Condition:
@@ -241,10 +243,33 @@ The loop can break if:
 - delivery artifacts are mistaken for truth
 - missing evidence is hidden
 - contradictions are ignored
+- execution mode bypasses required delegation gates
+- autonomous execution hides evidence, cost, provider, or approval decisions
 
 Each failure can be explained using existing ontology.
 
 No new top-level concept is required.
+
+## Delegation Stress Test
+
+Condition:
+
+The same business question is run under different delegation levels.
+
+Ontology explanation:
+
+- Evidence Strategy controls how much evidence is gathered.
+- Execution Mode controls who advances the loop and where approval gates appear.
+- Manual mode requires user approval for each major step.
+- Guided mode recommends the next step and asks for approval.
+- Assisted mode automates routine work but pauses at major gates.
+- Autonomous mode can proceed only within explicit provider, privacy, cost, and safety policy.
+- Research / Step-by-Step mode exposes intermediate decisions for validation.
+- Observability records the path regardless of mode.
+
+Loop status: complete.
+
+Gap: Gate defaults and promotion-to-knowledge policy require future implementation and calibration.
 
 ## Final Closed Loop
 
@@ -266,4 +291,3 @@ Business Question
 ```
 
 Status: validated.
-

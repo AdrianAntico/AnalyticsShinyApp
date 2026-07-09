@@ -155,6 +155,42 @@ genai_configured <- function(config = genai_config()) {
   !is.null(config$provider) && !identical(config$provider, "none")
 }
 
+genai_env_configured <- function() {
+  provider <- Sys.getenv("ANALYTICS_GENAI_PROVIDER", unset = "")
+  nzchar(provider)
+}
+
+genai_default_config <- function(auto_detect_local = TRUE) {
+  if (genai_env_configured()) {
+    config <- genai_config()
+    config$config_source <- "environment"
+    return(config)
+  }
+
+  if (isTRUE(auto_detect_local)) {
+    ollama_config <- genai_config(provider = "ollama")
+    availability <- tryCatch(
+      genai_ollama_available(ollama_config),
+      error = function(e) service_result(status = "warning", value = FALSE, warnings = conditionMessage(e), metadata = list(available = FALSE))
+    )
+    if (isTRUE(availability$value) || isTRUE(availability$metadata$available)) {
+      models <- tryCatch(genai_ollama_list_models(ollama_config), error = function(e) NULL)
+      if (is.list(models) && identical(models$status, "success") && data.table::is.data.table(models$value) && nrow(models$value)) {
+        available_models <- models$value$model
+        if (!ollama_config$model %in% available_models) {
+          ollama_config$model <- available_models[[1]]
+        }
+      }
+      ollama_config$config_source <- "auto_detect_ollama"
+      return(ollama_config)
+    }
+  }
+
+  config <- genai_config(provider = "none")
+  config$config_source <- "default_none"
+  config
+}
+
 genai_normalize_capabilities <- function(provider_or_capabilities) {
   capabilities <- if (is.list(provider_or_capabilities) && !is.null(provider_or_capabilities$capabilities)) {
     provider_or_capabilities$capabilities
@@ -398,8 +434,16 @@ genai_provider_status <- function(config = genai_config(), check_availability = 
     return(service_result(
       status = "needs_input",
       value = list(available = FALSE, configured = FALSE, capabilities = capabilities),
-      messages = "No GenAI provider configured.",
-      metadata = list(provider = "none", display_name = "No GenAI Provider", model = NA_character_, local = FALSE, privacy_preserving = FALSE)
+      messages = "No GenAI provider configured. Set ANALYTICS_GENAI_PROVIDER=ollama or allow local auto-detection.",
+      metadata = list(
+        provider = "none",
+        display_name = "No GenAI Provider",
+        model = NA_character_,
+        local = FALSE,
+        privacy_preserving = FALSE,
+        config_source = config$config_source %||% "default_none",
+        diagnostic_reason = "not_configured"
+      )
     ))
   }
 
@@ -409,9 +453,21 @@ genai_provider_status <- function(config = genai_config(), check_availability = 
     service_result(status = "warning", value = NA, warnings = "Availability not checked.", metadata = list(available = NA))
   }
   available <- isTRUE(availability$value) || isTRUE(availability$metadata$available)
+  availability_checked <- isTRUE(check_availability)
+  diagnostic_reason <- if (!availability_checked) {
+    "not_checked"
+  } else if (!genai_http_available()) {
+    "package_missing"
+  } else if (isTRUE(available)) {
+    "available"
+  } else if (identical(contract$provider_id, "ollama")) {
+    "endpoint_unreachable_or_ollama_not_running"
+  } else {
+    "endpoint_unreachable"
+  }
   service_result(
     status = if (isTRUE(available)) "success" else availability$status,
-    value = list(available = available, configured = TRUE, capabilities = capabilities),
+    value = list(available = available, configured = TRUE, availability_checked = availability_checked, capabilities = capabilities),
     messages = availability$messages,
     warnings = availability$warnings,
     errors = availability$errors,
@@ -421,7 +477,9 @@ genai_provider_status <- function(config = genai_config(), check_availability = 
       base_url = config$base_url,
       model = config$model,
       local = isTRUE(capabilities[["local"]]),
-      privacy_preserving = isTRUE(capabilities[["privacy_preserving"]])
+      privacy_preserving = isTRUE(capabilities[["privacy_preserving"]]),
+      config_source = config$config_source %||% if (genai_env_configured()) "environment" else "manual_or_default",
+      diagnostic_reason = diagnostic_reason
     )
   )
 }
@@ -454,6 +512,78 @@ genai_list_models <- function(provider = NULL, config = NULL) {
       status = "error",
       errors = conditionMessage(e),
       metadata = list(error_code = "GENAI_LIST_MODELS_FAILED", provider = contract$provider_id)
+    )
+  )
+}
+
+genai_provider_diagnostics <- function(config = genai_default_config(auto_detect_local = TRUE)) {
+  required_packages <- c("httr2", "jsonlite", "curl", "httr", "mirai")
+  required_available <- stats::setNames(vapply(required_packages, requireNamespace, logical(1), quietly = TRUE), required_packages)
+  detection_errors <- character()
+  availability <- tryCatch(
+    genai_provider_status(config, check_availability = TRUE),
+    error = function(e) {
+      detection_errors <<- c(detection_errors, conditionMessage(e))
+      service_result(status = "error", value = list(available = FALSE, configured = genai_configured(config), capabilities = genai_capabilities()), errors = conditionMessage(e))
+    }
+  )
+  ollama_config <- genai_config(provider = "ollama")
+  ollama_availability <- tryCatch(
+    genai_ollama_available(ollama_config),
+    error = function(e) {
+      detection_errors <<- c(detection_errors, paste("Ollama availability:", conditionMessage(e)))
+      service_result(status = "warning", value = FALSE, warnings = conditionMessage(e), metadata = list(available = FALSE))
+    }
+  )
+  ollama_models <- tryCatch(
+    genai_ollama_list_models(ollama_config),
+    error = function(e) {
+      detection_errors <<- c(detection_errors, paste("Ollama models:", conditionMessage(e)))
+      service_result(status = "warning", value = data.table::data.table(), warnings = conditionMessage(e))
+    }
+  )
+  missing <- character()
+  if (!genai_configured(config)) missing <- c(missing, "provider")
+  if (genai_configured(config) && !nzchar(config$model %||% "")) missing <- c(missing, "model")
+  if (genai_configured(config) && !nzchar(config$base_url %||% "")) missing <- c(missing, "base_url")
+  capabilities <- availability$value$capabilities %||% genai_capabilities()
+  service_result(
+    status = if (identical(availability$status, "error")) "error" else if (genai_configured(config)) "success" else "needs_input",
+    value = list(
+      provider_configured = genai_configured(config),
+      provider = config$provider %||% "none",
+      model = config$model %||% NA_character_,
+      base_url = config$base_url %||% NA_character_,
+      availability = availability$value$available %||% FALSE,
+      availability_status = availability$status,
+      capabilities = capabilities,
+      R.version.string = R.version.string,
+      libPaths = .libPaths(),
+      required_packages_available = required_available,
+      ollama_reachable = isTRUE(ollama_availability$value) || isTRUE(ollama_availability$metadata$available),
+      ollama_models = if (data.table::is.data.table(ollama_models$value)) ollama_models$value$model else character(),
+      config_source = config$config_source %||% if (genai_env_configured()) "environment" else "manual_or_default",
+      missing_config_fields = missing,
+      detection_errors = detection_errors,
+      env_vars = list(
+        ANALYTICS_GENAI_PROVIDER = Sys.getenv("ANALYTICS_GENAI_PROVIDER", unset = NA_character_),
+        ANALYTICS_GENAI_BASE_URL = Sys.getenv("ANALYTICS_GENAI_BASE_URL", unset = NA_character_),
+        ANALYTICS_GENAI_MODEL = Sys.getenv("ANALYTICS_GENAI_MODEL", unset = NA_character_)
+      )
+    ),
+    messages = c(
+      paste("Provider:", config$provider %||% "none"),
+      paste("Model:", config$model %||% "not configured"),
+      paste("Config source:", config$config_source %||% "unknown")
+    ),
+    warnings = c(availability$warnings %||% character(), ollama_availability$warnings %||% character(), ollama_models$warnings %||% character()),
+    errors = availability$errors %||% character(),
+    metadata = list(
+      provider = config$provider %||% "none",
+      model = config$model %||% NA_character_,
+      base_url = config$base_url %||% NA_character_,
+      config_source = config$config_source %||% "unknown",
+      diagnostic_reason = availability$metadata$diagnostic_reason %||% NA_character_
     )
   )
 }
@@ -2130,17 +2260,44 @@ ui_genai_status_panel <- function(status, title = "GenAI Provider", actions = NU
   capability_labels <- names(capabilities)[as.logical(capabilities)]
   configured <- isTRUE(value$configured)
   available <- isTRUE(value$available)
-  status_group <- if (available) "success" else if (configured) "warning" else "neutral"
+  availability_checked <- isTRUE(value$availability_checked)
+  reason <- metadata$diagnostic_reason %||% if (configured) "not_checked" else "not_configured"
+  availability_label <- if (available) {
+    "Available"
+  } else if (!configured) {
+    "Not configured"
+  } else if (!availability_checked) {
+    "Not checked"
+  } else if (identical(reason, "package_missing")) {
+    "Package missing"
+  } else if (grepl("ollama", reason, fixed = TRUE)) {
+    "Ollama offline"
+  } else {
+    "Unavailable"
+  }
+  provider_label <- metadata$display_name %||% "None"
+  config_source <- metadata$config_source %||% "unknown"
+  status_group <- if (available) "success" else if (configured && !availability_checked) "info" else if (configured) "warning" else "neutral"
+  diagnostic_text <- switch(
+    reason,
+    not_configured = "No GenAI provider is configured. Local Ollama can be auto-detected when reachable, or set ANALYTICS_GENAI_PROVIDER explicitly.",
+    not_checked = "Provider is configured, but live availability has not been checked on this surface.",
+    package_missing = "GenAI HTTP dependencies are missing in this R library path. Install httr2/jsonlite/curl for the current R version.",
+    endpoint_unreachable_or_ollama_not_running = "Ollama is configured but not reachable. Start Ollama or check the base URL.",
+    endpoint_unreachable = "Provider endpoint is not reachable. Check the base URL, server process, and network access.",
+    available = "Provider is configured and reachable.",
+    service_result_message(status)
+  )
   ui_card(
     title = title,
     subtitle = "Read-only analytical assistance. GenAI cannot execute app actions.",
     ui_stat_grid(
-      ui_stat_tile("Provider", metadata$display_name %||% "None", status = status_group),
+      ui_stat_tile("Provider", provider_label, status = status_group, detail = config_source),
       ui_stat_tile("Model", metadata$model %||% "Not configured", status = if (configured) "info" else "neutral"),
-      ui_stat_tile("Availability", if (available) "Available" else if (configured) "Unavailable" else "Not configured", status = status_group),
+      ui_stat_tile("Availability", availability_label, status = status_group),
       ui_stat_tile("Privacy", if (isTRUE(metadata$privacy_preserving)) "Local/private" else "Review endpoint", status = if (isTRUE(metadata$privacy_preserving)) "success" else "warning")
     ),
-    tags$p(class = "aq-export-message", service_result_message(status)),
+    tags$p(class = "aq-export-message", diagnostic_text),
     tags$div(
       class = "aq-genai-capability-row",
       if (length(capability_labels)) lapply(capability_labels, function(x) ui_status_badge(x, status = "info")) else ui_status_badge("no capabilities", status = "neutral")
@@ -2221,6 +2378,7 @@ qa_genai_service_contract <- function() {
     check = c(
       "provider_abstraction",
       "provider_convenience_wrappers",
+      "provider_diagnostics",
       "capability_normalization",
       "app_start_without_provider",
       "unavailable_degrades",
@@ -2244,6 +2402,7 @@ qa_genai_service_contract <- function() {
     status = c(
       if (all(c("none", "mock", "ollama", "lm_studio", "llama_cpp", "openai_compatible") %in% names(registry))) "success" else "error",
       if (has(genai, c("genai_available <-", "genai_list_models <-", "genai_provider_status"))) "success" else "error",
+      if (has(genai, c("genai_provider_diagnostics <-", "required_packages_available", "ollama_reachable", "missing_config_fields"))) "success" else "error",
       if (all(names(genai_capabilities()) %in% names(genai_normalize_capabilities(registry$ollama)))) "success" else "error",
       if (identical(none_status$status, "needs_input") && has(app, "genai_service.R")) "success" else "error",
       if (identical(unavailable$status, "needs_input")) "success" else "error",
@@ -2267,6 +2426,7 @@ qa_genai_service_contract <- function() {
     message = c(
       "Provider registry exposes swappable adapters.",
       "Provider availability and model listing wrappers use the shared abstraction.",
+      "Provider diagnostics report runtime, package, Ollama, model, and config status.",
       "Capabilities normalize to the standard contract.",
       "No configured provider is represented as needs_input, not startup failure.",
       "Unavailable or unconfigured providers degrade through service_result.",

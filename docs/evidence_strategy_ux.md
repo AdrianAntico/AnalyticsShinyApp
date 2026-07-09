@@ -23,6 +23,28 @@ For any analytical decision, the workstation should consider:
 
 The user should not have to think in token budgets first. They should be able to choose the decision posture, then inspect or override the technical settings when needed.
 
+Evidence Strategy is separate from Execution Mode / Delegation Policy.
+
+Evidence Strategy answers:
+
+```text
+How much evidence should be gathered?
+```
+
+Execution Mode answers:
+
+```text
+Who advances the loop?
+```
+
+Recommended future default:
+
+```text
+Balanced + Guided
+```
+
+This gives business users a normal evidence posture while preserving approval of the next analytical step.
+
 ## Business Strategies
 
 ### Efficient
@@ -217,6 +239,8 @@ Evidence Strategy does not implement:
 - automatic policy mutation
 - automatic paid-provider escalation
 - full data transmission by default
+
+Autonomous execution belongs to Execution Mode / Delegation Policy. It should use Evidence Strategy settings; it should not be encoded inside the evidence strategy catalog itself.
 
 ## Example
 

@@ -320,6 +320,62 @@ Docs: `docs/marginal_information_gain_framework.md`.
 
 Estimated pages: 35-60.
 
+#### Chapter 13A: Investigation Planning
+
+Purpose: Explain how business questions become analytical plans before evidence is routed or context is optimized.
+
+Concepts:
+
+- Investigation
+- Investigation Plan
+- Hypothesis
+- Alternative Hypothesis
+- Evidence Requirement
+- Required Analysis
+- Required Artifact
+- Stopping Criterion
+- Decision Criterion
+- Evidence Escalation
+- Investigation Strategy
+- Investigation State
+
+Prerequisites: Chapters 11-13.
+
+Examples: creative attribute testing, model deployment investigation, model risk investigation, executive explanation planning.
+
+Experiments: future validation of investigation plans against analyst workflows.
+
+Docs: `docs/investigation_planning_architecture.md`, `book/source/investigation_planning.md`.
+
+Estimated pages: 25-40.
+
+#### Chapter 13B: Execution Modes And Delegation
+
+Purpose: Explain how the same analytical intelligence loop runs under different human delegation levels without changing the underlying architecture.
+
+Concepts:
+
+- Execution Mode
+- Delegation Policy
+- Manual Mode
+- Guided Mode
+- Assisted Mode
+- Autonomous Mode
+- Research / Step-by-Step Mode
+- Delegation Gate
+- Promotion To Knowledge State
+- Audit Trail
+
+Prerequisites: Chapters 11-13A.
+
+Examples: Balanced + Guided for business users, Critical Decision + Assisted for high-stakes review, Efficient + Manual for exploratory learning, Cost Is Irrelevant + Autonomous for bounded local/private evidence expansion.
+
+Experiments: future user studies on gate defaults, approval burden, trust calibration, and analyst productivity.
+
+Docs: `docs/execution_mode_delegation_policy.md`, `book/source/execution_modes.md`.
+
+Estimated pages: 20-35.
+
 ### Part VI: GenAI Service And Local-First Intelligence
 
 #### Chapter 14: Provider-Agnostic GenAI
@@ -494,6 +550,59 @@ Docs: `docs/command_palette_architecture.md`, `docs/roadmap/ux_roadmap.md`.
 
 Estimated pages: 25-40.
 
+#### Chapter 20A: The Analytics Workstation Guide
+
+Purpose: Explain the Guide as the human-facing mentor layer that teaches the architecture, recommends next steps, and helps users understand evidence, missing knowledge, and decision readiness.
+
+Concepts:
+
+- Analytics Workstation Guide
+- First-Run Orientation
+- Contextual Guidance
+- Guide Recommendation Contract
+- Knowledge State Explanation
+- Evidence Strategy Explanation
+- Execution Mode Adaptation
+- No-GenAI Guidance
+- GenAI-Assisted Guidance
+
+Prerequisites: Chapters 10-13B and 18-20.
+
+Examples: "I have data", "I have a model", "What should I do next?", "Why is SHAP recommended?", "Why can't I make a recommendation yet?"
+
+Experiments: future onboarding studies, guide recommendation calibration, and usability comparison with/without contextual guidance.
+
+Docs: `docs/guide_architecture.md`, `book/source/guide.md`.
+
+Estimated pages: 20-35.
+
+#### Chapter 20B: The Knowledge Library
+
+Purpose: Explain the Knowledge Library as the authoritative in-app knowledge surface that preserves and navigates the product's concepts, architecture, research, source chapters, and knowledge products.
+
+Concepts:
+
+- Knowledge Library
+- Concept Page
+- Learning Path
+- Architecture Browser
+- Book Reader
+- Research Index
+- Timeline
+- Knowledge Pack
+- Guide-to-Library Link
+- Library-to-Guide Link
+
+Prerequisites: Chapters 1, 10-13B, 18-20A, and 22.
+
+Examples: "Open Concept: Artifact", role-based learning paths, ontology-aware search, source chapter reader, research index, knowledge pack download, Guide "Read more" links.
+
+Experiments: future usability tests for concept navigation, ontology-aware search, knowledge pack generation, and onboarding with/without the Library.
+
+Docs: `docs/knowledge_library_architecture.md`, `book/source/knowledge_library.md`.
+
+Estimated pages: 20-35.
+
 ### Part IX: Engineering The System
 
 #### Chapter 21: Architecture Contracts And QA
@@ -532,14 +641,16 @@ Concepts:
 - Architecture Synthesis
 - Book Compiler
 - Chapter Mapping
+- Knowledge Library
+- Knowledge Pack
 
 Prerequisites: Entire book.
 
-Examples: raw corpus extraction, topic dossiers, workstream ledger.
+Examples: raw corpus extraction, topic dossiers, workstream ledger, source chapter reader, GPT knowledge-base bundle.
 
 Experiments: none; meta-process.
 
-Docs: `docs/book_compiler_plan.md`, corpus files.
+Docs: `docs/book_compiler_plan.md`, `docs/knowledge_library_architecture.md`, corpus files.
 
 Estimated pages: 20-35.
 
@@ -580,4 +691,3 @@ Estimated pages: 15-25.
 - Trustworthiness scoring
 - AutoPlots V2 consumer-aware encoding API
 - Manual scoring results from GenAI experiments
-

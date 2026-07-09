@@ -47,7 +47,7 @@ server <- function(input, output, session) {
   ctx$code_runner_message <- reactiveVal("")
   ctx$project_data <- reactiveVal(NULL)
   ctx$project_data_info <- reactiveVal(list(path = NULL, name = NULL))
-  ctx$genai_config <- reactiveVal(genai_config())
+  ctx$genai_config <- reactiveVal(genai_default_config(auto_detect_local = TRUE))
   ctx$genai_last_result <- reactiveVal(NULL)
   ctx$evidence_strategy <- reactiveVal("balanced")
   ctx$evidence_strategy_config <- reactiveVal(evidence_strategy_config("balanced"))
@@ -953,6 +953,8 @@ server <- function(input, output, session) {
   }
 
   command_palette_server("command_palette", navigation_session = session)
+  page_guide_server("guide", ctx)
+  page_knowledge_library_server("knowledge_library", ctx)
   page_mission_control_server("mission_control", ctx)
   page_data_server("data", ctx)
   page_plot_builder_server("plot_builder", ctx)

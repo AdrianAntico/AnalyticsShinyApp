@@ -168,6 +168,11 @@ page_mission_control_ui <- function(id) {
             subtitle = "Prioritized operational queue, not an error dump.",
             uiOutput(ns("alerts"))
           ),
+          ui_card(
+            title = "Async Jobs",
+            subtitle = "Long-running workstation work.",
+            uiOutput(ns("async_jobs"))
+          ),
           uiOutput(ns("genai_status"))
         ),
         tags$div(
@@ -200,6 +205,7 @@ page_mission_control_server <- function(id, ctx) {
       data <- tryCatch(ctx$project_data(), error = function(e) NULL)
       plans <- tryCatch(ctx$report_plan_state$plans, error = function(e) list())
       workflow <- mission_control_workflow_rows(ctx)
+      async <- tryCatch(async_job_status_counts(), error = function(e) list(total = 0L, running = 0L, completed = 0L, failed = 0L, latest_status = "unavailable", latest_job_id = NA_character_))
       counts <- mission_control_artifact_counts(artifacts)
       quality <- mission_control_quality_summary(artifacts)
       ai_status <- mission_control_ai_status(collector, artifacts)
@@ -209,6 +215,7 @@ page_mission_control_server <- function(id, ctx) {
         data = data,
         plans = plans,
         workflow = workflow,
+        async = async,
         counts = counts,
         quality = quality,
         ai_status = ai_status,
@@ -260,6 +267,7 @@ page_mission_control_server <- function(id, ctx) {
         ui_status_tile("AI Readiness", state$ai_status, status = mission_control_status_group(tolower(state$ai_status), artifact_count = state$counts$total), detail = manifest_status),
         ui_status_tile("Artifact Quality", if (is.na(state$quality$avg)) "Not scored" else paste0(state$quality$avg, "%"), status = quality_status, detail = paste(state$quality$warnings, "warnings")),
         ui_status_tile("Workflow", paste(sum(state$workflow$artifact_count > 0L), "/", nrow(state$workflow)), status = if (sum(state$workflow$artifact_count > 0L) > 0L) "success" else "neutral", detail = "stages with evidence"),
+        ui_status_tile("Async Jobs", paste(state$async$running, "running"), status = if (state$async$failed > 0L) "warning" else if (state$async$running > 0L) "info" else "neutral", detail = paste(state$async$total, "tracked")),
         ui_status_tile("Reports", length(state$plans), status = if (length(state$plans)) "success" else "neutral", detail = "report plans"),
         ui_status_tile("Warnings", state$quality$warnings + state$quality$failures, status = if ((state$quality$warnings + state$quality$failures) > 0L) "warning" else "success", detail = "quality signals"),
         ui_status_tile("QA", qa_status, status = if (identical(qa_status, "healthy")) "success" else "warning", detail = "studio smoke")
@@ -287,6 +295,33 @@ page_mission_control_server <- function(id, ctx) {
 
     output$genai_status <- renderUI({
       ui_genai_status_panel(ctx$genai_status(check_availability = FALSE), title = "GenAI Provider")
+    })
+
+    output$async_jobs <- renderUI({
+      summary <- tryCatch(async_job_summary(), error = function(e) data.table::data.table())
+      if (!nrow(summary)) {
+        return(ui_empty_state("No async jobs yet.", "Long-running work will appear here when submitted."))
+      }
+      latest <- summary[order(submitted_at, decreasing = TRUE)][1:min(.N, 4L)]
+      tags$div(
+        class = "aq-async-job-list",
+        lapply(seq_len(nrow(latest)), function(i) {
+          row <- latest[i]
+          status <- row$status[[1]] %||% "neutral"
+          status_group <- if (status %in% c("failed", "timed_out", "cancelled", "unavailable")) "error" else if (status %in% c("queued", "running")) "info" else "success"
+          tags$div(
+            class = paste("aq-async-job-row", paste0("aq-async-job-row-", status_group)),
+            tags$div(
+              tags$strong(row$job_type[[1]] %||% row$job_id[[1]]),
+              tags$span(row$function_name[[1]] %||% "")
+            ),
+            tags$div(
+              ui_status_badge(status, status = status_group),
+              tags$span(class = "aq-muted", paste0(round(row$elapsed_seconds[[1]] %||% 0, 1), "s"))
+            )
+          )
+        })
+      )
     })
 
     output$genai_result <- renderUI({
@@ -386,6 +421,7 @@ qa_mission_control <- function() {
       "timeline_rendering",
       "health_tile_consistency",
       "collector_presentation",
+      "async_job_status",
       "css_cache_busting",
       "documentation"
     ),
@@ -410,6 +446,7 @@ qa_mission_control <- function() {
       if (has(css, c(".aq-timeline-item::before", ".aq-timeline-item:not(:last-child)::after"))) "success" else "error",
       if (has(css, c(".aq-health-summary", "grid-column: 1 / -1", ".aq-status-tile-value"))) "success" else "error",
       if (has(page, c("Collector", "manifest_status", "collector_status", "state$counts$total"))) "success" else "error",
+      if (has(page, c("async_job_summary", "Async Jobs", "aq-async-job-list")) && has(css, c(".aq-async-job-list", ".aq-async-job-row"))) "success" else "error",
       if (has(app_ui, c("app.css?v=", "file.info(css_file)$mtime"))) "success" else "error",
       if (has(docs, c("Mission Control", "Operational awareness", "Alert philosophy", "Timeline"))) "success" else "error"
     ),
@@ -434,6 +471,7 @@ qa_mission_control <- function() {
       "Timeline uses connected event markers.",
       "Health tiles share consistent sizing and hierarchy.",
       "Collector state is included in health and alert presentation.",
+      "Mission Control surfaces basic async job status.",
       "App CSS is cache-busted so Mission Control visual updates render after restart.",
       "Mission Control documentation is present."
     )

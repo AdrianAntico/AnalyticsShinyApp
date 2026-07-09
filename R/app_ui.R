@@ -13,6 +13,8 @@ build_app_ui <- function() {
       ui_command_palette("command_palette"),
       tabsetPanel(
         id = "main_tabs",
+        page_guide_ui("guide"),
+        page_knowledge_library_ui("knowledge_library"),
         page_mission_control_ui("mission_control"),
         page_project_ui("project"),
         page_data_ui("data"),

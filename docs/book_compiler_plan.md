@@ -940,6 +940,7 @@ Examples:
 - websites
 - GPT knowledge packs
 - onboarding guides
+- Knowledge Library pages
 
 ### Historical
 
@@ -995,6 +996,7 @@ Examples:
 - experiment summaries
 - generated glossaries
 - GPT corpus files
+- Library knowledge indexes
 
 ### Examples
 
@@ -1008,6 +1010,43 @@ Examples:
 - code snippets
 - screenshots
 - experiment outputs
+
+## Part VIII-A: Knowledge Library Relationship
+
+The Knowledge Library is the in-app knowledge surface over the same canonical body of knowledge that feeds the Book Compiler.
+
+The Book Compiler asks:
+
+- What source material exists?
+- Which source material supports each chapter?
+- How should raw history, architecture, experiments, QA, and source packs become manuscript outputs?
+- Which render targets should be produced?
+
+The Knowledge Library asks:
+
+- How should users browse the product's knowledge?
+- How should concepts connect to chapters, docs, research, QA, and implementation references?
+- How should role-based learning paths be presented?
+- How should the evolving book be read inside the workstation?
+- How should knowledge packs and source packs become discoverable?
+
+The repository remains the source of truth for both systems.
+
+The Knowledge Library should not maintain a separate copy of product knowledge. It should expose, index, cross-link, and eventually render canonical source objects:
+
+- Product Vision
+- Manifesto
+- Concept Ontology
+- Chapter Mapping
+- architecture docs
+- policy docs
+- research docs
+- source chapters
+- source packs
+- QA references
+- chronology and workstream ledgers
+
+Future compiler outputs should be usable by the Knowledge Library. Future Library indexes should help the compiler locate source material. The two systems should reinforce one another rather than diverge.
 
 ## Part IX: Book Compiler Pipeline
 
@@ -1414,4 +1453,3 @@ source truth
 ```
 
 The book is not the source of truth. The canonical knowledge base is.
-

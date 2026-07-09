@@ -65,6 +65,7 @@ page_project_ui <- function(id) {
 
 page_project_server <- function(id, ctx) {
   moduleServer(id, function(input, output, session) {
+    ns <- session$ns
     project_actions <- reactiveVal(character())
 
     add_activity <- function(message) {

@@ -73,7 +73,29 @@ Configuration is read from `genai_config()` and may be supplied through environm
 - `ANALYTICS_GENAI_TIMEOUT`
 - `ANALYTICS_GENAI_STREAM`
 
-No provider is required. With no configured provider, the app starts normally and GenAI status is shown as not configured.
+No provider is required. With no configured provider, the app starts normally.
+
+When no explicit environment provider is set, the app may auto-detect a reachable local Ollama endpoint and use the first available local model. Explicit environment configuration always wins over auto-detection.
+
+Use `genai_provider_diagnostics()` to inspect:
+
+- provider/model/base URL
+- R version and `.libPaths()`
+- required package availability
+- Ollama reachability
+- discovered Ollama models
+- missing config fields
+- detection errors
+
+Current R runtime note:
+
+`mirai` and the GenAI HTTP dependencies are installed under the R 4.5 user library in this workstation setup. Launching the app under R 4.2.1 will not see packages installed only under R 4.5.
+
+Install commands for the current R 4.5 runtime:
+
+```r
+install.packages(c("mirai", "httr2", "jsonlite", "curl", "httr"))
+```
 
 ## Provider Adapters
 

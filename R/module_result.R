@@ -258,6 +258,7 @@ qa_analysis_modules_integration <- function() {
     project_load_paths = qa_project_load_paths,
     artifact_studio = qa_artifact_studio,
     mission_control = qa_mission_control,
+    async_job_service = qa_async_job_service,
     command_palette = qa_command_palette,
     genai_service_contract = qa_genai_service_contract,
     genai_experiment_harness = qa_genai_experiment_harness,

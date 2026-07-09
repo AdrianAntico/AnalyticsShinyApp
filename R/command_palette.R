@@ -14,6 +14,8 @@ register_command <- function(registry, id, title, category, keywords = character
 
 command_registry <- function() {
   registry <- list()
+  registry <- register_command(registry, "open_guide", "Open Guide", "Navigation", c("guide", "mentor", "orientation", "start", "home", "next step"), "G", list(type = "navigate", target = "Guide"))
+  registry <- register_command(registry, "open_knowledge_library", "Open Knowledge Library", "Knowledge", c("knowledge", "library", "book", "docs", "ontology", "manifesto", "architecture"), "KL", list(type = "navigate", target = "Knowledge Library"))
   registry <- register_command(registry, "open_mission_control", "Open Mission Control", "Navigation", c("mission", "control", "status", "health", "operations"), "MC", list(type = "navigate", target = "Mission Control"))
   registry <- register_command(registry, "open_artifact_studio", "Open Artifact Studio", "Artifacts", c("artifact", "studio", "evidence", "gallery", "inspector"), "AS", list(type = "navigate", target = "Artifact Studio"))
   registry <- register_command(registry, "open_project", "Open Project", "Project", c("project", "workspace", "settings", "load", "save"), "P", list(type = "navigate", target = "Project"))

@@ -17,6 +17,8 @@ Need to build around AutoPlots without damaging AutoPlots
   -> human reports and LLM DOCX split
   -> information encoding becomes separate from render target
   -> artifacts become evidence
+  -> evidence becomes project knowledge
+  -> business questions need investigation plans
   -> evidence routing precedes GenAI
   -> context optimization chooses representation
   -> marginal information gain becomes objective
@@ -381,3 +383,34 @@ Concepts created or strengthened:
 - Chapter Mapping
 - Architecture Synthesis
 
+## Causal Chain: Business Questions To Investigation Planning
+
+Problem: The validated analytical intelligence loop could explain evidence, knowledge, routing, optimization, and reasoning, but the analyst's planning process between a business question and evidence collection remained implicit.
+
+Cause:
+
+- Business questions rarely map directly to artifacts.
+- Analysts form hypotheses before collecting evidence.
+- Evidence requirements can exist even when artifacts are missing.
+- Decision criteria and stopping criteria should be explicit before evidence gathering begins.
+- Future AI agents need inspectable plans before execution.
+
+Effects:
+
+- Investigation Planning Architecture was created.
+- Investigation Plan became the first analytical artifact after a question.
+- Evidence Requirement was introduced as the bridge between knowledge gaps and concrete artifacts.
+- Required Analysis and Required Artifact distinguish missing work from missing files.
+- Investigation Strategy and Investigation State make analytical work visible without implementing Agentic Lab.
+
+Concepts created or strengthened:
+
+- Investigation
+- Investigation Plan
+- Evidence Requirement
+- Required Analysis
+- Required Artifact
+- Decision Criterion
+- Evidence Escalation
+- Investigation Strategy
+- Investigation State

@@ -1,0 +1,13 @@
+Variable1,Variable2,Pair,Method,N,Missing Pair N,Correlation,Abs Correlation,Direction,Strength,P Value,High Correlation
+ctr,cpc,ctr  ↔  cpc,spearman,4804,196,-0.655230583825891,0.655230583825891,Negative,Moderate,0,FALSE
+cpc,roas,cpc  ↔  roas,spearman,4880,120,-0.444485584207207,0.444485584207207,Negative,Weak,1.82818869260399e-235,FALSE
+clicks,cpc,clicks  ↔  cpc,spearman,4880,120,-0.269751235029772,0.269751235029772,Negative,Very Weak,3.98874637184802e-82,FALSE
+spend,roas,spend  ↔  roas,spearman,5000,0,-0.222584754264078,0.222584754264078,Negative,Very Weak,3.59347593841401e-57,FALSE
+conversions,cpc,conversions  ↔  cpc,spearman,4880,120,-0.159611509008833,0.159611509008833,Negative,Very Weak,3.28530896459448e-29,FALSE
+revenue,cpc,revenue  ↔  cpc,spearman,4733,267,-0.122584511348981,0.122584511348981,Negative,Very Weak,2.60296065024768e-17,FALSE
+impressions,roas,impressions  ↔  roas,spearman,5000,0,-0.0812324657219702,0.0812324657219702,Negative,Very Weak,8.81551263281056e-09,FALSE
+impressions,ctr,impressions  ↔  ctr,spearman,4920,80,-0.00938083511876515,0.00938083511876515,Negative,Very Weak,0.510638061332269,FALSE
+spend,ctr,spend  ↔  ctr,spearman,4920,80,-0.00783657019065695,0.00783657019065695,Negative,Very Weak,0.582630084797837,FALSE
+trend,cpc,trend  ↔  cpc,spearman,4880,120,-0.00725644979686089,0.00725644979686089,Negative,Very Weak,0.612301751357403,FALSE
+trend,ctr,trend  ↔  ctr,spearman,4920,80,-0.00373679396968099,0.00373679396968099,Negative,Very Weak,0.793288155012305,FALSE
+ctr,cvr,ctr  ↔  cvr,spearman,4920,80,-0.00101495926588529,0.00101495926588529,Negative,Very Weak,0.94325933443812,FALSE

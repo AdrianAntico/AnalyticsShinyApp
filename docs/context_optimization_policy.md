@@ -163,6 +163,22 @@ Business-friendly strategies such as Efficient, Balanced, Thorough, Critical Dec
 
 Balanced is the default. Advanced users can override technical settings, but overrides remain attached to the strategy and are recorded for observability.
 
+## Execution Mode / Delegation Policy
+
+Execution Mode is orthogonal to Context Optimization.
+
+Context Optimization determines how to satisfy a knowledge need efficiently under constraints. Execution Mode determines who is allowed to advance the loop after those recommendations are produced.
+
+Examples:
+
+- Manual mode presents optimized options for user selection.
+- Guided mode recommends the optimized next step and asks approval.
+- Assisted mode may execute routine optimized steps but pauses at major gates.
+- Autonomous mode may proceed only inside explicit cost, privacy, provider, and safety policy.
+- Research / Step-by-Step mode exposes the optimization rationale and tradeoffs.
+
+Execution Mode must not bypass context safety rules. Paid provider usage, full table inclusion, expensive calls, and promotion of GenAI output into Knowledge State remain gated by policy.
+
 ## Context Strategy Evaluation
 
 Every artifact should be evaluated for:
