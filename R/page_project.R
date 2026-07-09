@@ -154,14 +154,39 @@ page_project_server <- function(id, ctx) {
     })
 
     output$genai_provider_panel <- renderUI({
-      ui_genai_status_panel(
-        ctx$genai_status(check_availability = FALSE),
-        title = "GenAI Readiness",
-        actions = ui_action_row(
-          actionButton(ns("brief_project"), "Brief Project", class = "btn-primary btn-sm"),
-          actionButton(ns("suggest_next_action"), "Suggest Next Action", class = "btn-secondary btn-sm")
+      strategy <- ctx$evidence_strategy_config()
+      frontier <- evidence_strategy_frontier_summary(strategy)
+      tagList(
+        ui_genai_status_panel(
+          ctx$genai_status(check_availability = FALSE),
+          title = "GenAI Readiness",
+          actions = ui_action_row(
+            actionButton(ns("brief_project"), "Brief Project", class = "btn-primary btn-sm"),
+            actionButton(ns("suggest_next_action"), "Suggest Next Action", class = "btn-secondary btn-sm")
+          ),
+          result = ctx$genai_last_result()
         ),
-        result = ctx$genai_last_result()
+        ui_card(
+          title = "Evidence Strategy",
+          subtitle = "Decision posture for future evidence routing.",
+          div(
+            class = "aw-evidence-strategy",
+            selectInput(
+              ns("evidence_strategy"),
+              "Evidence Strategy",
+              choices = stats::setNames(evidence_strategy_ids(), vapply(evidence_strategy_registry(), function(x) x$strategy_label, character(1))),
+              selected = ctx$evidence_strategy()
+            ),
+            div(
+              class = "aw-meta-grid",
+              div(class = "aw-meta-item", span("Cost"), strong(frontier$estimated_token_cost[[1]])),
+              div(class = "aw-meta-item", span("Completeness"), strong(frontier$estimated_evidence_completeness[[1]])),
+              div(class = "aw-meta-item", span("Nuance Risk"), strong(frontier$risk_of_missing_nuance[[1]])),
+              div(class = "aw-meta-item", span("Provider"), strong(frontier$provider_privacy_posture[[1]]))
+            ),
+            tags$p(class = "aw-muted", strategy$strategy_description)
+          )
+        )
       )
     })
 
@@ -241,6 +266,14 @@ page_project_server <- function(id, ctx) {
       ctx$genai_last_result(result)
       ctx$project_message(service_result_message(result))
       add_activity("Requested read-only GenAI next-action suggestion.")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$evidence_strategy, {
+      strategy_id <- input$evidence_strategy %||% "balanced"
+      strategy <- evidence_strategy_config(strategy_id)
+      ctx$evidence_strategy(strategy_id)
+      ctx$evidence_strategy_config(strategy)
+      add_activity(paste("Selected evidence strategy:", strategy$strategy_label))
     }, ignoreInit = TRUE)
 
     observeEvent(input$save_bundle, {

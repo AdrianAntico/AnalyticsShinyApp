@@ -59,10 +59,12 @@ The product vision reinforces the implemented architecture:
 
 - Artifact Model: all analytical outputs should become standardized artifacts wherever practical.
 - Render Targets: human report rendering and LLM DOCX rendering are separate target decisions, not separate analytical truths.
+- Information Encoding Policy: the same analytical artifact may be encoded differently for humans, LLMs, thumbnails, executives, presentations, and developers.
 - Project Artifact Collector: project-level evidence aggregation belongs to the project, not individual modules.
 - Artifact Quality Policy: every artifact should be evaluated consistently for completeness, metadata, captions, screenshots, tables, diagnostics, recommendations, and JSON where available.
 - Table Artifact Architecture: analytical tables are canonical artifacts with policy, preview, sorting metadata, CSV/JSON sidecars, and quality metadata.
 - Producer Semantics: artifact producers should declare analytical intent, importance, and policies when they know them.
+- Context Optimization Policy: deterministic knowledge and Evidence Routing should reduce context before GenAI reasoning is used.
 - Workstation Design System: reusable UI primitives, tokens, dark-first controls, and shared layouts should define UX instead of stock Shiny defaults.
 - QA: architectural and UX expectations should be enforced through repeatable QA routines.
 
@@ -73,11 +75,13 @@ The product vision reinforces the implemented architecture:
 3. Artifacts are durable analytical objects, not temporary output.
 4. The collector is the canonical project memory.
 5. AI must be grounded in artifacts, diagnostics, metadata, and sidecars.
-6. Human and LLM render targets optimize for different readers.
-7. Defaults should be excellent, but power should remain discoverable.
-8. Every important action should be inspectable, replayable, and reversible where practical.
-9. Failures should become diagnostics, not dead ends.
-10. The system should help users understand the modeling landscape.
+6. Never spend probabilistic intelligence on deterministic knowledge.
+7. Analytical artifact, information encoding, and render target are separate concepts.
+8. Human and LLM render targets optimize for different readers.
+9. Defaults should be excellent, but power should remain discoverable.
+10. Every important action should be inspectable, replayable, and reversible where practical.
+11. Failures should become diagnostics, not dead ends.
+12. The system should help users understand the modeling landscape.
 
 ## Non-Goals
 
@@ -103,4 +107,3 @@ The user should be able to open a project and immediately understand:
 - what the AI can explain or do next
 
 The workstation should make analytical state visible, navigable, and explainable.
-

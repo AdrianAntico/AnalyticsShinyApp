@@ -49,6 +49,8 @@ server <- function(input, output, session) {
   ctx$project_data_info <- reactiveVal(list(path = NULL, name = NULL))
   ctx$genai_config <- reactiveVal(genai_config())
   ctx$genai_last_result <- reactiveVal(NULL)
+  ctx$evidence_strategy <- reactiveVal("balanced")
+  ctx$evidence_strategy_config <- reactiveVal(evidence_strategy_config("balanced"))
   ctx$genai_status <- function(check_availability = FALSE) {
     genai_provider_status(ctx$genai_config(), check_availability = check_availability)
   }

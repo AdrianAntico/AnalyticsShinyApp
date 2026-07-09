@@ -235,12 +235,38 @@ AutoPlots should expose plot functions, themes, and display helpers. It should n
 - Collapse `Plot.*` examples into concise high-level function names.
 - Make display helpers the only blessed way to render lists of AutoPlots widgets in reports.
 
+### AutoPlots V2 Information Encoding Direction
+
+AutoPlots V2 should support the Information Encoding Policy without parameter explosion.
+
+Future plot APIs should distinguish the analytical artifact from its consumer-specific encoding. Human encodings may favor readability, spacing, and interaction. LLM encodings may favor information density, annotations, compact legends, reference lines, and combined analytical views. Thumbnail encodings may favor recognition rather than detail.
+
+Do not implement this from AnalyticsShinyApp. AutoPlots owns plotting APIs and rendering primitives.
+
+Prefer:
+
+- simple defaults
+- consumer-aware encoding presets
+- explicit composite analytical helpers
+- high-level plot functions
+
+Avoid:
+
+- app-specific branches inside AutoPlots calls
+- one-off LLM plot mutations
+- large sets of low-level font/axis parameters as the primary API
+- direct `Plot.*` or `e_*_full()` usage in modern examples
+
+Composite analytical views should be treated as information-density tools, not decoration. Examples include importance plus cumulative contribution, histogram plus density, scatter plus smoother, scatter plus marginals, SHAP dependence plus binned mean, boxplot plus mean, and trend plus anomalies.
+
 ### AutoPlots Examples That Should Exist
 
 - One copy/paste example per high-level plot family.
 - Display grid/sections/tabs with two or more plots.
 - Resizable report row/card behavior.
 - Theme examples showing default axis formatting without manual axis hacking.
+- Consumer-aware encoding examples once AutoPlots V2 supports them.
+- Composite analytical view examples once explicit helpers exist.
 
 ### AutoPlots QA Invariants
 

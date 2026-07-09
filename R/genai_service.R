@@ -994,9 +994,12 @@ genai_suggest_next_action <- function(ctx, config = genai_config(), context_stra
 
 genai_question_registry <- function() {
   list(
-    summarize = "What are the main analytical takeaways from this artifact? Include any limitations.",
-    limitations = "What limitations, caveats, or trust concerns should an analyst keep in mind?",
-    key_findings = "What are the key findings represented by this artifact?",
+    summarize = "Summarize the main analytical takeaways.",
+    limitations = "What limitations or caveats should be considered when interpreting this artifact?",
+    key_findings = "What are the key analytical findings from this artifact?",
+    next_action = "What should be investigated next?",
+    exact_values = "Report exact values where possible and explain uncertainty.",
+    production_risk = "Would this artifact raise any concern for production use?",
     explain_for_executive = "Explain this artifact for an executive audience in concise business language.",
     explain_for_data_scientist = "Explain this artifact for a data scientist, including methodological caveats.",
     identify_risks = "Identify analytical, data quality, modeling, or interpretation risks visible in this artifact.",
@@ -1084,6 +1087,95 @@ genai_artifact_table_dimensions <- function(artifact) {
   }
   frame <- as.data.frame(table_data)
   list(rows = nrow(frame), columns = ncol(frame))
+}
+
+genai_infer_artifact_family <- function(artifact) {
+  metadata <- artifact$metadata %||% list()
+  explicit <- metadata$artifact_family %||% metadata$plot_family %||% metadata$table_family %||% NULL
+  if (!is.null(explicit) && nzchar(explicit)) {
+    return(list(artifact_family = explicit, policy_source = "explicit"))
+  }
+  text <- tolower(paste(
+    artifact$artifact_id %||% "",
+    artifact$artifact_type %||% artifact$type %||% "",
+    artifact$label %||% artifact$title %||% "",
+    artifact$source_module %||% "",
+    artifact$section %||% "",
+    metadata$analytical_intent %||% "",
+    collapse = " "
+  ))
+  family <- if (grepl("shap.*effect|effect:", text)) {
+    "shap_dependence"
+  } else if (grepl("shap.*importance|global shap|importance", text)) {
+    "shap_importance"
+  } else if (grepl("interaction", text)) {
+    "shap_interaction"
+  } else if (grepl("correlation", text) && grepl("plot|matrix|heatmap", text)) {
+    "correlation_matrix"
+  } else if (grepl("correlation", text)) {
+    "table_correlation"
+  } else if (grepl("histogram|distribution", text)) {
+    "histogram"
+  } else if (grepl("trend|time", text)) {
+    "trend"
+  } else if (grepl("scatter", text)) {
+    "scatter"
+  } else if (grepl("heatmap", text)) {
+    "heatmap"
+  } else if (grepl("metric|threshold|roc|auc|rmse|mae", text)) {
+    "table_metrics"
+  } else if (grepl("diagnostic|qa|config|readiness", text)) {
+    "table_diagnostics"
+  } else if (grepl("ranking|importance|top", text)) {
+    "table_ranking"
+  } else if (identical(artifact$artifact_type %||% artifact$type %||% "", "table")) {
+    "table_diagnostics"
+  } else if (identical(artifact$artifact_type %||% artifact$type %||% "", "text")) {
+    "narrative"
+  } else {
+    "unknown"
+  }
+  list(artifact_family = family, policy_source = if (identical(family, "unknown")) "unknown" else "inferred")
+}
+
+genai_context_provenance <- function(artifact) {
+  metadata <- artifact$metadata %||% list()
+  upstream <- metadata$upstream_ai %||% list()
+  list(
+    caption_source = metadata$caption_source %||% "deterministic",
+    metadata_source = metadata$metadata_source %||% "deterministic",
+    diagnostics_source = metadata$diagnostics_source %||% if (length(metadata$diagnostics %||% metadata$warnings %||% character())) "deterministic" else "unknown",
+    recommendations_source = metadata$recommendations_source %||% if (length(metadata$recommendations %||% character())) "deterministic" else "unknown",
+    narrative_source = metadata$narrative_source %||% "unknown",
+    table_preview_source = metadata$table_preview_source %||% if (!is.null(metadata$table_csv_path %||% metadata$csv_path %||% artifact$table)) "deterministic" else "unknown",
+    json_summary_source = metadata$json_summary_source %||% "deterministic",
+    screenshot_source = metadata$screenshot_source %||% if (!is.null(metadata$screenshot_path %||% metadata$thumbnail_path)) "deterministic" else "unknown",
+    upstream_ai_used = isTRUE(upstream$used %||% metadata$upstream_ai_used %||% FALSE),
+    upstream_ai_provider = upstream$provider %||% metadata$upstream_ai_provider %||% NA_character_,
+    upstream_ai_model = upstream$model %||% metadata$upstream_ai_model %||% NA_character_,
+    upstream_ai_tokens = upstream$tokens %||% metadata$upstream_ai_tokens %||% NA_integer_,
+    upstream_ai_prompt_type = upstream$prompt_type %||% metadata$upstream_ai_prompt_type %||% NA_character_
+  )
+}
+
+genai_question_applicability <- function(artifact_family, question_type) {
+  if (identical(question_type, "exact_values")) {
+    return(artifact_family %in% c("table_ranking", "table_metrics", "table_diagnostics", "table_correlation", "correlation_matrix", "heatmap"))
+  }
+  TRUE
+}
+
+genai_scoring_schema <- function() {
+  list(
+    correctness_score = NA_real_,
+    completeness_score = NA_real_,
+    usefulness_score = NA_real_,
+    hallucination_score = NA_real_,
+    missed_key_points = NA_character_,
+    overclaiming_score = NA_real_,
+    exact_value_accuracy = NA_real_,
+    reviewer_notes = NA_character_
+  )
 }
 
 genai_resolve_context_strategy <- function(artifact, requested_strategy, max_full_table_rows = 50L, max_full_table_cols = 20L) {
@@ -1215,18 +1307,27 @@ genai_experiment_result_row <- function(
   included_components,
   result,
   full_response_path = NA_character_,
+  repeat_id = 1L,
+  question_applicable = TRUE,
   notes = character()
 ) {
   telemetry <- result$metadata$telemetry %||% list()
   scores <- score_genai_experiment_result(result)
+  family <- genai_infer_artifact_family(artifact)
+  provenance <- genai_context_provenance(artifact)
+  scoring <- genai_scoring_schema()
   data.table::data.table(
     experiment_id = experiment_id,
     run_id = run_id,
+    repeat_id = repeat_id,
     timestamp = as.character(Sys.time()),
     artifact_id = artifact$artifact_id %||% "",
     artifact_type = artifact$artifact_type %||% artifact$type %||% "",
+    artifact_family = family$artifact_family,
+    artifact_family_policy_source = family$policy_source,
     artifact_title = artifact$label %||% artifact$title %||% artifact$artifact_id %||% "",
     question_type = question_type,
+    question_applicable = isTRUE(question_applicable),
     provider = telemetry$provider %||% provider,
     model = telemetry$model %||% model %||% NA_character_,
     context_strategy_requested = strategy_requested,
@@ -1254,7 +1355,27 @@ genai_experiment_result_row <- function(
     output_quality_score = scores$output_quality_score,
     accuracy_score = scores$accuracy_score,
     user_rating = scores$user_rating,
+    correctness_score = scoring$correctness_score,
+    completeness_score = scoring$completeness_score,
+    usefulness_score = scoring$usefulness_score,
+    hallucination_score = scoring$hallucination_score,
+    missed_key_points = scoring$missed_key_points,
+    overclaiming_score = scoring$overclaiming_score,
+    exact_value_accuracy = scoring$exact_value_accuracy,
     reviewer_notes = scores$reviewer_notes,
+    caption_source = provenance$caption_source,
+    metadata_source = provenance$metadata_source,
+    diagnostics_source = provenance$diagnostics_source,
+    recommendations_source = provenance$recommendations_source,
+    narrative_source = provenance$narrative_source,
+    table_preview_source = provenance$table_preview_source,
+    json_summary_source = provenance$json_summary_source,
+    screenshot_source = provenance$screenshot_source,
+    upstream_ai_used = provenance$upstream_ai_used,
+    upstream_ai_provider = provenance$upstream_ai_provider,
+    upstream_ai_model = provenance$upstream_ai_model,
+    upstream_ai_tokens = provenance$upstream_ai_tokens,
+    upstream_ai_prompt_type = provenance$upstream_ai_prompt_type,
     notes = paste(notes, collapse = "; ")
   )
 }
@@ -1322,6 +1443,7 @@ run_genai_artifact_experiment <- function(
   output_dir = file.path("exports", "genai_experiments"),
   dry_run = FALSE,
   sampling = "first",
+  repeat_count = 1L,
   experiment_id = NULL
 ) {
   experiment_id <- experiment_id %||% genai_experiment_id("artifact_context_experiment")
@@ -1363,6 +1485,7 @@ run_genai_artifact_experiment <- function(
     )
     prompt_pack <- genai_experiment_prompt(artifact, row$question_type, resolved$context_strategy_used)
     image_payload <- genai_vision_payload(artifact, resolved$context_strategy_used, config = config)
+    for (repeat_id in seq_len(max(1L, as.integer(repeat_count)))) {
     if (isTRUE(dry_run)) {
       response_text <- paste("DRY RUN:", row$artifact_title, row$question_type, resolved$context_strategy_used)
       result <- service_result(
@@ -1424,8 +1547,11 @@ run_genai_artifact_experiment <- function(
       included_components = prompt_pack$included_components,
       result = result,
       full_response_path = NA_character_,
+      repeat_id = repeat_id,
+      question_applicable = genai_question_applicability(genai_infer_artifact_family(artifact)$artifact_family, row$question_type),
       notes = resolved$notes
     )
+    }
   }
   results <- data.table::rbindlist(rows, fill = TRUE)
   paths <- write_genai_experiment_results(results, responses, output_dir = output_dir, experiment_id = experiment_id)
@@ -1517,6 +1643,292 @@ run_genai_image_vs_data_experiment <- function(
   )
 }
 
+genai_context_strategy_baseline_rules <- function() {
+  data.table::data.table(
+    rule_id = c(
+      "text_model_no_pixels", "vision_requires_payload", "exact_values_structured",
+      "tables_preview_before_full", "full_table_guarded", "dense_plots_need_context",
+      "heatmap_hybrid", "shap_dependence_visual", "boxplot_quantiles"
+    ),
+    artifact_family = c("any", "any", "any", "table_diagnostics", "any", "faceted_plot", "heatmap", "shap_dependence", "boxplot"),
+    user_constraint = c("vision_required", "vision_required", "exact_values_required", "balanced", "minimize_tokens", "balanced", "balanced", "balanced", "exact_values_required"),
+    recommended_strategy = c("screenshot_caption", "screenshot_caption", "structured_json_summary", "table_preview_only", "table_preview_only", "screenshot_caption", "screenshot_caption_preview", "screenshot_caption", "screenshot_caption_preview"),
+    fallback_strategy = c("caption_metadata", "caption_metadata", "table_preview_only", "structured_json_summary", "caption_metadata", "structured_json_summary", "structured_json_summary", "structured_json_summary", "table_preview_only"),
+    reason = c(
+      "Text-only models cannot inspect screenshot pixels.",
+      "Vision strategies require image_payload_used TRUE to count as image transfer.",
+      "Exact-value questions prefer structured table or JSON context when available.",
+      "Table artifacts should usually try previews before full tables.",
+      "Full tables are guarded and should not be used globally.",
+      "Dense or faceted plots may need visual evidence plus semantic context.",
+      "Heatmaps and correlation matrices often need image pattern plus table/JSON support.",
+      "SHAP dependence plots often communicate nonlinear shape visually.",
+      "Boxplots may need visual distribution plus quantile backing data."
+    )
+  )
+}
+
+genai_derive_study_metrics <- function(results) {
+  if (!nrow(results)) return(data.table::data.table())
+  score_mean <- function(x) if (all(is.na(x))) NA_real_ else mean(as.numeric(x), na.rm = TRUE)
+  results[, .(
+    calls = .N,
+    success_count = sum(success, na.rm = TRUE),
+    failure_rate = mean(!success, na.rm = TRUE),
+    avg_latency_ms = round(mean(as.numeric(latency_ms), na.rm = TRUE), 1),
+    avg_tokens = round(mean(as.numeric(total_estimated_tokens), na.rm = TRUE), 1),
+    image_payload_success_rate = if (any(image_payload_used)) mean(success[image_payload_used], na.rm = TRUE) else NA_real_,
+    downgrade_rate = mean(nzchar(vision_downgrade_reason %||% ""), na.rm = TRUE),
+    correctness_score = score_mean(correctness_score),
+    usefulness_score = score_mean(usefulness_score),
+    hallucination_rate = score_mean(hallucination_score),
+    quality_per_1k_tokens = if (is.na(score_mean(output_quality_score))) NA_real_ else score_mean(output_quality_score) / (mean(as.numeric(total_estimated_tokens), na.rm = TRUE) / 1000),
+    correctness_per_1k_tokens = if (is.na(score_mean(correctness_score))) NA_real_ else score_mean(correctness_score) / (mean(as.numeric(total_estimated_tokens), na.rm = TRUE) / 1000),
+    usefulness_per_second = if (is.na(score_mean(usefulness_score))) NA_real_ else score_mean(usefulness_score) / (mean(as.numeric(latency_ms), na.rm = TRUE) / 1000)
+  ), by = .(artifact_family, artifact_type, context_strategy_used, question_type, provider, model)]
+}
+
+recommend_context_strategy <- function(
+  artifact_family = "unknown",
+  user_constraint = c("balanced", "minimize_tokens", "maximize_accuracy", "minimize_latency", "local_private", "vision_required", "exact_values_required"),
+  provider_capabilities = genai_capabilities(),
+  experiment_results = NULL
+) {
+  user_constraint <- match.arg(user_constraint)
+  family <- artifact_family
+  constraint <- user_constraint
+  evidence_count <- 0L
+  if (!is.null(experiment_results) && nrow(experiment_results)) {
+    evidence <- experiment_results[artifact_family == family]
+    evidence_count <- nrow(evidence)
+  }
+  rules <- genai_context_strategy_baseline_rules()
+  rule <- rules[artifact_family == family & user_constraint == constraint]
+  if (!nrow(rule)) rule <- rules[artifact_family == "any" & user_constraint == constraint]
+  if (!nrow(rule)) {
+    return(list(
+      recommended_strategy = "balanced",
+      confidence = 0.2,
+      reason = "Insufficient family-specific evidence; balanced is a conservative fallback.",
+      fallback_strategy = "caption_metadata",
+      evidence_count = evidence_count,
+      rule_source = "fallback"
+    ))
+  }
+  if (identical(user_constraint, "vision_required") && !isTRUE(provider_capabilities[["vision"]])) {
+    return(list(
+      recommended_strategy = rule$fallback_strategy[[1]],
+      confidence = 0.15,
+      reason = "Provider does not declare vision; cannot recommend true screenshot-pixel transfer.",
+      fallback_strategy = "caption_metadata",
+      evidence_count = evidence_count,
+      rule_source = "deterministic_baseline"
+    ))
+  }
+  list(
+    recommended_strategy = rule$recommended_strategy[[1]],
+    confidence = if (evidence_count >= 10L) 0.45 else 0.25,
+    reason = rule$reason[[1]],
+    fallback_strategy = rule$fallback_strategy[[1]],
+    evidence_count = evidence_count,
+    rule_source = "deterministic_baseline"
+  )
+}
+
+write_genai_context_strategy_study_outputs <- function(results, responses, output_dir, experiment_id) {
+  paths <- write_genai_experiment_results(results, responses, output_dir = output_dir, experiment_id = experiment_id)
+  metrics <- genai_derive_study_metrics(results)
+  recommendations <- unique(results[, .(artifact_family, artifact_type)])
+  if (nrow(recommendations)) {
+    rec_rows <- lapply(seq_len(nrow(recommendations)), function(i) {
+      rec <- recommend_context_strategy(recommendations$artifact_family[[i]], "balanced", experiment_results = results)
+      data.table::data.table(
+        artifact_family = recommendations$artifact_family[[i]],
+        artifact_type = recommendations$artifact_type[[i]],
+        recommended_strategy = rec$recommended_strategy,
+        confidence = rec$confidence,
+        reason = rec$reason,
+        fallback_strategy = rec$fallback_strategy,
+        evidence_count = rec$evidence_count,
+        rule_source = rec$rule_source
+      )
+    })
+    recommendation_table <- data.table::rbindlist(rec_rows, fill = TRUE)
+  } else {
+    recommendation_table <- data.table::data.table()
+  }
+  family_path <- file.path(paths$experiment_dir, "family_comparison.md")
+  rec_path <- file.path(paths$experiment_dir, "strategy_recommendations.csv")
+  open_path <- file.path(paths$experiment_dir, "open_questions.md")
+  data.table::fwrite(recommendation_table, rec_path)
+  writeLines(c(
+    paste0("# Family Comparison: ", experiment_id), "",
+    "```", paste(capture.output(print(metrics)), collapse = "\n"), "```"
+  ), family_path)
+  writeLines(c(
+    "# Open Questions", "",
+    "- Which artifact families benefit from true image payloads after manual scoring?",
+    "- When does structured JSON beat table previews for exact-value questions?",
+    "- Which plot families require hybrid screenshot + table preview context?",
+    "- How stable are recommendations across repeat runs and providers?"
+  ), open_path)
+  paths$family_comparison_path <- family_path
+  paths$strategy_recommendations_path <- rec_path
+  paths$open_questions_path <- open_path
+  paths
+}
+
+run_genai_context_strategy_study <- function(
+  project,
+  artifact_families = NULL,
+  context_strategies = c("caption_metadata", "screenshot_caption", "table_preview_only", "structured_json_summary", "balanced"),
+  question_types = c("summarize", "key_findings", "limitations", "next_action", "exact_values", "production_risk"),
+  provider = "ollama",
+  model = NULL,
+  max_artifacts_per_family = 1L,
+  repeat_count = 1L,
+  output_dir = file.path("exports", "genai_experiments"),
+  dry_run = FALSE,
+  vision_required = FALSE,
+  max_full_table_rows = 50L,
+  max_full_table_cols = 20L,
+  experiment_id = NULL
+) {
+  experiment_id <- experiment_id %||% genai_experiment_id("context_strategy_study")
+  loaded_project <- genai_load_experiment_project(project)
+  artifacts <- genai_project_artifacts(loaded_project)
+  families <- lapply(artifacts, genai_infer_artifact_family)
+  family_values <- vapply(families, `[[`, character(1), "artifact_family")
+  if (!is.null(artifact_families)) {
+    artifacts <- artifacts[family_values %in% artifact_families]
+    family_values <- family_values[family_values %in% artifact_families]
+  }
+  selected <- list()
+  for (family in unique(family_values)) {
+    idx <- which(family_values == family)
+    selected <- c(selected, artifacts[utils::head(idx, max_artifacts_per_family)])
+  }
+  if (isTRUE(vision_required)) {
+    context_strategies <- intersect(context_strategies, c("screenshot_only", "screenshot_caption", "screenshot_caption_preview"))
+  }
+  study_project <- loaded_project
+  study_project$module_artifacts <- selected
+  result <- run_genai_artifact_experiment(
+    study_project,
+    artifact_ids = vapply(selected, function(x) x$artifact_id %||% "", character(1)),
+    artifact_types = unique(vapply(selected, function(x) x$artifact_type %||% x$type %||% "", character(1))),
+    context_strategies = context_strategies,
+    question_types = question_types,
+    provider = provider,
+    model = model,
+    vision_enabled = vision_required,
+    max_artifacts_per_type = length(selected),
+    max_full_table_rows = max_full_table_rows,
+    max_full_table_cols = max_full_table_cols,
+    output_dir = output_dir,
+    dry_run = dry_run,
+    repeat_count = repeat_count,
+    experiment_id = experiment_id
+  )
+  paths <- write_genai_context_strategy_study_outputs(result$value$results, result$value$responses, output_dir, experiment_id)
+  result$value$paths <- paths
+  result
+}
+
+qa_genai_context_strategy_study <- function() {
+  plot_artifact <- list(
+    artifact_id = "qa_shap_effect_plot",
+    artifact_type = "plot",
+    label = "SHAP Effect: age",
+    source_module = "qa_shap",
+    metadata = list(screenshot_path = tempfile(fileext = ".png"), artifact_family = "shap_dependence")
+  )
+  table_artifact <- list(
+    artifact_id = "qa_metrics_table",
+    artifact_type = "table",
+    label = "Model Metrics",
+    source_module = "qa_model",
+    table = data.table::data.table(metric = c("rmse", "mae"), value = c(1.2, 0.8)),
+    metadata = list()
+  )
+  project <- list(module_artifacts = list(plot_artifact, table_artifact), project_collector = data.table::data.table())
+  family_explicit <- genai_infer_artifact_family(plot_artifact)
+  family_inferred <- genai_infer_artifact_family(table_artifact)
+  provenance <- genai_context_provenance(table_artifact)
+  dry <- run_genai_context_strategy_study(
+    project,
+    artifact_families = c("shap_dependence", "table_metrics"),
+    context_strategies = c("caption_metadata", "full_table", "screenshot_caption"),
+    question_types = c("summarize", "exact_values"),
+    provider = "none",
+    model = "none",
+    max_artifacts_per_family = 1L,
+    repeat_count = 2L,
+    output_dir = file.path(tempdir(), "genai_context_strategy_study_qa"),
+    dry_run = TRUE,
+    vision_required = FALSE,
+    max_full_table_rows = 1L,
+    experiment_id = "qa_context_strategy_study"
+  )
+  results <- dry$value$results
+  metrics <- genai_derive_study_metrics(results)
+  rec <- recommend_context_strategy("shap_dependence", "balanced", genai_capabilities("vision"), experiment_results = results)
+  required_fields <- c(
+    "artifact_family", "artifact_family_policy_source", "repeat_id", "question_applicable",
+    "caption_source", "metadata_source", "diagnostics_source", "recommendations_source",
+    "narrative_source", "table_preview_source", "json_summary_source", "screenshot_source",
+    "upstream_ai_used", "upstream_ai_provider", "upstream_ai_model", "upstream_ai_tokens",
+    "upstream_ai_prompt_type", "correctness_score", "completeness_score", "usefulness_score",
+    "hallucination_score", "missed_key_points", "overclaiming_score", "exact_value_accuracy"
+  )
+  paths <- dry$value$paths
+  service_qa <- qa_genai_service_contract()
+  data.table::data.table(
+    check = c(
+      "artifact_family_explicit",
+      "artifact_family_inferred",
+      "context_provenance_fields",
+      "repeat_id_recorded",
+      "scoring_schema_exists",
+      "derived_metrics_blank_scores",
+      "baseline_rules_exist",
+      "recommendation_conservative",
+      "vision_required_filters_strategies",
+      "text_model_no_image_claim",
+      "study_outputs_written",
+      "existing_genai_qa_passes"
+    ),
+    status = c(
+      if (identical(family_explicit$artifact_family, "shap_dependence") && identical(family_explicit$policy_source, "explicit")) "success" else "error",
+      if (identical(family_inferred$artifact_family, "table_metrics")) "success" else "error",
+      if (all(c("caption_source", "upstream_ai_used", "screenshot_source") %in% names(provenance))) "success" else "error",
+      if (all(c(1L, 2L) %in% results$repeat_id)) "success" else "error",
+      if (all(required_fields %in% names(results))) "success" else "error",
+      if ("quality_per_1k_tokens" %in% names(metrics) && all(is.na(metrics$quality_per_1k_tokens))) "success" else "error",
+      if (nrow(genai_context_strategy_baseline_rules()) >= 5L) "success" else "error",
+      if (is.list(rec) && rec$confidence <= 0.45 && nzchar(rec$reason)) "success" else "error",
+      if (all(run_genai_context_strategy_study(project, context_strategies = c("caption_metadata", "screenshot_caption"), question_types = "summarize", provider = "none", dry_run = TRUE, vision_required = TRUE, output_dir = file.path(tempdir(), "genai_context_strategy_vision_qa"))$value$results$context_strategy_requested == "screenshot_caption")) "success" else "error",
+      if (!any(run_genai_artifact_experiment(project, artifact_types = "plot", context_strategies = "screenshot_caption", question_types = "summarize", provider = "none", dry_run = TRUE)$value$results$image_payload_used)) "success" else "error",
+      if (all(file.exists(c(paths$results_path, paths$responses_path, paths$summary_path, paths$family_comparison_path, paths$strategy_recommendations_path, paths$open_questions_path)))) "success" else "error",
+      if (!any(service_qa$status == "error")) "success" else "error"
+    ),
+    message = c(
+      "Explicit artifact_family metadata is honored.",
+      "Fallback artifact_family inference classifies metric tables.",
+      "Context provenance fields are available.",
+      "Repeat IDs are recorded for repeated runs.",
+      "Manual scoring schema columns are present.",
+      "Derived quality metrics remain NA when scores are blank.",
+      "Preliminary deterministic baseline rules are available.",
+      "Recommendation stub remains conservative.",
+      "Vision-required studies keep only screenshot strategies.",
+      "Text-only providers do not claim true image payloads.",
+      "Study outputs include CSV, JSON, summary, family comparison, recommendations, and open questions.",
+      "Existing GenAI service QA still passes."
+    )
+  )
+}
+
 qa_genai_vision_support <- function() {
   image_path <- tempfile(fileext = ".png")
   writeBin(as.raw(c(
@@ -1577,7 +1989,7 @@ qa_genai_vision_support <- function() {
     ),
     status = c(
       if (all(required_fields %in% names(results))) "success" else "error",
-      if (identical(ollama_payload$images[[1]], "abc123")) "success" else "error",
+      if (identical(as.character(ollama_payload$images)[[1]], "abc123")) "success" else "error",
       if (isTRUE(payload$telemetry$image_payload_used) && payload$telemetry$image_payload_count == 1L) "success" else "error",
       if (!isTRUE(text_payload$telemetry$image_payload_used) && isTRUE(text_payload$telemetry$image_reference_only)) "success" else "error",
       if (!isTRUE(missing_payload$telemetry$image_payload_used) && identical(missing_payload$telemetry$vision_downgrade_reason, "missing_image_file")) "success" else "error",
@@ -1771,6 +2183,7 @@ qa_genai_service_contract <- function() {
   studio <- if (file.exists(file.path("R", "page_artifact_library.R"))) paste(readLines(file.path("R", "page_artifact_library.R"), warn = FALSE), collapse = "\n") else ""
   project <- if (file.exists(file.path("R", "page_project.R"))) paste(readLines(file.path("R", "page_project.R"), warn = FALSE), collapse = "\n") else ""
   docs <- if (file.exists(file.path("docs", "genai_service_architecture.md"))) paste(readLines(file.path("docs", "genai_service_architecture.md"), warn = FALSE), collapse = "\n") else ""
+  research_docs <- if (file.exists(file.path("docs", "genai_context_strategy_research.md"))) paste(readLines(file.path("docs", "genai_context_strategy_research.md"), warn = FALSE), collapse = "\n") else ""
   has <- function(text, patterns) all(vapply(patterns, grepl, logical(1), x = text, fixed = TRUE))
 
   registry <- genai_provider_registry()
@@ -1818,6 +2231,7 @@ qa_genai_service_contract <- function() {
       "read_only_use_cases",
       "experiment_harness",
       "vision_support",
+      "context_strategy_research",
       "context_policy",
       "context_strategy_registry",
       "telemetry_fields",
@@ -1840,6 +2254,7 @@ qa_genai_service_contract <- function() {
       if (has(genai, c("genai_summarize_artifact", "genai_brief_project", "genai_explain_alerts", "genai_suggest_next_action"))) "success" else "error",
       if (has(genai, c("run_genai_artifact_experiment", "build_genai_experiment_grid", "write_genai_experiment_results", "qa_genai_experiment_harness"))) "success" else "error",
       if (has(genai, c("genai_vision_payload", "run_genai_image_vs_data_experiment", "qa_genai_vision_support", "image_payload_used"))) "success" else "error",
+      if (has(genai, c("run_genai_context_strategy_study", "recommend_context_strategy", "genai_infer_artifact_family", "genai_context_provenance"))) "success" else "error",
       if (has(genai, c("project metadata", "artifact captions", "Do not execute", "Do not invent")) || has(genai, c("genai_project_context", "genai_artifact_context", "sidecars"))) "success" else "error",
       if (all(c("screenshot_only", "caption_metadata", "screenshot_caption", "table_preview_only", "full_table", "screenshot_caption_preview", "structured_json_summary") %in% strategy_names)) "success" else "error",
       if (all(telemetry_fields %in% names(telemetry))) "success" else "error",
@@ -1847,7 +2262,7 @@ qa_genai_service_contract <- function() {
       if (all(c("output_quality_score", "accuracy_score", "user_rating") %in% names(telemetry))) "success" else "error",
       if (identical(normalized_tokens$metadata$reported_input_tokens, 42L)) "success" else "error",
       if (has(app_server, "genai_config") && has(mission, "Explain Alerts") && has(studio, "Summarize Artifact") && has(project, "Brief Project")) "success" else "error",
-      if (has(docs, c("GenAI Service Architecture", "Information Transfer Efficiency", "Ollama", "LM Studio", "Agentic Lab"))) "success" else "error"
+      if (has(docs, c("GenAI Service Architecture", "Information Transfer Efficiency", "Ollama", "LM Studio", "Agentic Lab")) && has(research_docs, c("GenAI Context Strategy Research", "Artifact Family", "Context Provenance"))) "success" else "error"
     ),
     message = c(
       "Provider registry exposes swappable adapters.",
@@ -1862,6 +2277,7 @@ qa_genai_service_contract <- function() {
       "Initial read-only use cases are implemented.",
       "Reusable GenAI artifact experiment harness is implemented.",
       "Local vision-model image-vs-data experiment support is implemented.",
+      "Plot-type-aware context strategy research framework is implemented.",
       "Context builders avoid full dataset dumps by default.",
       "Named context strategies support representation comparison experiments.",
       "GenAI results record the required information-transfer telemetry fields.",
@@ -1869,7 +2285,7 @@ qa_genai_service_contract <- function() {
       "Output quality, accuracy, and user rating placeholders are present.",
       "Reported provider input token counts are normalized when available.",
       "Mission Control, Artifact Studio, and Project Workspace expose GenAI status/actions.",
-      "GenAI service architecture documentation exists."
+      "GenAI service and context strategy research documentation exists."
     )
   )
 }

@@ -26,9 +26,13 @@ These are not ordinary pages. They are operational modes inside one project, sim
 | 2 | Artifact Studio | P0 | Artifacts become tangible, searchable, inspectable evidence |
 | 3 | Mission Control | P0 | Project health, workflow state, collector state, QA, warnings, and readiness are visible |
 | 4 | Report and Evidence Storytelling | P1 | Artifacts become claims, storylines, reports, and LLM evidence bundles |
-| 5 | Agentic Lab | P1 | AI plans, explains, and executes over project evidence with preview-before-commit |
+| 5 | Context Optimization and Agentic Lab Foundations | P1 | AI uses deterministic routing, optimized evidence bundles, and observable context decisions before any agentic behavior |
 | 6 | Spatial Model Landscape | P2 | Workflow, lineage, model behavior, and risks become spatially navigable |
 | 7 | Advanced Workspace Personalization | P2 | Power users can customize layouts, command workflows, and mode presets |
+
+Evidence Strategy UX is part of Phase 5 foundations. It gives business users simple decision-oriented controls while allowing technical users to inspect and override the underlying routing configuration.
+
+Information Encoding Policy is also part of Phase 5 foundations. It separates analytical artifact, consumer-specific encoding, and render target so future LLM DOCX, Artifact Studio, executive, developer, and AutoPlots V2 work do not invent separate ad hoc rendering rules.
 
 ## Phase 1: Shell and Workstation Foundation
 

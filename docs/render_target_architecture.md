@@ -6,6 +6,10 @@ Artifacts now have explicit render targets because human-facing reports and LLM-
 
 Human reports optimize for reviewer experience. LLM collectors optimize for dense evidence transfer.
 
+Render target is not the same thing as information encoding.
+
+Render target answers where the artifact goes. Information encoding answers how the same analytical artifact should be represented for the consumer. See `docs/information_encoding_policy.md`.
+
 ## Targets
 
 Current targets are registered by `render_targets()`:
@@ -73,11 +77,11 @@ The intended lifecycle is:
 
 ```text
 Production AutoPlots object
-  -> human_report: interactive widget, unchanged
-  -> llm_docx: production screenshot plus context
+  -> information encoding: human, LLM, thumbnail, executive, developer
+  -> render target: human_report, llm_docx, Artifact Studio, collector, archive
 ```
 
-Both renderings originate from the same production visualization object.
+All renderings originate from the same production analytical artifact. Encoding may change for the consumer, but the artifact identity and provenance should remain stable.
 
 ## Extension Points
 

@@ -8,6 +8,8 @@ This layer is intentionally not Agentic Lab. It does not execute app actions, ru
 
 The workstation is local-first and evidence-centered. GenAI should reason over project evidence, not raw data dumps.
 
+All GenAI calls should respect the Context Optimization Policy: deterministic knowledge first, Evidence Routing second, optional probabilistic routing only when useful, and final reasoning only over an optimized evidence bundle.
+
 Default context priority:
 
 1. Project metadata
@@ -200,6 +202,21 @@ Future UI can use this telemetry to recommend context strategies based on constr
 
 Automatic strategy optimization is intentionally not implemented yet.
 
+## Context Optimization Policy
+
+Context Optimization is the governing contract above the GenAI service. The service provides provider abstraction, capability normalization, context strategy construction, telemetry, and read-only calls. It should not decide to bypass deterministic routing.
+
+Provider adapters should expose enough capability information for deterministic policy decisions:
+
+- local versus remote
+- free versus paid
+- privacy preserving
+- vision support
+- structured JSON support
+- latency and timeout behavior
+
+Paid providers are optional. The app must continue to start and deterministic routing must continue to work when no GenAI provider is configured.
+
 ## Experiment Harness
 
 The reusable harness compares artifact representations across controlled dimensions:
@@ -262,6 +279,12 @@ Local Ollama vision models use the Ollama `images` payload field on `/api/genera
 If vision is disabled, the selected model is not detected as vision-capable, the provider does not declare vision support, the screenshot is missing, or the image exceeds the configured size limit, the experiment downgrades gracefully and records `vision_downgrade_reason`. It does not fail the whole run.
 
 `run_genai_image_vs_data_experiment()` is the convenience harness for comparing image-based artifact transfer against caption, table preview, full-table, JSON, and balanced strategies. It uses existing artifact screenshot paths only and does not create a screenshot pipeline.
+
+## Plot-Type-Aware Strategy Research
+
+Context strategy research now records artifact family, context provenance, repeat IDs, question applicability, manual scoring fields, and derived metrics. Use `run_genai_context_strategy_study()` for targeted artifact-family studies and `recommend_context_strategy()` only as a conservative research stub.
+
+Detailed research guidance lives in `docs/genai_context_strategy_research.md`.
 
 ## UI Surfaces
 

@@ -262,6 +262,12 @@ qa_analysis_modules_integration <- function() {
     genai_service_contract = qa_genai_service_contract,
     genai_experiment_harness = qa_genai_experiment_harness,
     genai_vision_support = qa_genai_vision_support,
+    genai_context_strategy_study = qa_genai_context_strategy_study,
+    evidence_strategy_config = qa_evidence_strategy_config,
+    evidence_routing_policy = qa_evidence_routing_policy,
+    evidence_routing_observability = qa_evidence_routing_observability,
+    evidence_routing_calibration = qa_evidence_routing_calibration,
+    context_optimization_policy = qa_context_optimization_policy,
     ui_consistency = qa_ui_consistency
   )
 
