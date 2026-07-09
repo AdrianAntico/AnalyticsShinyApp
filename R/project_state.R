@@ -106,7 +106,30 @@ qa_project_load_paths <- function(output_dir = file.path(tempdir(), "project_loa
     )
   })
 
-  data.table::rbindlist(rows, use.names = TRUE, fill = TRUE)
+  empty_project <- list(
+    app_version = APP_VERSION,
+    saved_at = Sys.time(),
+    plot_configs = list(),
+    plot_code = list(),
+    plot_metadata = list(),
+    layout_type = "Grid",
+    layout_cols = 2L,
+    export_dir = output_dir,
+    export_name = "empty_artifact_project"
+  )
+  empty_validation <- validate_project_state(empty_project)
+  empty_row <- data.table::data.table(
+    check = "empty_plot_collections",
+    status = if (isTRUE(empty_validation$valid)) "success" else "error",
+    message = if (isTRUE(empty_validation$valid)) {
+      "Project states with no saved Plot Builder plots can still load artifact/module evidence."
+    } else {
+      paste(empty_validation$errors, collapse = " | ")
+    },
+    recommendation = "Empty plot collections should not block loading collector/artifact-first projects."
+  )
+
+  data.table::rbindlist(c(rows, list(empty_row)), use.names = TRUE, fill = TRUE)
 }
 
 plot_config_column_status <- function(config, data = NULL) {
@@ -227,14 +250,14 @@ validate_project_state <- function(project_state, data = NULL) {
 
   repaired <- project_state
 
-  if (!is.list(repaired$plot_configs) || is.null(names(repaired$plot_configs))) {
+  if (!is.list(repaired$plot_configs) || (length(repaired$plot_configs) > 0L && is.null(names(repaired$plot_configs)))) {
     result$valid <- FALSE
     result$errors <- c(result$errors, "plot_configs must be a named list.")
     result$repaired_state <- repaired
     return(result)
   }
 
-  plot_names <- names(repaired$plot_configs)
+  plot_names <- names(repaired$plot_configs) %||% character()
   invalid_names <- plot_names[!grepl("^p[0-9]+$", plot_names)]
   if (length(invalid_names)) {
     result$warnings <- c(

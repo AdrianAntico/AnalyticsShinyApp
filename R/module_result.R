@@ -257,6 +257,11 @@ qa_analysis_modules_integration <- function() {
     artifact_quality_policy = qa_artifact_quality_policy,
     project_load_paths = qa_project_load_paths,
     artifact_studio = qa_artifact_studio,
+    mission_control = qa_mission_control,
+    command_palette = qa_command_palette,
+    genai_service_contract = qa_genai_service_contract,
+    genai_experiment_harness = qa_genai_experiment_harness,
+    genai_vision_support = qa_genai_vision_support,
     ui_consistency = qa_ui_consistency
   )
 

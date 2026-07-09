@@ -124,6 +124,122 @@ ui_stat_grid <- function(...) {
   tags$div(class = "aq-stat-grid", ...)
 }
 
+ui_status_tile <- function(label, value, status = "neutral", detail = NULL, trend = NULL, action = NULL) {
+  tags$article(
+    class = .aq_class("aq-status-tile", paste0("aq-status-tile-", status)),
+    tags$div(
+      class = "aq-status-tile-main",
+      tags$span(class = "aq-status-tile-label", label),
+      tags$strong(class = "aq-status-tile-value", value %||% "-"),
+      if (!is.null(detail)) tags$span(class = "aq-status-tile-detail", detail)
+    ),
+    if (!is.null(trend)) tags$span(class = "aq-status-tile-trend", trend),
+    if (!is.null(action)) tags$div(class = "aq-status-tile-action", action)
+  )
+}
+
+ui_health_summary <- function(...) {
+  tags$section(class = "aq-health-summary", ...)
+}
+
+ui_mission_state_banner <- function(status, title, message = NULL, facts = list()) {
+  status <- status %||% "neutral"
+  tags$section(
+    class = .aq_class("aq-mission-state-banner", paste0("aq-mission-state-banner-", status)),
+    tags$div(
+      class = "aq-mission-state-signal",
+      tags$span(class = "aq-mission-state-pulse", ""),
+      tags$span(class = "aq-mission-state-label", toupper(status))
+    ),
+    tags$div(
+      class = "aq-mission-state-copy",
+      tags$strong(title),
+      if (!is.null(message)) tags$p(message)
+    ),
+    if (length(facts)) {
+      tags$dl(
+        class = "aq-mission-state-facts",
+        lapply(names(facts), function(name) {
+          tagList(tags$dt(name), tags$dd(facts[[name]] %||% "-"))
+        })
+      )
+    }
+  )
+}
+
+ui_alert_card <- function(title, message = NULL, severity = "medium", source = NULL, action = NULL) {
+  status <- switch(severity, high = "error", medium = "warning", low = "info", success = "success", "neutral")
+  tags$article(
+    class = .aq_class("aq-alert-card", paste0("aq-alert-card-", severity)),
+    tags$div(
+      class = "aq-alert-card-content",
+      tags$header(
+        class = "aq-alert-card-header",
+        ui_status_badge(toupper(severity), status = status),
+        if (!is.null(source)) tags$span(class = "aq-alert-card-source", source)
+      ),
+      tags$strong(class = "aq-alert-card-title", title),
+      if (!is.null(message)) tags$p(class = "aq-alert-card-message", message)
+    ),
+    if (!is.null(action)) tags$div(class = "aq-alert-card-action", action)
+  )
+}
+
+ui_timeline <- function(items) {
+  if (is.null(items) || !length(items)) {
+    return(ui_empty_state("No activity yet.", "Project events will appear here as data, modules, artifacts, collector writes, and reports are generated."))
+  }
+  tags$ol(
+    class = "aq-timeline",
+    lapply(items, function(item) {
+      status <- item$status %||% "neutral"
+      tags$li(
+        class = .aq_class("aq-timeline-item", paste0("aq-timeline-item-", status)),
+        tags$span(class = "aq-timeline-time", item$time %||% "--:--"),
+        tags$div(
+          class = "aq-timeline-content",
+          tags$strong(item$title %||% "Project event"),
+          if (!is.null(item$detail)) tags$p(item$detail)
+        )
+      )
+    })
+  )
+}
+
+ui_workflow_status <- function(rows, ns = identity) {
+  if (is.null(rows) || !nrow(rows)) {
+    return(ui_empty_state("Workflow status unavailable.", "The workflow registry did not return any stages."))
+  }
+  tags$div(
+    class = "aq-workflow-status-board",
+    lapply(seq_len(nrow(rows)), function(index) {
+      row <- rows[index]
+      status <- row$status_group[[1]] %||% "neutral"
+      action <- row$action[[1]] %||% ""
+      tags$article(
+        class = .aq_class("aq-workflow-status-card", paste0("aq-workflow-status-card-", status)),
+        tags$header(
+          class = "aq-workflow-status-card-header",
+          tags$div(
+            tags$strong(row$label[[1]]),
+            tags$span(row$subtitle[[1]] %||% row$stage_id[[1]])
+          ),
+          ui_status_badge(row$display_status[[1]] %||% "Unknown", status = status)
+        ),
+        tags$dl(
+          class = "aq-workflow-status-facts",
+          tags$dt("Artifacts"), tags$dd(row$artifact_count[[1]] %||% 0L),
+          tags$dt("Reports"), tags$dd(row$report_plan_count[[1]] %||% 0L)
+        ),
+        tags$p(class = "aq-workflow-status-purpose", row$purpose[[1]] %||% ""),
+        if (nzchar(action)) {
+          actionButton(ns(paste0("mission_open_", row$stage_id[[1]])), action, class = "btn-secondary btn-sm")
+        }
+      )
+    })
+  )
+}
+
 ui_quality_panel <- function(score = NULL, status = "neutral", title = "Artifact Quality", details = NULL) {
   score_value <- suppressWarnings(as.numeric(score %||% NA_real_))
   score_label <- if (!length(score_value) || is.na(score_value[[1]])) "Not scored" else paste0(round(score_value[[1]]), "%")

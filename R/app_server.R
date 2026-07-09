@@ -47,6 +47,11 @@ server <- function(input, output, session) {
   ctx$code_runner_message <- reactiveVal("")
   ctx$project_data <- reactiveVal(NULL)
   ctx$project_data_info <- reactiveVal(list(path = NULL, name = NULL))
+  ctx$genai_config <- reactiveVal(genai_config())
+  ctx$genai_last_result <- reactiveVal(NULL)
+  ctx$genai_status <- function(check_availability = FALSE) {
+    genai_provider_status(ctx$genai_config(), check_availability = check_availability)
+  }
 
   ctx$uploaded_data <- reactive({
     data <- ctx$project_data()
@@ -58,6 +63,9 @@ server <- function(input, output, session) {
   ctx$current_data_path <- function() ctx$project_data_info()$path
   ctx$current_data_name <- function() ctx$project_data_info()$name
   ctx$has_upload_or_project_data <- function() !is.null(ctx$project_data())
+  ctx$navigate_to <- function(page) {
+    updateTabsetPanel(session, "main_tabs", selected = page)
+  }
   ctx$code_tracker_summary <- function() {
     code_tracker_summary(ctx$code_runner_state$records)
   }
@@ -942,6 +950,8 @@ server <- function(input, output, session) {
     list(state = project_state, messages = unique(messages[nzchar(messages)]))
   }
 
+  command_palette_server("command_palette", navigation_session = session)
+  page_mission_control_server("mission_control", ctx)
   page_data_server("data", ctx)
   page_plot_builder_server("plot_builder", ctx)
   page_workflow_server("workflow", ctx)

@@ -29,6 +29,7 @@ page_project_ui <- function(id) {
             )
           ),
           uiOutput(ns("ai_readiness_panel")),
+          uiOutput(ns("genai_provider_panel")),
           uiOutput(ns("collector_panel"))
         ),
         ui_card(
@@ -152,6 +153,18 @@ page_project_server <- function(id, ctx) {
       )
     })
 
+    output$genai_provider_panel <- renderUI({
+      ui_genai_status_panel(
+        ctx$genai_status(check_availability = FALSE),
+        title = "GenAI Readiness",
+        actions = ui_action_row(
+          actionButton(ns("brief_project"), "Brief Project", class = "btn-primary btn-sm"),
+          actionButton(ns("suggest_next_action"), "Suggest Next Action", class = "btn-secondary btn-sm")
+        ),
+        result = ctx$genai_last_result()
+      )
+    })
+
     output$workspace_status <- renderUI({
       data_info <- tryCatch(ctx$project_data_info(), error = function(e) list(path = NULL, name = NULL))
       collector <- tryCatch(ctx$project_collector_summary(), error = function(e) data.table::data.table())
@@ -215,6 +228,20 @@ page_project_server <- function(id, ctx) {
     observeEvent(input$save_project_secondary, save_project_action(), ignoreInit = TRUE)
     observeEvent(input$load_project, load_project_action(), ignoreInit = TRUE)
     observeEvent(input$load_project_secondary, load_project_action(), ignoreInit = TRUE)
+
+    observeEvent(input$brief_project, {
+      result <- genai_brief_project(ctx, config = ctx$genai_config())
+      ctx$genai_last_result(result)
+      ctx$project_message(service_result_message(result))
+      add_activity("Requested read-only GenAI project brief.")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$suggest_next_action, {
+      result <- genai_suggest_next_action(ctx, config = ctx$genai_config())
+      ctx$genai_last_result(result)
+      ctx$project_message(service_result_message(result))
+      add_activity("Requested read-only GenAI next-action suggestion.")
+    }, ignoreInit = TRUE)
 
     observeEvent(input$save_bundle, {
       ctx$project_message("")

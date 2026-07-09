@@ -17,7 +17,11 @@ page_data_ui <- function(id) {
             ui_callout(
               "Next",
               "After data loads, use Workflow or Analysis Modules to generate artifacts.",
-              status = "info"
+              status = "info",
+              actions = ui_action_row(
+                actionButton(ns("open_analysis_modules"), "Open Analysis Modules", class = "btn-primary btn-sm"),
+                actionButton(ns("open_workflow"), "Open Workflow", class = "btn-secondary btn-sm")
+              )
             )
           )
         ),
@@ -95,6 +99,14 @@ page_data_server <- function(id, ctx) {
           ctx$project_message("Data uploaded and saved plots rebuilt.")
         }
       }
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$open_analysis_modules, {
+      if (!is.null(ctx$navigate_to)) ctx$navigate_to("Analysis Modules")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$open_workflow, {
+      if (!is.null(ctx$navigate_to)) ctx$navigate_to("Workflow")
     }, ignoreInit = TRUE)
 
     output$data_summary <- renderText({

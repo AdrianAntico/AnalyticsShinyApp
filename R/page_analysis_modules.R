@@ -961,9 +961,28 @@ page_analysis_modules_server <- function(id, ctx) {
       tags$div(
         ui_status_badge(result$status, status = status),
         tags$p(class = "aq-export-message", service_result_message(result)),
-        details
+        details,
+        if (identical(result$status, "success")) {
+          ui_action_row(
+            actionButton(session$ns("open_artifact_studio_after_run"), "Inspect in Artifact Studio", class = "btn-primary btn-sm"),
+            actionButton(session$ns("open_export_after_run"), "Open Export", class = "btn-secondary btn-sm"),
+            actionButton(session$ns("open_mission_control_after_run"), "Return to Mission Control", class = "btn-secondary btn-sm")
+          )
+        }
       )
     })
+
+    observeEvent(input$open_artifact_studio_after_run, {
+      if (!is.null(ctx$navigate_to)) ctx$navigate_to("Artifact Studio")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$open_export_after_run, {
+      if (!is.null(ctx$navigate_to)) ctx$navigate_to("Export")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$open_mission_control_after_run, {
+      if (!is.null(ctx$navigate_to)) ctx$navigate_to("Mission Control")
+    }, ignoreInit = TRUE)
 
     output$catboost_handoff_panel <- renderUI({
       handoff <- current_catboost_handoff()

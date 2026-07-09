@@ -256,6 +256,8 @@ Candidate deliverables:
 
 ## Phase 3: Mission Control
 
+Status: Phase 1 implemented as the operational awareness mode. The current implementation provides project health tiles, workflow/system status, collector and AI readiness, an alert/open-decision queue, and a recent run timeline. Future iterations should replace reconstructed timeline signals with durable run-history events and make alert resolution interactive.
+
 ### Milestone 3.1: Project Health Center
 
 Purpose: surface the state of the entire project in one operational mode.
@@ -286,6 +288,12 @@ Candidate deliverables:
 - AI readiness
 - warnings and failures
 
+Implemented foundation:
+
+- health tiles for project, collector, AI readiness, artifact quality, workflow coverage, reports, warnings, and QA
+- workflow-derived system status board
+- collector and manifest readiness indicators
+
 ### Milestone 3.2: Run Timeline
 
 Purpose: show project activity over time.
@@ -311,6 +319,12 @@ Candidate deliverables:
 - run status badges
 - warning/error annotations
 - click-to-open related artifacts
+
+Implemented foundation:
+
+- compact timeline reconstructed from current data state, artifact timestamps, and collector availability
+- empty state for projects without activity
+- visual timeline component ready for permanent run history
 
 ### Milestone 3.3: Alert and Decision Queue
 
@@ -341,6 +355,12 @@ Candidate deliverables:
 - incomplete artifact warnings
 - open decisions
 - dismissed/accepted states
+
+Implemented foundation:
+
+- prioritized queue for missing evidence, collector gaps, manifest gaps, and artifact quality warnings
+- healthy empty state when no open decisions are detected
+- alert cards designed for future resolution/dismissal behavior
 
 ## Phase 4: Report and Evidence Storytelling
 
@@ -657,4 +677,3 @@ Update this roadmap when:
 - a milestone is implemented
 - QA reveals a recurring UX regression
 - a new workstation mode becomes necessary
-

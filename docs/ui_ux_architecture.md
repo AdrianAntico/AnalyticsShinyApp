@@ -97,10 +97,54 @@ Every page should answer:
 
 The Project Workspace is the home surface for overall status. Workflow remains the lifecycle launchpad. Analysis Modules remain the parameterized execution surface.
 
+## Mission Control
+
+Mission Control is the operational awareness mode for the project. It is not a dashboard and not a replacement for Artifact Studio. It answers:
+
+- What is happening?
+- What is healthy?
+- What needs attention?
+- What should I do next?
+
+Mission Control treats the project as the world, modules as evidence producers, artifacts as evidence, and the Project Artifact Collector as project memory. The mode should feel like a compact analytical control room: calm, dense, status-rich, and immediately scannable.
+
+Operational awareness is organized into four layers:
+
+- Project Health: top-level health tiles for project, dataset, collector, AI readiness, artifact quality, workflow, reports, warnings, and QA.
+- System Status: module and workflow status using the workflow registry so future modules can integrate without page-specific logic.
+- Alerts / Open Decisions: an actionable queue for quality warnings, missing evidence, collector gaps, and future analytical decisions. This is not an error log.
+- Run Timeline: recent project activity reconstructed from project state, artifacts, collector state, and report activity.
+
+Health hierarchy:
+
+1. Failed or missing project-critical evidence
+2. Collector and manifest readiness
+3. Artifact quality and warning count
+4. Workflow coverage
+5. AI/readiness and report readiness
+
+Alert philosophy:
+
+- Alerts should be sparse, prioritized, and actionable.
+- High priority means modeling or evidence generation is blocked or absent.
+- Medium priority means generated evidence needs review.
+- Low priority means the project can continue but has visibility gaps.
+- A healthy project should say so clearly rather than leaving an empty panel.
+
+Timeline philosophy:
+
+- Timeline entries are compact operational events, not prose summaries.
+- The timeline should make a project run reconstructable at a glance.
+- Future entries may come from permanent run history, collector manifests, report generation, and AI actions.
+
 ## Layout Principles
 
 - Use `ui_page()` for page shells.
 - Use `ui_card()` for bounded task surfaces.
+- Use `ui_status_tile()` and `ui_health_summary()` for operational project health.
+- Use `ui_workflow_status()` for module and workflow status boards.
+- Use `ui_alert_card()` for Mission Control alert and decision queues.
+- Use `ui_timeline()` for compact project activity timelines.
 - Use `ui_action_bar()` for persistent local action zones.
 - Use `ui_workspace_grid()` for main/sidebar or multi-column workstation layouts.
 - Use `ui_split_panel()` for analytical work areas with an inspector/sidebar.

@@ -518,6 +518,19 @@ page_artifact_library_server <- function(id, ctx) {
             ai_readiness = ai_readiness
           ),
           ui_inspector_section(
+            "GenAI Assistance",
+            ui_genai_status_panel(
+              ctx$genai_status(check_availability = FALSE),
+              title = "Artifact Summary Assistant",
+              actions = ui_action_row(
+                actionButton(session$ns("summarize_selected_artifact"), "Summarize Artifact", class = "btn-primary btn-sm")
+              ),
+              result = ctx$genai_last_result()
+            ),
+            eyebrow = "Read Only",
+            collapsed = TRUE
+          ),
+          ui_inspector_section(
             "Recommendations",
             if (length(recommendations)) {
               tags$ul(class = "aq-recommendation-list", lapply(as.character(recommendations), tags$li))
@@ -605,6 +618,17 @@ page_artifact_library_server <- function(id, ctx) {
         ),
         error = function(e) service_result(status = "error", errors = conditionMessage(e))
       )
+      ctx$artifact_library_message(service_result_message(result))
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$summarize_selected_artifact, {
+      artifact <- selected_artifact()
+      if (is.null(artifact)) {
+        ctx$artifact_library_message("Select an artifact before requesting a GenAI summary.")
+        return()
+      }
+      result <- genai_summarize_artifact(artifact, config = ctx$genai_config())
+      ctx$genai_last_result(result)
       ctx$artifact_library_message(service_result_message(result))
     }, ignoreInit = TRUE)
   })
