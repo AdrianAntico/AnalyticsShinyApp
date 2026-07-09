@@ -578,7 +578,7 @@ qa_knowledge_library <- function() {
       if (grepl("href=\"#", paste(as.character(knowledge_library_section_toc(markdown_text)), collapse = " "), fixed = TRUE)) "success" else "error",
       if (grepl(".aq-library-toc-list", css_text, fixed = TRUE) && grepl("max-height: 92px", css_text, fixed = TRUE) && grepl("overflow-y: auto", css_text, fixed = TRUE)) "success" else "error",
       if (!any(grepl("\\.[0-9]{3,}", stats$value))) "success" else "error",
-      if (grepl("aq-library-workspace-page", ui_text, fixed = TRUE) && grepl("clamp(240px, 18vw, 320px)", css_text, fixed = TRUE) && grepl("width: 100% !important", css_text, fixed = TRUE)) "success" else "error",
+      if (grepl("aq-library-workspace-page", ui_text, fixed = TRUE) && grepl("clamp(240px, 16vw, 340px)", css_text, fixed = TRUE) && grepl("width: 100% !important", css_text, fixed = TRUE)) "success" else "error",
       if (grepl("height: calc(100vh - 250px)", css_text, fixed = TRUE) && grepl(".aq-library-reader", css_text, fixed = TRUE) && grepl("overflow-y: auto", css_text, fixed = TRUE)) "success" else "error",
       if (grepl(".aq-library-page", css_text, fixed = TRUE) && grepl(".aq-library-reader", css_text, fixed = TRUE)) "success" else "error",
       if (nrow(stats) >= 6L && all(c("Words", "Concept Count") %in% stats$metric)) "success" else "error",
