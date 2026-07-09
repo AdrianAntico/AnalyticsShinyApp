@@ -97,3 +97,36 @@ plot_registry <- list(
 )
 
 plot_types <- names(plot_registry)
+
+plot_type_label <- function(plot_type) {
+  labels <- c(
+    Area = "Area Chart",
+    Line = "Line Chart",
+    Bar = "Bar Chart",
+    Scatter = "Scatter Plot",
+    Histogram = "Histogram",
+    Density = "Density Plot",
+    Pie = "Pie Chart",
+    Donut = "Donut Chart",
+    HeatMap = "Heatmap",
+    CorrMatrix = "Correlation Matrix"
+  )
+  label <- unname(labels[plot_type])
+  if (length(label) && !is.na(label) && nzchar(label)) label else plot_type
+}
+
+plot_type_choices <- function() {
+  stats::setNames(plot_types, vapply(plot_types, plot_type_label, character(1)))
+}
+
+mapping_label <- function(mapping) {
+  labels <- c(
+    XVar = "X-Axis Column",
+    YVar = "Y-Axis Column",
+    ZVar = "Value Column",
+    GroupVar = "Color / Group Column",
+    CorrVars = "Correlation Columns"
+  )
+  label <- unname(labels[mapping])
+  if (length(label) && !is.na(label) && nzchar(label)) label else mapping
+}

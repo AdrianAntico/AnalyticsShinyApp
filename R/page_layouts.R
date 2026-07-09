@@ -660,7 +660,7 @@ page_layouts_server <- function(id, ctx) {
         ui_status_badge("Applied", status = "success"),
         tags$p(
           class = "aq-export-message",
-          paste("Active plan:", plan$label, "from", plan$source_module)
+          paste("Active plan:", plan$label, "from", module_display_label(plan$source_module, plan$source_module))
         )
       )
     })
@@ -741,7 +741,7 @@ page_layouts_server <- function(id, ctx) {
           plan$label,
           paste(
             c(
-              paste("Source:", plan$source_module),
+              paste("Source:", module_display_label(plan$source_module, plan$source_module)),
               paste("Layout:", plan$layout_type),
               paste("Sections:", length(plan$sections)),
               paste("Artifacts:", length(plan$artifact_ids)),

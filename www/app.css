@@ -1575,6 +1575,19 @@ body.aq-theme-cyberpunk .aq-disclosure {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
+.aq-data-loader-grid {
+  align-items: stretch;
+}
+
+.aq-data-loader-grid .aq-card {
+  height: 100%;
+}
+
+.aq-data-preview-card .aq-card-body {
+  min-width: 0;
+  overflow-x: auto;
+}
+
 .aq-split-panel {
   display: grid;
   gap: 14px;

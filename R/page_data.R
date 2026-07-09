@@ -7,34 +7,37 @@ page_data_ui <- function(id) {
       title = "Data Workspace",
       subtitle = "Load the project dataset and inspect the working preview before running modules.",
       eyebrow = "Data",
-      ui_split_panel(
-        side = "left",
-        side_content = tagList(
-          ui_card(
-            title = "Dataset Source",
-            subtitle = "CSV upload or project-loaded data.",
-            fileInput(ns("csv_file"), "CSV", accept = c(".csv", "text/csv")),
-            ui_callout(
-              "Next",
-              "After data loads, use Workflow or Analysis Modules to generate artifacts.",
-              status = "info",
-              actions = ui_action_row(
-                actionButton(ns("open_analysis_modules"), "Open Analysis Modules", class = "btn-primary btn-sm"),
-                actionButton(ns("open_workflow"), "Open Workflow", class = "btn-secondary btn-sm")
-              )
-            )
+      ui_workspace_grid(
+        columns = "two",
+        class = "aq-data-loader-grid",
+        ui_card(
+          title = "Dataset Source",
+          subtitle = "Upload CSV, Excel, Parquet, or use project-loaded data.",
+          fileInput(ns("csv_file"), "Dataset File", accept = supported_data_accept_types()),
+          ui_callout(
+            "Supported formats",
+            "CSV, XLSX, XLSM, and Parquet. Excel workbooks load the first worksheet.",
+            status = "info"
           )
         ),
-        main = tagList(
-          ui_card(
-            title = "Dataset Status",
-            textOutput(ns("data_summary"))
-          ),
-          ui_card(
-            title = "Data Preview",
-            uiOutput(ns("data_preview"))
+        ui_card(
+          title = "Dataset Status",
+          textOutput(ns("data_summary")),
+          ui_callout(
+            "Next",
+            "After data loads, use Workflow or Analysis Modules to generate artifacts.",
+            status = "info",
+            actions = ui_action_row(
+              actionButton(ns("open_analysis_modules"), "Open Analysis Modules", class = "btn-primary btn-sm"),
+              actionButton(ns("open_workflow"), "Open Workflow", class = "btn-secondary btn-sm")
+            )
           )
         )
+      ),
+      ui_card(
+        title = "Data Preview",
+        class = "aq-data-preview-card",
+        uiOutput(ns("data_preview"))
       )
     )
   )
@@ -63,7 +66,7 @@ page_data_server <- function(id, ctx) {
         )
       }
 
-      data.table::fread(input$csv_file$datapath)
+      read_dataset_file(input$csv_file$datapath, name = input$csv_file$name)
     })
 
     ctx$current_data_path <- function() {
@@ -122,8 +125,9 @@ page_data_server <- function(id, ctx) {
         }
 
         sprintf(
-          "%s - %s MB - %s rows x %s columns",
+          "%s (%s) - %s MB - %s rows x %s columns",
           input$csv_file$name,
+          toupper(default_value(data_loader_extension(input$csv_file$name), "file")),
           file_size_mb(input$csv_file$size),
           format(nrow(data), big.mark = ",", scientific = FALSE),
           format(ncol(data), big.mark = ",", scientific = FALSE)

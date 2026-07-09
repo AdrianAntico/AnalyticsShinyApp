@@ -484,7 +484,7 @@ render_artifact <- function(artifact, chrome = TRUE) {
         class = "aq-report-artifact-heading",
         htmltools::tags$h4(class = "aq-report-artifact-title", artifact$label %||% artifact$artifact_id),
         if (!is.null(artifact$source_module) && nzchar(artifact$source_module)) {
-          htmltools::tags$p(class = "aq-report-artifact-source", artifact$source_module)
+          htmltools::tags$p(class = "aq-report-artifact-source", module_display_label(artifact$source_module, artifact$source_module))
         }
       ),
       htmltools::tags$span(

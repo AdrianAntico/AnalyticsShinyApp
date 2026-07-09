@@ -13,7 +13,7 @@ mapping_control <- function(mapping, data, required = TRUE, selected = NULL, ns 
 
     return(selectInput(
       ns(mapping_input_id(mapping)),
-      mapping,
+      mapping_label(mapping),
       choices = all_choices,
       selected = selected,
       multiple = TRUE
@@ -30,7 +30,7 @@ mapping_control <- function(mapping, data, required = TRUE, selected = NULL, ns 
 
   selectInput(
     ns(mapping_input_id(mapping)),
-    mapping,
+    mapping_label(mapping),
     choices = choices,
     selected = selected
   )
@@ -49,7 +49,7 @@ page_plot_builder_ui <- function(id) {
         side = "left",
         side_content = ui_card(
           title = "Plot Controls",
-          selectInput(ns("plot_type"), "PlotType", choices = plot_types),
+          selectInput(ns("plot_type"), "Plot Type", choices = plot_type_choices()),
           ui_control_group(
             "Mappings",
             uiOutput(ns("mapping_inputs"))

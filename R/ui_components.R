@@ -566,7 +566,7 @@ ui_artifact_studio_card <- function(
     tags$div(
       class = "aq-studio-card-content",
       tags$h4(class = "aq-studio-card-title", artifact$label %||% artifact$artifact_id),
-      tags$p(class = "aq-studio-card-module", artifact$source_module %||% "unknown module"),
+      tags$p(class = "aq-studio-card-module", module_display_label(artifact$source_module, "Unknown module")),
       tags$div(
         class = "aq-studio-card-badges",
         ui_status_badge(quality_label, status = card_status),
@@ -639,7 +639,7 @@ ui_artifact_filmstrip <- function(artifacts, selected_id = NULL, ns = identity, 
       preview_hint <- paste(
         artifact$label %||% artifact$artifact_id,
         artifact_type_label(artifact$artifact_type %||% "artifact"),
-        artifact$source_module %||% "",
+        module_display_label(artifact$source_module, artifact$source_module),
         sep = " | "
       )
       tags$button(
@@ -655,7 +655,7 @@ ui_artifact_filmstrip <- function(artifacts, selected_id = NULL, ns = identity, 
         ),
         tags$span(class = "aq-artifact-filmstrip-icon", artifact_studio_type_icon(artifact$artifact_type)),
         tags$span(class = "aq-artifact-filmstrip-title", artifact$label %||% artifact$artifact_id),
-        tags$span(class = "aq-artifact-filmstrip-module", artifact$source_module %||% "")
+        tags$span(class = "aq-artifact-filmstrip-module", module_display_label(artifact$source_module, artifact$source_module))
       )
     })
   )
@@ -850,7 +850,9 @@ qa_ui_consistency <- function() {
       "table_overflow_containment",
       "dark_reactable_styling",
       "no_raw_shiny_table_outputs",
-      "dark_auto_table_theme"
+      "dark_auto_table_theme",
+      "user_friendly_module_labels",
+      "user_friendly_plot_control_labels"
     ),
     status = c(
       if (all(vapply(component_names, function(name) exists(name, envir = environment(), mode = "function"), logical(1)))) "success" else "error",
@@ -869,7 +871,7 @@ qa_ui_consistency <- function() {
       if (has_patterns(c("aq-theme-switcher", "aq-theme-select", "window.aqApplyTheme", "localStorage.setItem('aq.theme'"), ui_components)) "success" else "error",
       if (has_patterns(c("body.aq-theme-cyberpunk", "#00f5ff", "#ff2bd6", ".aq-theme-switcher"), css) && has_patterns(c("cyberpunk", "reactable_theme_cyberpunk"), table_theme)) "success" else "error",
       if (has_patterns(c("body.aq-theme-dark", "body:not(.aq-theme-light):not(.aq-theme-pimp):not(.aq-theme-cyberpunk)", "--aq-bg-base", "--aq-focus-ring", "--aq-secondary"), css)) "success" else "error",
-      if (grepl("Data Workspace", data_page, fixed = TRUE) && grepl("ui_split_panel", data_page, fixed = TRUE)) "success" else "error",
+      if (has_patterns(c("Data Workspace", "supported_data_accept_types", "aq-data-loader-grid", "aq-data-preview-card"), data_page)) "success" else "error",
       if (grepl("Plot Builder", plot_builder_page, fixed = TRUE) && grepl("ui_preview_panel", plot_builder_page, fixed = TRUE) && grepl("ui_code_panel", plot_builder_page, fixed = TRUE)) "success" else "error",
       if (grepl("Layout Studio", layouts_page, fixed = TRUE) && grepl("ui_split_panel", layouts_page, fixed = TRUE) && grepl("ui_code_panel", layouts_page, fixed = TRUE)) "success" else "error",
       if (grepl("Artifact Studio", artifact_library_page, fixed = TRUE) && grepl("ui_artifact_filmstrip", artifact_library_page, fixed = TRUE) && grepl("artifact_studio_overview", artifact_library_page, fixed = TRUE)) "success" else "error",
@@ -883,7 +885,13 @@ qa_ui_consistency <- function() {
       if (has_patterns(c(".aq-table-wrapper", "overflow-x: auto", "width: max-content", ".aq-card-body", "min-width: 0"), css)) "success" else "error",
       if (has_patterns(c(".aq-app-shell .ReactTable", ".aq-app-shell .rt-table", ".aq-app-shell .dataTables_wrapper", ".aq-app-shell table.dataTable"), css) && has_patterns(c("backgroundColor = \"#0B1326\"", "filterInputStyle", "selectStyle"), table_theme)) "success" else "error",
       if (!grepl("tableOutput\\(|renderTable\\(", page_text)) "success" else "error",
-      if (grepl("return(getOption(\"aq.theme\", \"dark\"))", table_theme, fixed = TRUE)) "success" else "error"
+      if (grepl("return(getOption(\"aq.theme\", \"dark\"))", table_theme, fixed = TRUE)) "success" else "error",
+      if (!any(grepl("^AutoQuant\\b|autoquant_", vapply(get_module_registry(), function(module) module$label %||% "", character(1))))) "success" else "error",
+      if (all(c("Plot Type", "X-Axis Column", "Y-Axis Column", "Color / Group Column", "Correlation Columns", "Aggregation Method", "Chart Title", "Rotate X-Axis Labels") %in% c(
+        "Plot Type",
+        vapply(c("XVar", "YVar", "GroupVar", "CorrVars"), mapping_label, character(1)),
+        vapply(option_registry, function(option) option$label %||% "", character(1))
+      ))) "success" else "error"
     ),
     message = c(
       "Shared page/card/stat/disclosure/activity components exist.",
@@ -902,7 +910,7 @@ qa_ui_consistency <- function() {
       "The app shell exposes a persistent selectable theme switcher.",
       "Cyberpunk theme tokens and table theme support are available.",
       "Dark-first tokens include base surfaces, focus states, and secondary accent.",
-      "Data page uses a workspace split-panel layout.",
+      "Data page uses a top dataset loader/status band with a full-width preview.",
       "Plot Builder uses shared preview and code panels.",
       "Layout Studio uses shared split-panel, disclosure, preview, and code panels.",
       "Artifact Studio surfaces evidence gallery, inspector, and filmstrip.",
@@ -916,7 +924,9 @@ qa_ui_consistency <- function() {
       "Tables are constrained to their parent panel and scroll horizontally when needed.",
       "Reactable and DT/DataTables selectors have dark styling and the shared reactable helper is dark.",
       "Page UI/server files use themed table rendering instead of raw Shiny table outputs.",
-      "The automatic table theme resolves to dark unless explicitly overridden."
+      "The automatic table theme resolves to dark unless explicitly overridden.",
+      "Module registry labels are user-facing names, not implementation package ids.",
+      "Plot Builder controls use user-facing labels instead of raw AutoPlots argument names."
     )
   )
 }

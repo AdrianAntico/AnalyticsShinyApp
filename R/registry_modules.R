@@ -2,9 +2,9 @@ module_registry <- function() {
   list(
     autoquant_eda = list(
       module_id = "autoquant_eda",
-      label = "AutoQuant EDA",
+      label = "Explore Data",
       category = "EDA",
-      description = "Generate EDA artifacts using AutoQuant.",
+      description = "Generate exploratory data evidence: distributions, missingness, correlations, and trends.",
       status = "experimental",
       output_artifact_types = c("plot", "table", "text"),
       required_packages = c("AutoQuant", "AutoPlots"),
@@ -13,9 +13,9 @@ module_registry <- function() {
     ),
     autoquant_model_readiness = list(
       module_id = "autoquant_model_readiness",
-      label = "AutoQuant Model Readiness",
+      label = "Model Readiness",
       category = "Modeling",
-      description = "Generate target diagnostics, leakage checks, drift/readiness evidence, and modeling recommendations using AutoQuant.",
+      description = "Review target diagnostics, leakage risk, drift, class balance, and modeling recommendations.",
       status = "experimental",
       output_artifact_types = c("plot", "table", "text"),
       required_packages = c("AutoQuant", "AutoPlots"),
@@ -24,9 +24,9 @@ module_registry <- function() {
     ),
     autoquant_regression_model_insights = list(
       module_id = "autoquant_regression_model_insights",
-      label = "AutoQuant Regression Model Insights",
+      label = "Regression Model Insights",
       category = "Modeling",
-      description = "Generate regression model insight artifacts using AutoQuant.",
+      description = "Inspect regression model diagnostics, feature effects, and residual behavior.",
       status = "experimental",
       output_artifact_types = c("plot", "table", "text"),
       required_packages = c("AutoQuant", "AutoPlots"),
@@ -35,9 +35,9 @@ module_registry <- function() {
     ),
     autoquant_binary_model_insights = list(
       module_id = "autoquant_binary_model_insights",
-      label = "AutoQuant Binary Classification Model Insights",
+      label = "Binary Classification Model Insights",
       category = "Modeling",
-      description = "Generate binary classification model insight artifacts using AutoQuant.",
+      description = "Inspect classification thresholds, diagnostics, feature effects, and score behavior.",
       status = "experimental",
       output_artifact_types = c("plot", "table", "text"),
       required_packages = c("AutoQuant", "AutoPlots"),
@@ -46,9 +46,9 @@ module_registry <- function() {
     ),
     autoquant_regression_shap_analysis = list(
       module_id = "autoquant_regression_shap_analysis",
-      label = "AutoQuant Regression SHAP Analysis",
+      label = "Regression SHAP Insights",
       category = "Interpretability",
-      description = "Generate regression SHAP analysis artifacts from precomputed Shap_ columns using AutoQuant.",
+      description = "Explain regression predictions using precomputed SHAP contribution columns.",
       status = "experimental",
       output_artifact_types = c("plot", "table", "text"),
       required_packages = c("AutoQuant", "AutoPlots"),
@@ -59,9 +59,9 @@ module_registry <- function() {
     ),
     autoquant_binary_shap_analysis = list(
       module_id = "autoquant_binary_shap_analysis",
-      label = "AutoQuant Binary Classification SHAP Analysis",
+      label = "Binary Classification SHAP Insights",
       category = "Interpretability",
-      description = "Generate binary classification SHAP analysis artifacts from precomputed Shap_ columns using AutoQuant.",
+      description = "Explain classification scores using precomputed SHAP contribution columns.",
       status = "experimental",
       output_artifact_types = c("plot", "table", "text"),
       required_packages = c("AutoQuant", "AutoPlots"),
@@ -72,9 +72,9 @@ module_registry <- function() {
     ),
     autoquant_multiclass_shap_analysis = list(
       module_id = "autoquant_multiclass_shap_analysis",
-      label = "AutoQuant Multiclass SHAP Analysis",
+      label = "Multiclass SHAP Insights",
       category = "Interpretability",
-      description = "Deferred scaffold for multiclass SHAP prediction-surface artifacts using AutoQuant.",
+      description = "Deferred scaffold for multiclass prediction explanation artifacts.",
       status = "deferred",
       output_artifact_types = c("plot", "table", "text"),
       required_packages = "AutoQuant",
@@ -85,9 +85,9 @@ module_registry <- function() {
     ),
     autoquant_catboost_builder = list(
       module_id = "autoquant_catboost_builder",
-      label = "AutoQuant CatBoost Builder",
+      label = "CatBoost Builder",
       category = "Modeling",
-      description = "Train and score regression or binary CatBoost models through AutoQuant and return standard artifacts plus downstream handoff metadata.",
+      description = "Train and score regression or binary CatBoost models and return downstream evidence.",
       status = "experimental",
       output_artifact_types = c("plot", "table", "text"),
       required_packages = c("AutoQuant", "AutoPlots", "catboost"),
@@ -157,7 +157,7 @@ module_registry <- function() {
       module_id = "catboost_builder",
       label = "CatBoost Builder",
       category = "Modeling",
-      description = "Legacy planned placeholder. Use autoquant_catboost_builder for the implemented AutoQuant-backed v1 adapter.",
+      description = "Planned placeholder. Use the implemented CatBoost Builder module for current workflows.",
       status = "planned",
       output_artifact_types = c("table", "plot", "text", "metric", "model_summary"),
       required_packages = c("AutoQuant", "catboost"),
@@ -210,6 +210,41 @@ get_module_definition <- function(module_id) {
   }
 
   module
+}
+
+module_display_label <- function(module_id, fallback = NULL) {
+  module_id <- module_id %||% fallback
+  if (is.null(module_id) || !length(module_id) || is.na(module_id[[1]]) || !nzchar(module_id[[1]])) {
+    return(fallback %||% "Unknown module")
+  }
+
+  module <- get_module_definition(module_id)
+  if (!is.null(module) && !is.null(module$label) && nzchar(module$label)) {
+    return(module$label)
+  }
+
+  labels <- c(
+    plot_builder = "Plot Builder",
+    code_runner = "Code Runner",
+    manual_text = "Manual Text",
+    table_builder = "Table Builder",
+    genai_narrative = "GenAI Narrative",
+    project = "Project",
+    eda = "Explore Data",
+    qa = "QA",
+    qa_render_targets = "Render Target QA",
+    qa_artifact_quality_policy = "Artifact Quality QA",
+    qa_table_artifact_policy = "Table Artifact QA",
+    qa_artifact_producer_semantics = "Producer Semantics QA"
+  )
+  label <- unname(labels[module_id])
+  if (length(label) && !is.na(label) && nzchar(label)) {
+    return(label)
+  }
+
+  cleaned <- gsub("^autoquant_", "", module_id)
+  cleaned <- gsub("_", " ", cleaned)
+  tools::toTitleCase(cleaned)
 }
 
 qa_module_registry <- function() {

@@ -117,7 +117,12 @@ mission_control_timeline <- function(ctx, artifacts, collector) {
     artifact_rows <- artifact_rows[order(vapply(artifact_rows, function(x) as.numeric(as.POSIXct(x$time)), numeric(1)), decreasing = TRUE)]
     for (row in utils::head(artifact_rows, 8L)) {
       artifact <- row$artifact
-      add(fmt(row$time), paste(artifact$label %||% artifact$artifact_id, "created"), artifact$source_module %||% "artifact", "success")
+      add(
+        fmt(row$time),
+        paste(artifact$label %||% artifact$artifact_id, "created"),
+        module_display_label(artifact$source_module, "Artifact"),
+        "success"
+      )
     }
   }
   if (nrow(collector) && (collector$artifact_count[[1]] %||% 0L) > 0L) {

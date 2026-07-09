@@ -25,56 +25,56 @@ option_registry <- list(
   ),
   AggMethod = list(
     input_id = "agg_method",
-    label = "AggMethod",
+    label = "Aggregation Method",
     type = "select",
     choices = c("mean", "sum", "median", "sd", "min", "max", "count"),
     default = "mean"
   ),
   `title.text` = list(
     input_id = "title_text",
-    label = "title.text",
+    label = "Chart Title",
     type = "text",
     default = ""
   ),
   `title.subtext` = list(
     input_id = "title_subtext",
-    label = "title.subtext",
+    label = "Chart Subtitle",
     type = "text",
     default = ""
   ),
   ShowLabels = list(
     input_id = "show_labels",
-    label = "ShowLabels",
+    label = "Show Labels",
     type = "checkbox",
     default = FALSE
   ),
   MouseScroll = list(
     input_id = "mouse_scroll",
-    label = "MouseScroll",
+    label = "Enable Mouse Zoom",
     type = "checkbox",
     default = FALSE
   ),
   `legend.show` = list(
     input_id = "legend_show",
-    label = "legend.show",
+    label = "Show Legend",
     type = "checkbox",
     default = TRUE
   ),
   `xAxis.title` = list(
     input_id = "x_axis_title",
-    label = "xAxis.title",
+    label = "X-Axis Title",
     type = "text",
     default = ""
   ),
   `yAxis.title` = list(
     input_id = "y_axis_title",
-    label = "yAxis.title",
+    label = "Y-Axis Title",
     type = "text",
     default = ""
   ),
   `xAxis.axisLabel.rotate` = list(
     input_id = "x_axis_rotate",
-    label = "xAxis.axisLabel.rotate",
+    label = "Rotate X-Axis Labels",
     type = "numeric",
     default = NA
   )

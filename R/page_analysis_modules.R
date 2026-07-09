@@ -12,15 +12,31 @@ page_analysis_modules_ui <- function(id) {
           selectInput(
             ns("analysis_module_id"),
             "Module",
-            choices = c(
-              "AutoQuant EDA" = "autoquant_eda",
-              "AutoQuant Model Readiness" = "autoquant_model_readiness",
-              "AutoQuant Regression Model Insights" = "autoquant_regression_model_insights",
-              "AutoQuant Binary Classification Model Insights" = "autoquant_binary_model_insights",
-              "AutoQuant Regression SHAP Analysis" = "autoquant_regression_shap_analysis",
-              "AutoQuant Binary Classification SHAP Analysis" = "autoquant_binary_shap_analysis",
-              "AutoQuant CatBoost Builder" = "autoquant_catboost_builder",
-              "AutoQuant Multiclass SHAP Analysis" = "autoquant_multiclass_shap_analysis"
+            choices = stats::setNames(
+              c(
+                "autoquant_eda",
+                "autoquant_model_readiness",
+                "autoquant_regression_model_insights",
+                "autoquant_binary_model_insights",
+                "autoquant_regression_shap_analysis",
+                "autoquant_binary_shap_analysis",
+                "autoquant_catboost_builder",
+                "autoquant_multiclass_shap_analysis"
+              ),
+              vapply(
+                c(
+                  "autoquant_eda",
+                  "autoquant_model_readiness",
+                  "autoquant_regression_model_insights",
+                  "autoquant_binary_model_insights",
+                  "autoquant_regression_shap_analysis",
+                  "autoquant_binary_shap_analysis",
+                  "autoquant_catboost_builder",
+                  "autoquant_multiclass_shap_analysis"
+                ),
+                module_display_label,
+                character(1)
+              )
             ),
             selected = "autoquant_eda"
           ),
@@ -160,9 +176,9 @@ page_analysis_modules_server <- function(id, ctx) {
             selected = "dark"
           ),
           numericInput(session$ns("rmi_sample_size"), "Sample Size", value = 100000, min = 1, step = 1),
-          numericInput(session$ns("rmi_max_pdp_features"), "Max PDP Features", value = 10, min = 1, step = 1),
-          checkboxInput(session$ns("rmi_generate_calibration_pdp"), "Generate Calibration PDP", value = FALSE),
-          checkboxInput(session$ns("rmi_generate_uplift_pdp"), "Generate Uplift PDP", value = FALSE),
+          numericInput(session$ns("rmi_max_pdp_features"), "Max Feature Effect Plots", value = 10, min = 1, step = 1),
+          checkboxInput(session$ns("rmi_generate_calibration_pdp"), "Generate Calibration Effects", value = FALSE),
+          checkboxInput(session$ns("rmi_generate_uplift_pdp"), "Generate Uplift Effects", value = FALSE),
           checkboxInput(session$ns("rmi_generate_stratified_effects"), "Generate Stratified Effects", value = FALSE),
           checkboxInput(session$ns("rmi_detect_simpsons_paradox"), "Detect Simpsons Paradox", value = FALSE)
         ))
@@ -210,11 +226,11 @@ page_analysis_modules_server <- function(id, ctx) {
             choices = .autoquant_bmi_optimize_metrics(),
             selected = "Utility"
           )),
-          bmi_input("UtilityTP", numericInput(session$ns("bmi_utility_tp"), "Utility TP", value = 1, step = 1)),
-          bmi_input("UtilityTN", numericInput(session$ns("bmi_utility_tn"), "Utility TN", value = 0, step = 1)),
-          bmi_input("UtilityFP", numericInput(session$ns("bmi_utility_fp"), "Utility FP", value = -1, step = 1)),
-          bmi_input("UtilityFN", numericInput(session$ns("bmi_utility_fn"), "Utility FN", value = -5, step = 1)),
-          bmi_input("Beta", numericInput(session$ns("bmi_beta"), "F-Beta Beta", value = 1, min = 0.01, step = 0.1)),
+          bmi_input("UtilityTP", numericInput(session$ns("bmi_utility_tp"), "Benefit: Correct Positive", value = 1, step = 1)),
+          bmi_input("UtilityTN", numericInput(session$ns("bmi_utility_tn"), "Benefit: Correct Negative", value = 0, step = 1)),
+          bmi_input("UtilityFP", numericInput(session$ns("bmi_utility_fp"), "Cost: False Positive", value = -1, step = 1)),
+          bmi_input("UtilityFN", numericInput(session$ns("bmi_utility_fn"), "Cost: False Negative", value = -5, step = 1)),
+          bmi_input("Beta", numericInput(session$ns("bmi_beta"), "F-Beta Weight", value = 1, min = 0.01, step = 0.1)),
           bmi_input("TrainDataInclude", checkboxInput(session$ns("bmi_train_data_include"), "Include Train Data", value = FALSE))
         )
 
@@ -274,7 +290,7 @@ page_analysis_modules_server <- function(id, ctx) {
           ),
           selectInput(
             session$ns("rshap_by_vars"),
-            "ByVars",
+            "Segment Columns",
             choices = choices,
             selected = by_defaults,
             multiple = TRUE
@@ -290,7 +306,7 @@ page_analysis_modules_server <- function(id, ctx) {
           numericInput(session$ns("rshap_top_n"), "Top N", value = 20, min = 1, step = 1),
           numericInput(session$ns("rshap_max_dependence_rows"), "Max Dependence Rows", value = 5000, min = 1, step = 1),
           numericInput(session$ns("rshap_max_segment_levels"), "Max Segment Levels", value = 20, min = 1, step = 1),
-          numericInput(session$ns("rshap_max_byvars"), "Max ByVars", value = 3, min = 1, step = 1),
+          numericInput(session$ns("rshap_max_byvars"), "Max Segment Columns", value = 3, min = 1, step = 1),
           numericInput(session$ns("rshap_max_interaction_pairs"), "Max Interaction Pairs", value = 20, min = 1, step = 1),
           numericInput(session$ns("rshap_max_interaction_surface_plots"), "Max Interaction Surface Plots", value = 10, min = 1, step = 1),
           numericInput(session$ns("rshap_numeric_interaction_bins"), "Numeric Interaction Bins", value = 5, min = 2, step = 1),
@@ -301,14 +317,14 @@ page_analysis_modules_server <- function(id, ctx) {
           checkboxInput(session$ns("rshap_include_local"), "Include Local Explanations", value = FALSE),
           checkboxInput(session$ns("rshap_include_interactions"), "Include Interactions", value = TRUE),
           checkboxInput(session$ns("rshap_include_plots"), "Include Plots", value = TRUE),
-          checkboxInput(session$ns("rshap_include_effect_curves"), "Include AutoNLS Effect Curves", value = TRUE),
+          checkboxInput(session$ns("rshap_include_effect_curves"), "Include Fitted Effect Curves", value = TRUE),
           selectInput(
             session$ns("rshap_effect_curve_backend"),
-            "Effect Curve Backend",
+            "Effect Curve Method",
             choices = c("none", "autonls"),
             selected = "none"
           ),
-          textInput(session$ns("rshap_effect_curve_models"), "Effect Curve Models", value = "stable"),
+          textInput(session$ns("rshap_effect_curve_models"), "Effect Curve Families", value = "stable"),
           numericInput(session$ns("rshap_effect_curve_sample_size"), "Effect Curve Sample Size", value = 50000, min = 10, step = 1000),
           numericInput(session$ns("rshap_effect_curve_max_features"), "Effect Curve Max Features", value = 20, min = 1, step = 1),
           numericInput(session$ns("rshap_effect_curve_validation_fraction"), "Effect Curve Validation Fraction", value = 0.20, min = 0, max = 0.5, step = 0.05),
@@ -389,7 +405,7 @@ page_analysis_modules_server <- function(id, ctx) {
           ),
           selectInput(
             session$ns("bshap_by_vars"),
-            "ByVars",
+            "Segment Columns",
             choices = choices,
             selected = by_defaults,
             multiple = TRUE
@@ -405,7 +421,7 @@ page_analysis_modules_server <- function(id, ctx) {
           numericInput(session$ns("bshap_top_n"), "Top N", value = 20, min = 1, step = 1),
           numericInput(session$ns("bshap_max_dependence_rows"), "Max Dependence Rows", value = 5000, min = 1, step = 1),
           numericInput(session$ns("bshap_max_segment_levels"), "Max Segment Levels", value = 20, min = 1, step = 1),
-          numericInput(session$ns("bshap_max_byvars"), "Max ByVars", value = 3, min = 1, step = 1),
+          numericInput(session$ns("bshap_max_byvars"), "Max Segment Columns", value = 3, min = 1, step = 1),
           numericInput(session$ns("bshap_max_interaction_pairs"), "Max Interaction Pairs", value = 20, min = 1, step = 1),
           numericInput(session$ns("bshap_max_interaction_surface_plots"), "Max Interaction Surface Plots", value = 10, min = 1, step = 1),
           numericInput(session$ns("bshap_numeric_interaction_bins"), "Numeric Interaction Bins", value = 5, min = 2, step = 1),
@@ -418,14 +434,14 @@ page_analysis_modules_server <- function(id, ctx) {
           checkboxInput(session$ns("bshap_include_local"), "Include Local Explanations", value = FALSE),
           checkboxInput(session$ns("bshap_include_interactions"), "Include Interactions", value = TRUE),
           checkboxInput(session$ns("bshap_include_plots"), "Include Plots", value = TRUE),
-          checkboxInput(session$ns("bshap_include_effect_curves"), "Include AutoNLS Effect Curves", value = TRUE),
+          checkboxInput(session$ns("bshap_include_effect_curves"), "Include Fitted Effect Curves", value = TRUE),
           selectInput(
             session$ns("bshap_effect_curve_backend"),
-            "Effect Curve Backend",
+            "Effect Curve Method",
             choices = c("none", "autonls"),
             selected = "none"
           ),
-          textInput(session$ns("bshap_effect_curve_models"), "Effect Curve Models", value = "stable"),
+          textInput(session$ns("bshap_effect_curve_models"), "Effect Curve Families", value = "stable"),
           numericInput(session$ns("bshap_effect_curve_sample_size"), "Effect Curve Sample Size", value = 50000, min = 10, step = 1000),
           numericInput(session$ns("bshap_effect_curve_max_features"), "Effect Curve Max Features", value = 20, min = 1, step = 1),
           numericInput(session$ns("bshap_effect_curve_validation_fraction"), "Effect Curve Validation Fraction", value = 0.20, min = 0, max = 0.5, step = 0.05),
@@ -479,7 +495,7 @@ page_analysis_modules_server <- function(id, ctx) {
           ),
           selectInput(
             session$ns("catboost_by_vars"),
-            "ByVars",
+            "Segment Columns",
             choices = choices,
             selected = by_defaults,
             multiple = TRUE
@@ -510,43 +526,43 @@ page_analysis_modules_server <- function(id, ctx) {
       }
 
       tagList(
-        textInput(session$ns("eda_data_name"), "DataName", value = "Uploaded Data"),
+        textInput(session$ns("eda_data_name"), "Dataset Name", value = "Uploaded Data"),
         selectInput(
           session$ns("eda_univariate_vars"),
-          "UnivariateVars",
+          "Distribution Columns",
           choices = choices,
           selected = intersect(c("Spend", "Revenue", "Clicks", "Channel"), choices),
           multiple = TRUE
         ),
         selectInput(
           session$ns("eda_corr_vars"),
-          "CorrVars",
+          "Correlation Columns",
           choices = numeric_choices,
           selected = intersect(c("Spend", "Revenue", "Clicks"), numeric_choices),
           multiple = TRUE
         ),
         selectInput(
           session$ns("eda_trend_vars"),
-          "TrendVars",
+          "Trend Columns",
           choices = numeric_choices,
           selected = intersect("Revenue", numeric_choices),
           multiple = TRUE
         ),
         selectInput(
           session$ns("eda_trend_date_var"),
-          "TrendDateVar",
+          "Trend Date Column",
           choices = c("(none)" = "", choices),
           selected = if ("Date" %in% choices) "Date" else ""
         ),
         selectInput(
           session$ns("eda_trend_group_var"),
-          "TrendGroupVar",
+          "Trend Group Column",
           choices = c("(none)" = "", choices),
           selected = if ("Channel" %in% choices) "Channel" else ""
         ),
         selectInput(
           session$ns("eda_target_var"),
-          "TargetVar",
+          "Target Column",
           choices = c("(none)" = "", choices),
           selected = ""
         ),

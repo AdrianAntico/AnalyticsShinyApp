@@ -198,7 +198,7 @@ page_artifact_library_server <- function(id, ctx) {
           title = artifact$label %||% artifact$artifact_id %||% NA_character_,
           artifact_type = artifact$artifact_type %||% NA_character_,
           type_label = artifact_type_label(artifact$artifact_type %||% "artifact"),
-          module = artifact$source_module %||% NA_character_,
+          module = module_display_label(artifact$source_module, artifact$source_module),
           section = artifact$section %||% "Analysis",
           run_id = artifact_run_id(artifact),
           quality = quality_score,
@@ -505,7 +505,11 @@ page_artifact_library_server <- function(id, ctx) {
           ui_evidence_summary(
             title = artifact$label %||% artifact$artifact_id,
             caption = quality$caption %||% artifact_caption(artifact, "llm_docx"),
-            purpose = metadata$artifact_purpose %||% paste(artifact_intent(artifact), "evidence from", artifact$source_module),
+            purpose = metadata$artifact_purpose %||% paste(
+              artifact_intent(artifact),
+              "evidence from",
+              module_display_label(artifact$source_module, artifact$source_module)
+            ),
             items = summary_rows,
             badges = summary_badges
           ),

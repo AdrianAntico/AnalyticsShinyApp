@@ -899,7 +899,10 @@ server <- function(input, output, session) {
 
     if (!is.null(project_state$data_path) && file.exists(project_state$data_path)) {
       data <- tryCatch(
-        data.table::fread(project_state$data_path),
+        read_dataset_file(
+          project_state$data_path,
+          name = project_state$data_name %||% project_state$data_path
+        ),
         error = function(e) {
           stop("Failed to reload project data: ", conditionMessage(e), call. = FALSE)
         }
