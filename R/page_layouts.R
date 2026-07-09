@@ -535,7 +535,7 @@ page_layouts_server <- function(id, ctx) {
 
     selected_report_plan <- function() {
       plan_id <- selected_value(input$selected_report_plan)
-      if (is.null(plan_id)) {
+      if (is.null(plan_id) || length(plan_id) != 1L || !plan_id %in% names(ctx$report_plan_state$plans)) {
         return(NULL)
       }
 
@@ -647,6 +647,9 @@ page_layouts_server <- function(id, ctx) {
 
     output$active_report_plan_indicator <- renderUI({
       plan_id <- ctx$report_plan_state$active_plan_id
+      if (is.null(plan_id) || length(plan_id) != 1L || !plan_id %in% names(ctx$report_plan_state$plans)) {
+        return(NULL)
+      }
       plan <- ctx$report_plan_state$plans[[plan_id]]
       if (is.null(plan)) {
         return(NULL)
@@ -1035,6 +1038,11 @@ page_layouts_server <- function(id, ctx) {
 
     observeEvent(input$preview_report_plan, {
       plan_id <- selected_value(input$selected_report_plan)
+      if (is.null(plan_id) || length(plan_id) != 1L || !plan_id %in% names(ctx$report_plan_state$plans)) {
+        report_plan_preview(NULL)
+        report_plan_message("Select a report plan to preview.")
+        return()
+      }
       plan <- ctx$report_plan_state$plans[[plan_id]]
       if (is.null(plan)) {
         report_plan_preview(NULL)

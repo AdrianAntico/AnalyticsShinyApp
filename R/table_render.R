@@ -77,7 +77,7 @@ render_table <- function(
   sortable = TRUE,
   filterable = FALSE,
   digits = 3,
-  theme = c("auto", "light", "dark", "pimp")
+  theme = c("auto", "light", "dark", "cyberpunk", "pimp")
 ) {
   engine <- match.arg(engine)
   theme <- .normalize_table_theme(theme)
@@ -118,7 +118,7 @@ render_reactable_table <- function(
   sortable = TRUE,
   filterable = FALSE,
   digits = 3,
-  theme = c("auto", "light", "dark", "pimp")
+  theme = c("auto", "light", "dark", "cyberpunk", "pimp")
 ) {
   if (!requireNamespace("reactable", quietly = TRUE)) {
     return(render_html_table(data = data, digits = digits, theme = theme))
@@ -142,7 +142,7 @@ render_reactable_table <- function(
 render_html_table <- function(
   data,
   digits = 3,
-  theme = c("auto", "light", "dark", "pimp")
+  theme = c("auto", "light", "dark", "cyberpunk", "pimp")
 ) {
   theme <- .normalize_table_theme(theme)
   data <- .format_table_numbers(data, digits = digits)

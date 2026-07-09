@@ -1,13 +1,16 @@
-.normalize_table_theme <- function(theme = c("auto", "light", "dark", "pimp")) {
+.normalize_table_theme <- function(theme = c("auto", "light", "dark", "cyberpunk", "pimp")) {
   theme <- match.arg(theme)
   if (identical(theme, "auto")) {
     return(getOption("aq.theme", "dark"))
+  }
+  if (identical(theme, "pimp")) {
+    return("cyberpunk")
   }
 
   theme
 }
 
-get_reactable_theme <- function(theme = c("auto", "light", "dark", "pimp")) {
+get_reactable_theme <- function(theme = c("auto", "light", "dark", "cyberpunk", "pimp")) {
   theme <- .normalize_table_theme(theme)
   if (!requireNamespace("reactable", quietly = TRUE)) {
     return(NULL)
@@ -16,7 +19,7 @@ get_reactable_theme <- function(theme = c("auto", "light", "dark", "pimp")) {
   switch(
     theme,
     dark = reactable_theme_dark(),
-    pimp = reactable_theme_pimp(),
+    cyberpunk = reactable_theme_cyberpunk(),
     reactable_theme_light()
   )
 }
@@ -109,23 +112,58 @@ reactable_theme_dark <- function() {
 }
 
 reactable_theme_pimp <- function() {
+  reactable_theme_cyberpunk()
+}
+
+reactable_theme_cyberpunk <- function() {
   reactable::reactableTheme(
     color = "#f8fafc",
-    backgroundColor = "#0f172a",
-    borderColor = "#7c3aed",
-    stripedColor = "#1e293b",
-    highlightColor = "#164e63",
-    cellPadding = "8px 10px",
+    backgroundColor = "#0d1124",
+    borderColor = "rgba(0, 245, 255, 0.36)",
+    stripedColor = "rgba(20, 25, 54, 0.92)",
+    highlightColor = "rgba(255, 43, 214, 0.16)",
+    cellPadding = "9px 12px",
+    style = list(
+      fontFamily = "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Helvetica, Arial, sans-serif",
+      fontSize = "13px",
+      border = "1px solid rgba(0, 245, 255, 0.28)",
+      borderRadius = "8px",
+      overflow = "hidden",
+      boxShadow = "0 0 0 1px rgba(0, 245, 255, 0.14), 0 18px 42px rgba(255, 43, 214, 0.16)"
+    ),
     headerStyle = list(
-      background = "#32105f",
-      color = "#a5f3fc",
-      borderColor = "#22d3ee",
+      background = "#11122f",
+      color = "#8cfaff",
+      borderColor = "rgba(255, 43, 214, 0.42)",
       fontWeight = "700"
     ),
     searchInputStyle = list(
-      background = "#f8fafc",
-      color = "#111827",
-      borderColor = "#67e8f9"
+      backgroundColor = "#070a19",
+      color = "#f7fbff",
+      border = "1px solid rgba(0, 245, 255, 0.42)",
+      borderRadius = "8px",
+      padding = "8px 12px",
+      outline = "none"
+    ),
+    filterInputStyle = list(
+      backgroundColor = "#070a19",
+      color = "#f7fbff",
+      border = "1px solid rgba(0, 245, 255, 0.42)",
+      borderRadius = "8px",
+      padding = "5px 8px",
+      outline = "none"
+    ),
+    selectStyle = list(
+      backgroundColor = "#070a19",
+      color = "#f7fbff",
+      border = "1px solid #00f5ff",
+      borderRadius = "8px",
+      padding = "6px 10px",
+      height = "34px",
+      fontSize = "13px",
+      fontWeight = "700",
+      cursor = "pointer",
+      outline = "none"
     )
   )
 }

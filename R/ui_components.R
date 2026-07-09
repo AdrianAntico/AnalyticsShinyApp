@@ -20,14 +20,61 @@ ui_card <- function(title = NULL, subtitle = NULL, ..., footer = NULL, class = N
 }
 
 ui_app_shell <- function(..., theme = "dark") {
-  theme <- match.arg(theme, c("light", "dark", "pimp"))
+  theme <- match.arg(theme, c("light", "dark", "cyberpunk", "pimp"))
 
   tagList(
     tags$script(HTML(sprintf(
-      "document.body.classList.add('aq-theme-%s');",
+      "
+      (function() {
+        var themes = ['light', 'dark', 'cyberpunk', 'pimp'];
+        var defaultTheme = '%s';
+        function normalizeTheme(value) {
+          return themes.indexOf(value) >= 0 ? value : defaultTheme;
+        }
+        function applyTheme(value) {
+          var theme = normalizeTheme(value);
+          themes.forEach(function(item) {
+            document.body.classList.remove('aq-theme-' + item);
+          });
+          document.body.classList.add('aq-theme-' + theme);
+          document.documentElement.setAttribute('data-aq-theme', theme);
+          try { window.localStorage.setItem('aq.theme', theme); } catch (error) {}
+          var control = document.getElementById('aq-theme-select');
+          if (control && control.value !== theme) control.value = theme;
+        }
+        window.aqApplyTheme = applyTheme;
+        try {
+          applyTheme(window.localStorage.getItem('aq.theme') || defaultTheme);
+        } catch (error) {
+          applyTheme(defaultTheme);
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+          var control = document.getElementById('aq-theme-select');
+          if (!control) return;
+          try { control.value = normalizeTheme(window.localStorage.getItem('aq.theme') || defaultTheme); } catch (error) {}
+          control.addEventListener('change', function(event) {
+            applyTheme(event.target.value);
+          });
+        });
+      })();
+      ",
       theme
     ))),
-    tags$div(class = "aq-app-shell aq-workstation-shell", ...)
+    tags$div(
+      class = "aq-app-shell aq-workstation-shell",
+      tags$div(
+        class = "aq-theme-switcher",
+        tags$label(`for` = "aq-theme-select", "Theme"),
+        tags$select(
+          id = "aq-theme-select",
+          class = "aq-theme-select",
+          tags$option(value = "dark", selected = if (identical(theme, "dark")) "selected" else NULL, "Dark"),
+          tags$option(value = "light", selected = if (identical(theme, "light")) "selected" else NULL, "Light"),
+          tags$option(value = "cyberpunk", selected = if (identical(theme, "cyberpunk")) "selected" else NULL, "Cyberpunk")
+        )
+      ),
+      ...
+    )
   )
 }
 
@@ -745,6 +792,7 @@ qa_ui_consistency <- function() {
   layouts_page <- read_file(file.path("R", "page_layouts.R"))
   export_page <- read_file(file.path("R", "page_export.R"))
   app_ui <- read_file(file.path("R", "app_ui.R"))
+  ui_components <- read_file(file.path("R", "ui_components.R"))
   table_theme <- read_file(file.path("R", "table_theme.R"))
   page_files <- list.files("R", pattern = "^page_.*\\.R$", full.names = TRUE)
   page_text <- paste(vapply(page_files, read_file, character(1)), collapse = "\n")
@@ -785,6 +833,8 @@ qa_ui_consistency <- function() {
       "empty_states",
       "responsive_layout",
       "dark_first_shell",
+      "theme_switcher",
+      "cyberpunk_theme_tokens",
       "dark_first_tokens",
       "data_workspace_page",
       "plot_builder_workspace_page",
@@ -814,8 +864,10 @@ qa_ui_consistency <- function() {
       if (grepl("workflow_stage_registry", workflow_page, fixed = TRUE) && grepl("workflow_stage_card", workflow_page, fixed = TRUE)) "success" else "error",
       if (grepl("ui_empty_state", project_page, fixed = TRUE) && grepl("ui_empty_state", workflow_page, fixed = TRUE)) "success" else "error",
       if (grepl("@media (max-width: 900px)", css, fixed = TRUE) && grepl("aq-workspace-grid-main-sidebar", css, fixed = TRUE)) "success" else "error",
-      if (grepl("theme = \"dark\"", app_ui, fixed = TRUE) && grepl("ui_app_shell <- function(..., theme = \"dark\")", read_file(file.path("R", "ui_components.R")), fixed = TRUE)) "success" else "error",
-      if (has_patterns(c("body.aq-theme-dark", "body:not(.aq-theme-light):not(.aq-theme-pimp)", "--aq-bg-base", "--aq-focus-ring", "--aq-secondary"), css)) "success" else "error",
+      if (grepl("theme = \"dark\"", app_ui, fixed = TRUE) && grepl("ui_app_shell <- function(..., theme = \"dark\")", ui_components, fixed = TRUE)) "success" else "error",
+      if (has_patterns(c("aq-theme-switcher", "aq-theme-select", "window.aqApplyTheme", "localStorage.setItem('aq.theme'"), ui_components)) "success" else "error",
+      if (has_patterns(c("body.aq-theme-cyberpunk", "#00f5ff", "#ff2bd6", ".aq-theme-switcher"), css) && has_patterns(c("cyberpunk", "reactable_theme_cyberpunk"), table_theme)) "success" else "error",
+      if (has_patterns(c("body.aq-theme-dark", "body:not(.aq-theme-light):not(.aq-theme-pimp):not(.aq-theme-cyberpunk)", "--aq-bg-base", "--aq-focus-ring", "--aq-secondary"), css)) "success" else "error",
       if (grepl("Data Workspace", data_page, fixed = TRUE) && grepl("ui_split_panel", data_page, fixed = TRUE)) "success" else "error",
       if (grepl("Plot Builder", plot_builder_page, fixed = TRUE) && grepl("ui_preview_panel", plot_builder_page, fixed = TRUE) && grepl("ui_code_panel", plot_builder_page, fixed = TRUE)) "success" else "error",
       if (grepl("Layout Studio", layouts_page, fixed = TRUE) && grepl("ui_split_panel", layouts_page, fixed = TRUE) && grepl("ui_code_panel", layouts_page, fixed = TRUE)) "success" else "error",
@@ -845,6 +897,8 @@ qa_ui_consistency <- function() {
       "Empty states are present on workspace and workflow pages.",
       "Responsive workspace layouts are defined.",
       "The app shell defaults to the dark workstation theme.",
+      "The app shell exposes a persistent selectable theme switcher.",
+      "Cyberpunk theme tokens and table theme support are available.",
       "Dark-first tokens include base surfaces, focus states, and secondary accent.",
       "Data page uses a workspace split-panel layout.",
       "Plot Builder uses shared preview and code panels.",

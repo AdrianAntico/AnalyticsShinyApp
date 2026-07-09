@@ -1,5 +1,5 @@
 body.aq-theme-dark,
-body:not(.aq-theme-light):not(.aq-theme-pimp) {
+body:not(.aq-theme-light):not(.aq-theme-pimp):not(.aq-theme-cyberpunk) {
   --aq-bg: #07111f;
   --aq-bg-base: #07111f;
   --aq-surface: #0b1326;
@@ -110,9 +110,47 @@ body.aq-theme-pimp {
   --aq-nav-active-text: #a5f3fc;
 }
 
+body.aq-theme-cyberpunk {
+  --aq-bg: #060713;
+  --aq-bg-base: #060713;
+  --aq-surface: rgba(13, 17, 36, 0.94);
+  --aq-surface-2: rgba(20, 25, 54, 0.94);
+  --aq-surface-elevated: rgba(17, 14, 45, 0.96);
+  --aq-surface-hover: rgba(31, 36, 76, 0.96);
+  --aq-border: rgba(0, 245, 255, 0.28);
+  --aq-border-strong: rgba(255, 43, 214, 0.62);
+  --aq-text: #f7fbff;
+  --aq-text-primary: #ffffff;
+  --aq-text-secondary: #bed7ff;
+  --aq-muted: #8aa6d8;
+  --aq-primary: #00f5ff;
+  --aq-primary-hover: #8cfaff;
+  --aq-secondary: #ff2bd6;
+  --aq-success: #39ff88;
+  --aq-warning: #ffe45c;
+  --aq-danger: #ff4d6d;
+  --aq-radius: 8px;
+  --aq-radius-sm: 6px;
+  --aq-space-1: 4px;
+  --aq-space-2: 8px;
+  --aq-space-3: 12px;
+  --aq-space-4: 16px;
+  --aq-space-5: 20px;
+  --aq-shadow: 0 0 0 1px rgba(0, 245, 255, 0.18), 0 20px 56px rgba(255, 43, 214, 0.18), 0 10px 30px rgba(0, 245, 255, 0.12);
+  --aq-shadow-soft: 0 0 0 1px rgba(0, 245, 255, 0.12), 0 10px 28px rgba(255, 43, 214, 0.14);
+  --aq-focus-ring: 0 0 0 3px rgba(0, 245, 255, 0.26), 0 0 18px rgba(255, 43, 214, 0.22);
+  --aq-transition-fast: 140ms ease;
+  --aq-input-bg: #070a19;
+  --aq-input-border: rgba(0, 245, 255, 0.42);
+  --aq-input-text: #f7fbff;
+  --aq-nav-active-bg: rgba(255, 43, 214, 0.17);
+  --aq-nav-active-text: #ffffff;
+}
+
 body.aq-theme-light,
 body.aq-theme-dark,
-body.aq-theme-pimp {
+body.aq-theme-pimp,
+body.aq-theme-cyberpunk {
   min-height: 100vh;
   background: var(--aq-bg);
   color: var(--aq-text);
@@ -120,8 +158,22 @@ body.aq-theme-pimp {
 }
 
 .aq-app-shell {
+  position: relative;
   color: var(--aq-text);
   padding: 0 14px 20px;
+}
+
+body.aq-theme-cyberpunk .aq-app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 43, 214, 0.16), transparent 28%),
+    radial-gradient(circle at 82% 2%, rgba(0, 245, 255, 0.14), transparent 30%),
+    linear-gradient(135deg, rgba(0, 245, 255, 0.045) 0 1px, transparent 1px 18px);
+  opacity: 0.95;
 }
 
 .aq-app-shell > .container-fluid {
@@ -168,6 +220,69 @@ body.aq-theme-pimp {
 .aq-command-palette-root {
   position: relative;
   z-index: 1200;
+}
+
+.aq-theme-switcher {
+  position: absolute;
+  top: 12px;
+  right: 184px;
+  z-index: 1100;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 9px;
+  border: 1px solid var(--aq-border);
+  border-radius: var(--aq-radius-sm);
+  background: color-mix(in srgb, var(--aq-surface) 88%, transparent);
+  box-shadow: var(--aq-shadow-soft);
+}
+
+.aq-theme-switcher label {
+  margin: 0;
+  color: var(--aq-muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.aq-theme-select {
+  width: 116px;
+  min-height: 28px;
+  border: 1px solid var(--aq-input-border);
+  border-radius: var(--aq-radius-sm);
+  background: var(--aq-input-bg);
+  color: var(--aq-input-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.aq-theme-select:focus {
+  border-color: var(--aq-primary);
+  box-shadow: var(--aq-focus-ring);
+  outline: none;
+}
+
+@media (max-width: 900px) {
+  .aq-theme-switcher {
+    position: static;
+    width: max-content;
+    margin: 0 0 8px auto;
+  }
+}
+
+body.aq-theme-cyberpunk .aq-section-eyebrow,
+body.aq-theme-cyberpunk .aq-card-title,
+body.aq-theme-cyberpunk .aq-command-launcher strong {
+  text-shadow: 0 0 12px rgba(0, 245, 255, 0.22);
+}
+
+body.aq-theme-cyberpunk .aq-card,
+body.aq-theme-cyberpunk .aq-control-group,
+body.aq-theme-cyberpunk .aq-preview-panel,
+body.aq-theme-cyberpunk .aq-code-panel,
+body.aq-theme-cyberpunk .aq-disclosure {
+  border-color: color-mix(in srgb, var(--aq-primary) 22%, var(--aq-border));
 }
 
 .aq-command-launcher {
@@ -599,7 +714,7 @@ body.aq-theme-pimp {
 
 .aq-page {
   width: 100%;
-  max-width: 1400px;
+  max-width: none;
   margin: 0 auto;
   padding: 8px 0 24px;
 }
@@ -896,7 +1011,7 @@ body.aq-theme-pimp {
 }
 
 .aq-library-workspace-page {
-  width: min(100%, 1880px);
+  width: 100%;
   max-width: none;
   padding-inline: clamp(8px, 1.4vw, 24px);
 }
@@ -904,9 +1019,9 @@ body.aq-theme-pimp {
 .aq-library-page {
   display: grid;
   grid-template-columns:
-    minmax(220px, clamp(240px, 18vw, 320px))
+    minmax(220px, clamp(240px, 16vw, 340px))
     minmax(360px, 1fr)
-    minmax(240px, clamp(260px, 19vw, 340px));
+    minmax(240px, clamp(260px, 17vw, 360px));
   gap: 18px;
   align-items: start;
   width: 100%;
@@ -1035,7 +1150,7 @@ body.aq-theme-pimp {
 
 .aq-library-reader {
   min-width: 0;
-  max-width: 980px;
+  max-width: none;
   width: 100%;
   box-sizing: border-box;
   height: 100%;

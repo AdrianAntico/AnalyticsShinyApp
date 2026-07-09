@@ -32,7 +32,13 @@ default_value <- function(value, default) {
 }
 
 selected_value <- function(value) {
-  if (is.null(value) || identical(value, "")) {
+  if (is.null(value) || !length(value) || identical(value, "")) {
+    return(NULL)
+  }
+  if (length(value) == 1L && is.atomic(value) && is.na(value)) {
+    return(NULL)
+  }
+  if (is.character(value) && all(is.na(value) | !nzchar(value))) {
     return(NULL)
   }
 
