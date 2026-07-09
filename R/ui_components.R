@@ -847,6 +847,7 @@ qa_ui_consistency <- function() {
       "dark_selectize_dropdown_styling",
       "dark_button_styling",
       "dark_table_fallback_styling",
+      "table_overflow_containment",
       "dark_reactable_styling",
       "no_raw_shiny_table_outputs",
       "dark_auto_table_theme"
@@ -879,6 +880,7 @@ qa_ui_consistency <- function() {
       if (has_patterns(c(".aq-app-shell .selectize-input", ".aq-app-shell .selectize-dropdown", ".aq-app-shell .selectize-dropdown .active", ".aq-app-shell .selectize-control.multi"), css)) "success" else "error",
       if (has_patterns(c(".aq-app-shell .btn", ".aq-app-shell .btn-primary", ".aq-app-shell .btn-success", ".aq-app-shell .btn-danger"), css)) "success" else "error",
       if (has_patterns(c(".aq-app-shell table", ".aq-app-shell .shiny-html-output table", ".aq-html-table tbody tr:nth-child(even)", ".aq-app-shell .table-hover"), css)) "success" else "error",
+      if (has_patterns(c(".aq-table-wrapper", "overflow-x: auto", "width: max-content", ".aq-card-body", "min-width: 0"), css)) "success" else "error",
       if (has_patterns(c(".aq-app-shell .ReactTable", ".aq-app-shell .rt-table", ".aq-app-shell .dataTables_wrapper", ".aq-app-shell table.dataTable"), css) && has_patterns(c("backgroundColor = \"#0B1326\"", "filterInputStyle", "selectStyle"), table_theme)) "success" else "error",
       if (!grepl("tableOutput\\(|renderTable\\(", page_text)) "success" else "error",
       if (grepl("return(getOption(\"aq.theme\", \"dark\"))", table_theme, fixed = TRUE)) "success" else "error"
@@ -911,6 +913,7 @@ qa_ui_consistency <- function() {
       "Selectize inputs and dropdown menus use dark workstation styling.",
       "Action and download buttons use dark workstation styling.",
       "Plain HTML, Shiny fallback, and striped/hover table styles use dark tokens.",
+      "Tables are constrained to their parent panel and scroll horizontally when needed.",
       "Reactable and DT/DataTables selectors have dark styling and the shared reactable helper is dark.",
       "Page UI/server files use themed table rendering instead of raw Shiny table outputs.",
       "The automatic table theme resolves to dark unless explicitly overridden."

@@ -1400,6 +1400,8 @@ body.aq-theme-cyberpunk .aq-disclosure {
 .aq-card {
   margin-bottom: 14px;
   align-self: start;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .aq-card-header,
@@ -1408,6 +1410,8 @@ body.aq-theme-cyberpunk .aq-disclosure {
 .aq-control-group,
 .aq-preview-panel,
 .aq-code-panel-body {
+  min-width: 0;
+  max-width: 100%;
   padding: 16px;
 }
 
@@ -3338,6 +3342,13 @@ body.aq-theme-cyberpunk .aq-disclosure {
 }
 
 .aq-table-wrapper {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-color: color-mix(in srgb, var(--aq-primary) 35%, var(--aq-border)) transparent;
   margin-bottom: 0;
   color: var(--aq-text);
 }
@@ -3361,13 +3372,26 @@ body.aq-theme-cyberpunk .aq-disclosure {
 }
 
 .aq-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
   color: var(--aq-text);
+}
+
+.aq-app-shell .shiny-html-output,
+.aq-app-shell .html-widget-output {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.aq-app-shell .shiny-html-output {
+  overflow-x: auto;
 }
 
 .aq-app-shell table,
 .aq-app-shell .table,
 .aq-app-shell .shiny-html-output table {
+  max-width: none;
   color: var(--aq-text);
   background: var(--aq-surface);
 }
@@ -3397,11 +3421,13 @@ body.aq-theme-cyberpunk .aq-disclosure {
 }
 
 .aq-html-table {
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   border: 1px solid var(--aq-border);
   border-radius: var(--aq-radius);
   background: var(--aq-surface);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .aq-html-table tbody tr:nth-child(even) td {
@@ -3447,9 +3473,16 @@ body.aq-theme-cyberpunk .aq-disclosure {
 .aq-app-shell .rt-td,
 .aq-app-shell .rt-th,
 .aq-app-shell .reactable {
+  max-width: 100%;
   background: var(--aq-surface);
   color: var(--aq-text);
   border-color: var(--aq-border);
+}
+
+.aq-table-wrapper .ReactTable,
+.aq-table-wrapper .reactable,
+.aq-table-wrapper .html-widget {
+  min-width: 100%;
 }
 
 .aq-app-shell .rt-th,
