@@ -845,14 +845,49 @@ genai_build_project_context <- function(ctx, strategy = "balanced", max_artifact
   components <- spec$included_components
   base <- genai_project_context(ctx, max_artifacts = max_artifacts)
   artifacts <- tryCatch(ctx$all_artifacts(), error = function(e) list())
+  reports <- tryCatch(repair_report_plan_collection(ctx$report_plan_state$plans %||% list()), error = function(e) list())
+  dataset_resolution <- tryCatch(genai_resolve_dataset(genai_dataset_id(ctx), ctx = ctx), error = function(e) NULL)
   context <- list(
     context_strategy = spec$context_strategy,
     data = base$data,
     artifact_count = base$artifact_count,
     collector = base$collector
   )
+  if (!is.null(dataset_resolution)) {
+    context$trusted_dataset <- list(
+      dataset_id = dataset_resolution$value$dataset_id,
+      display_name = dataset_resolution$value$display_name,
+      active_project_id = dataset_resolution$value$active_project_id,
+      dataset_version = dataset_resolution$value$dataset_version,
+      schema_version = dataset_resolution$value$schema_version,
+      availability = dataset_resolution$value$availability,
+      row_count = dataset_resolution$value$row_count,
+      column_count = dataset_resolution$value$column_count
+    )
+  }
+  context$registered_modules <- lapply(get_module_registry(), function(module) {
+    list(
+      module_id = module$module_id,
+      display_name = module$label,
+      module_category = module$category,
+      module_status = module$status,
+      preflight_supported = genai_module_preflight_supported(module)
+    )
+  })
   context$artifacts <- lapply(utils::head(artifacts, max_artifacts), function(artifact) {
     genai_build_artifact_context(artifact, strategy = strategy)
+  })
+  context$reports <- lapply(reports, function(report) {
+    metadata <- report$metadata %||% list()
+    list(
+      report_id = report$plan_id,
+      display_name = report$label %||% report$plan_id,
+      report_type = report$layout_type %||% "sections",
+      report_status = report$status %||% "draft",
+      render_status = metadata$render_status %||% metadata$preview_status %||% "preview_available",
+      brief_relevance = report$description %||% paste("Curated report plan from", report$source_module %||% "unknown module"),
+      evidence_refs = paste(report_plan_artifact_ids(report), collapse = ", ")
+    )
   })
   if (!isTRUE(components[["full_table"]])) {
     context$note <- "Full raw data and full tables are omitted by default."
@@ -1095,13 +1130,14 @@ genai_explain_alerts <- function(alerts, config = genai_config(), context_strate
     genai_context_json(alerts),
     sep = "\n\n"
   )
-  genai_generate_with_telemetry(
+  result <- genai_generate_with_telemetry(
     prompt,
     config = config,
     context_strategy = context_strategy,
     included_components = included_components,
     call_type = "explain_alerts"
   )
+  genai_attach_action_proposal(result)
 }
 
 genai_suggest_next_action <- function(ctx, config = genai_config(), context_strategy = "balanced") {
@@ -1110,16 +1146,20 @@ genai_suggest_next_action <- function(ctx, config = genai_config(), context_stra
   prompt <- paste(
     "Suggest the next analytical action for this project using only project metadata, collector status, artifact quality, diagnostics, and recommendations.",
     "Do not execute anything. Provide one recommended next step and two alternatives.",
+    "If and only if opening a registered module, inspecting one listed artifact, opening one listed existing report, or running a bounded preflight on the trusted active dataset is the single safest next step, you may include one JSON action proposal in a fenced ```json block under key action_proposal.",
+    "Supported action_ids are module.open, artifact.inspect, report.open, and analysis.preflight. module.open arguments may contain only module_id. artifact.inspect arguments may contain only artifact_id from the listed artifact metadata. report.open arguments may contain only report_id from the listed report metadata. analysis.preflight arguments may contain only module_id from registered_modules and dataset_id from trusted_dataset.",
+    "Do not invent artifact ids, report ids, dataset ids, filesystem locations, URLs, project ids, callbacks, function names, target variables, predictor lists, formulas, sampling sizes, timeouts, rendering parameters, persistence, state mutations, code execution, report generation, report rendering, artifact saving, or chained actions.",
     genai_context_json(context),
     sep = "\n\n"
   )
-  genai_generate_with_telemetry(
+  result <- genai_generate_with_telemetry(
     prompt,
     config = config,
     context_strategy = context_strategy,
     included_components = included_components,
     call_type = "suggest_next_action"
   )
+  genai_attach_action_proposal(result)
 }
 
 genai_question_registry <- function() {
@@ -2336,6 +2376,7 @@ ui_genai_status_panel <- function(status, title = "GenAI Provider", actions = NU
 
 qa_genai_service_contract <- function() {
   genai <- if (file.exists(file.path("R", "genai_service.R"))) paste(readLines(file.path("R", "genai_service.R"), warn = FALSE), collapse = "\n") else ""
+  actions <- if (file.exists(file.path("R", "genai_actions.R"))) paste(readLines(file.path("R", "genai_actions.R"), warn = FALSE), collapse = "\n") else ""
   app <- if (file.exists("app.R")) paste(readLines("app.R", warn = FALSE), collapse = "\n") else ""
   app_server <- if (file.exists(file.path("R", "app_server.R"))) paste(readLines(file.path("R", "app_server.R"), warn = FALSE), collapse = "\n") else ""
   mission <- if (file.exists(file.path("R", "page_mission_control.R"))) paste(readLines(file.path("R", "page_mission_control.R"), warn = FALSE), collapse = "\n") else ""
@@ -2394,6 +2435,7 @@ qa_genai_service_contract <- function() {
       "context_strategy_research",
       "context_policy",
       "context_strategy_registry",
+      "action_layer_vertical_slice",
       "telemetry_fields",
       "token_latency_tracking",
       "quality_placeholders",
@@ -2418,6 +2460,7 @@ qa_genai_service_contract <- function() {
       if (has(genai, c("run_genai_context_strategy_study", "recommend_context_strategy", "genai_infer_artifact_family", "genai_context_provenance"))) "success" else "error",
       if (has(genai, c("project metadata", "artifact captions", "Do not execute", "Do not invent")) || has(genai, c("genai_project_context", "genai_artifact_context", "sidecars"))) "success" else "error",
       if (all(c("screenshot_only", "caption_metadata", "screenshot_caption", "table_preview_only", "full_table", "screenshot_caption_preview", "structured_json_summary") %in% strategy_names)) "success" else "error",
+      if (has(actions, c("genai_action_registry", "genai_validate_action_proposal", "genai_execute_action_proposal", "module.open"))) "success" else "error",
       if (all(telemetry_fields %in% names(telemetry))) "success" else "error",
       if (!is.na(telemetry$estimated_input_tokens) && !is.na(telemetry$latency_ms)) "success" else "error",
       if (all(c("output_quality_score", "accuracy_score", "user_rating") %in% names(telemetry))) "success" else "error",
@@ -2442,6 +2485,7 @@ qa_genai_service_contract <- function() {
       "Plot-type-aware context strategy research framework is implemented.",
       "Context builders avoid full dataset dumps by default.",
       "Named context strategies support representation comparison experiments.",
+      "GenAI action layer exposes registered proposal validation and approved execution.",
       "GenAI results record the required information-transfer telemetry fields.",
       "Estimated token cost and latency are recorded for instrumented calls.",
       "Output quality, accuracy, and user rating placeholders are present.",

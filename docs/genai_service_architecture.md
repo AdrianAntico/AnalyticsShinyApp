@@ -315,8 +315,39 @@ Provider status and read-only actions appear in:
 - Mission Control
 - Artifact Studio Inspector
 - Project Workspace
+- Floating Guide / AI Assistance
 
 The UI shows provider, model, availability, capabilities, and local/privacy status.
+
+## Action Layer Status
+
+The GenAI action layer is documented in `docs/architecture/genai_action_layer.md`.
+
+Current maturity:
+
+- Mode 0: Read only - implemented.
+- Mode 1: Propose only - implemented for registered proposals.
+- Mode 2: Explicit approval execution - implemented for UI-only actions `module.open`, `artifact.inspect`, `report.open`; implemented for bounded computational action `analysis.preflight`.
+- Mode 3: Delegated safe actions - not implemented.
+- Mode 4: Bounded autonomy - not implemented.
+
+GenAI remains non-autonomous. It may produce a structured proposal, but the application validates, requires explicit user approval, executes deterministic registered handlers, and records audit events.
+
+Current approved-execution UI-only actions:
+
+- `module.open`: opens a registered analysis module without running it.
+- `artifact.inspect`: opens Artifact Studio and selects one existing artifact by trusted artifact id.
+- `report.open`: opens Layout Studio and selects one existing report plan by trusted report id.
+
+Current approved-execution bounded computational action:
+
+- `analysis.preflight`: runs bounded, read-only readiness checks for one registered module against the trusted active dataset id, `active_dataset`.
+
+`artifact.inspect` is resource-scoped. Approval is bound to both the proposal hash and a trusted artifact fingerprint so changed projects, deleted artifacts, unavailable artifacts, or changed artifact versions invalidate execution.
+
+`report.open` is also resource-scoped. In the current app, `report_id` maps to an existing `aq_report_plan$plan_id`; it does not open arbitrary files or URLs. Approval is bound to both the proposal hash and a trusted report fingerprint so changed projects, deleted reports, archived reports, failed/generating render states, unavailable reports, or changed report versions invalidate execution. The action is UI-only and never generates, renders, exports, saves, or mutates a report.
+
+`analysis.preflight` is resource-scoped across both a module and dataset. Approval is bound to the proposal hash plus a composite fingerprint built from active project id, module id/version, dataset id/version, schema version, and dataset availability. It performs metadata-first checks and a bounded row/column scan under app-defined limits. It creates only a session-local temporary result and never returns raw rows, runs the full analysis, creates artifacts, creates report plans, mutates data, or writes persistent files.
 
 ## Future Agentic Lab Integration
 

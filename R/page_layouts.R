@@ -588,7 +588,7 @@ page_layouts_server <- function(id, ctx) {
 
     observe({
       plan_ids <- names(ctx$report_plan_state$plans)
-      selected <- isolate(input$selected_report_plan)
+      selected <- ctx$selected_report_plan_id() %||% isolate(input$selected_report_plan)
       if (!length(plan_ids)) {
         selected <- character()
       } else if (is.null(selected) || !selected %in% plan_ids) {
@@ -602,6 +602,13 @@ page_layouts_server <- function(id, ctx) {
         selected = selected
       )
     })
+
+    observeEvent(input$selected_report_plan, {
+      plan_id <- selected_value(input$selected_report_plan)
+      if (!is.null(plan_id) && plan_id %in% names(ctx$report_plan_state$plans)) {
+        ctx$selected_report_plan_id(plan_id)
+      }
+    }, ignoreInit = TRUE)
 
     output$report_plan_summary <- renderUI({
       summary <- ctx$report_plan_summary()

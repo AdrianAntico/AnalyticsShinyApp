@@ -163,6 +163,50 @@ body.aq-theme-cyberpunk {
   padding: 0 14px 20px;
 }
 
+.aq-app-shell,
+.aq-app-shell * {
+  scrollbar-color: color-mix(in srgb, var(--aq-primary) 52%, var(--aq-border)) color-mix(in srgb, var(--aq-surface-2) 76%, transparent);
+  scrollbar-width: thin;
+}
+
+.aq-app-shell ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.aq-app-shell ::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--aq-surface-2) 76%, transparent);
+  border-radius: 999px;
+}
+
+.aq-app-shell ::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--aq-primary) 70%, var(--aq-secondary)),
+      color-mix(in srgb, var(--aq-primary) 36%, var(--aq-surface-hover))
+    );
+  border: 2px solid color-mix(in srgb, var(--aq-surface) 86%, transparent);
+  border-radius: 999px;
+}
+
+.aq-app-shell ::-webkit-scrollbar-thumb:horizontal {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--aq-primary) 70%, var(--aq-secondary)),
+      color-mix(in srgb, var(--aq-primary) 36%, var(--aq-surface-hover))
+    );
+}
+
+.aq-app-shell ::-webkit-scrollbar-thumb:hover {
+  background: var(--aq-primary-hover);
+}
+
+.aq-app-shell ::-webkit-scrollbar-corner {
+  background: color-mix(in srgb, var(--aq-surface-2) 76%, transparent);
+}
+
 body.aq-theme-cyberpunk .aq-app-shell::before {
   content: "";
   position: fixed;
@@ -1920,6 +1964,33 @@ body.aq-theme-cyberpunk .aq-app-shell input[type="number"]::-webkit-inner-spin-b
   display: grid;
   gap: 10px;
   padding: 14px 18px 18px;
+}
+
+.aq-genai-proposal-review {
+  display: grid;
+  gap: 12px;
+  margin: 14px 18px 0;
+  padding: 14px;
+  border: 1px solid var(--aq-border-strong);
+  border-radius: var(--aq-radius);
+  background: color-mix(in srgb, var(--aq-surface-2) 82%, transparent);
+}
+
+.aq-genai-proposal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.aq-genai-proposal-header h4 {
+  margin: 2px 0 0;
+}
+
+.aq-genai-proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .aq-global-ai-panel .aq-empty-state {

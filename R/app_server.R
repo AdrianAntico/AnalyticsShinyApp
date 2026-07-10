@@ -32,6 +32,18 @@ server <- function(input, output, session) {
     restored_summary = NULL,
     message = NULL
   )
+  ctx$genai_action_state <- reactiveValues(
+    proposal = NULL,
+    validation = NULL,
+    approved_proposal = NULL,
+    execution_result = NULL,
+    audit_log = data.table::data.table()
+  )
+  ctx$genai_preflight_state <- reactiveValues(
+    results = list(),
+    cancel_requested = FALSE,
+    running = FALSE
+  )
 
   ctx$plot_result <- reactiveVal(NULL)
   ctx$plot_error <- reactiveVal(NULL)
@@ -47,8 +59,11 @@ server <- function(input, output, session) {
   ctx$code_runner_message <- reactiveVal("")
   ctx$project_data <- reactiveVal(NULL)
   ctx$project_data_info <- reactiveVal(list(path = NULL, name = NULL))
+  ctx$artifact_studio_selected_artifact_id <- reactiveVal(NULL)
+  ctx$selected_report_plan_id <- reactiveVal(NULL)
   ctx$genai_config <- reactiveVal(genai_default_config(auto_detect_local = TRUE))
   ctx$genai_last_result <- reactiveVal(NULL)
+  ctx$genai_action_policy <- reactiveVal(genai_action_policy("approval_required"))
   ctx$evidence_strategy <- reactiveVal("balanced")
   ctx$evidence_strategy_config <- reactiveVal(evidence_strategy_config("balanced"))
   ctx$genai_status <- function(check_availability = FALSE) {
@@ -75,6 +90,14 @@ server <- function(input, output, session) {
     }
     status
   }
+  ctx$set_genai_action_proposal <- function(proposal) {
+    validation <- genai_validate_action_proposal(proposal, policy = ctx$genai_action_policy(), ctx = ctx)
+    ctx$genai_action_state$proposal <- proposal
+    ctx$genai_action_state$validation <- validation
+    ctx$genai_action_state$approved_proposal <- NULL
+    ctx$genai_action_state$execution_result <- NULL
+    validation
+  }
 
   ctx$uploaded_data <- reactive({
     data <- ctx$project_data()
@@ -86,8 +109,36 @@ server <- function(input, output, session) {
   ctx$current_data_path <- function() ctx$project_data_info()$path
   ctx$current_data_name <- function() ctx$project_data_info()$name
   ctx$has_upload_or_project_data <- function() !is.null(ctx$project_data())
+  ctx$current_dataset_id <- function() "active_dataset"
+  ctx$store_genai_preflight_result <- function(result) {
+    result_id <- result$preflight_result_id %||% paste0("preflight_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", sample.int(999999, 1L))
+    result$preflight_result_id <- result_id
+    ctx$genai_preflight_state$results[[result_id]] <- result
+    result_id
+  }
+  ctx$request_genai_preflight_cancel <- function() {
+    ctx$genai_preflight_state$cancel_requested <- TRUE
+    TRUE
+  }
+  ctx$reset_genai_preflight_cancel <- function() {
+    ctx$genai_preflight_state$cancel_requested <- FALSE
+    TRUE
+  }
+  ctx$genai_preflight_cancel_requested <- function() {
+    isTRUE(ctx$genai_preflight_state$cancel_requested)
+  }
   ctx$navigate_to <- function(page) {
     updateTabsetPanel(session, "main_tabs", selected = page)
+  }
+  ctx$inspect_artifact <- function(artifact_id) {
+    ctx$artifact_studio_selected_artifact_id(artifact_id)
+    ctx$navigate_to("Artifact Studio")
+    invisible(TRUE)
+  }
+  ctx$open_report <- function(report_id) {
+    ctx$selected_report_plan_id(report_id)
+    ctx$navigate_to("Layout")
+    invisible(TRUE)
   }
   ctx$code_tracker_summary <- function() {
     code_tracker_summary(ctx$code_runner_state$records)

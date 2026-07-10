@@ -1,6 +1,0 @@
-Variable1,Variable2,Pair,Method,N,Missing Pair N,Correlation,Abs Correlation,Direction,Strength,P Value,High Correlation
-conversions,revenue,conversions  ↔  revenue,spearman,4850,150,0.827013066272497,0.827013066272497,Positive,Strong,0,TRUE
-revenue,roas,revenue  ↔  roas,spearman,4850,150,0.816920867517071,0.816920867517071,Positive,Strong,0,TRUE
-impressions,spend,impressions  ↔  spend,spearman,5000,0,0.813356785490411,0.813356785490411,Positive,Strong,0,TRUE
-impressions,clicks,impressions  ↔  clicks,spearman,5000,0,0.7497719119133,0.7497719119133,Positive,Strong,0,TRUE
-conversions,cvr,conversions  ↔  cvr,spearman,5000,0,0.703496709337997,0.703496709337997,Positive,Strong,0,TRUE

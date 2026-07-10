@@ -27,6 +27,7 @@ ui_global_ai_assistant <- function(id = "global_ai_assistant") {
           actionButton(ns("suggest_next_action"), "Suggest Next Action", class = "btn-secondary btn-sm"),
           actionButton(ns("open_guide"), "Open Guide", class = "btn-secondary btn-sm")
         ),
+        uiOutput(ns("proposal")),
         uiOutput(ns("result"))
       )
     )
@@ -106,6 +107,14 @@ ui_global_ai_result <- function(result) {
 
 global_ai_assistant_server <- function(id = "global_ai_assistant", ctx) {
   moduleServer(id, function(input, output, session) {
+    store_proposal_from_result <- function(result) {
+      proposal <- result$metadata$action_proposal %||% NULL
+      if (!is.null(proposal) && is.function(ctx$set_genai_action_proposal)) {
+        ctx$set_genai_action_proposal(proposal)
+      }
+      invisible(proposal)
+    }
+
     output$status <- renderUI({
       status <- tryCatch(
         ctx$genai_status(check_availability = FALSE),
@@ -123,19 +132,79 @@ global_ai_assistant_server <- function(id = "global_ai_assistant", ctx) {
       ui_global_ai_result(ctx$genai_last_result())
     })
 
+    output$proposal <- renderUI({
+      ui_genai_action_proposal_review(
+        ctx$genai_action_state$proposal,
+        validation = ctx$genai_action_state$validation,
+        ns = session$ns
+      )
+    })
+
     observeEvent(input$explain_alerts, {
       state <- global_ai_mission_state(ctx)
       result <- genai_explain_alerts(state$alerts, config = ctx$genai_config())
       ctx$genai_last_result(result)
+      store_proposal_from_result(result)
     }, ignoreInit = TRUE)
 
     observeEvent(input$suggest_next_action, {
       result <- genai_suggest_next_action(ctx, config = ctx$genai_config())
       ctx$genai_last_result(result)
+      store_proposal_from_result(result)
     }, ignoreInit = TRUE)
 
     observeEvent(input$open_guide, {
       if (!is.null(ctx$navigate_to)) ctx$navigate_to("Guide")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$approve_proposal, {
+      proposal <- ctx$genai_action_state$proposal
+      validation <- genai_validate_action_proposal(proposal, policy = ctx$genai_action_policy(), ctx = ctx)
+      ctx$genai_action_state$validation <- validation
+      approval <- genai_approve_action_proposal(proposal, validation, approval_source = "active_user")
+      if (!identical(approval$status, "success")) {
+        ctx$genai_action_state$execution_result <- approval
+        return()
+      }
+      ctx$genai_action_state$approved_proposal <- approval$value
+      execution <- genai_execute_action_proposal(
+        approval$value,
+        ctx = ctx,
+        policy = ctx$genai_action_policy(),
+        approval_hash = approval$value$approval_hash
+      )
+      ctx$genai_action_state$execution_result <- execution
+      if (!is.null(ctx$genai_action_state$proposal)) {
+        ctx$genai_action_state$proposal$status <- execution$value$status %||% execution$status
+      }
+      if (data.table::is.data.table(execution$metadata$audit_event)) {
+        ctx$genai_action_state$audit_log <- data.table::rbindlist(
+          list(ctx$genai_action_state$audit_log, execution$metadata$audit_event),
+          fill = TRUE
+        )
+      }
+      ctx$genai_last_result(service_result(
+        status = execution$status,
+        value = list(text = service_result_message(execution)),
+        messages = execution$messages,
+        warnings = execution$warnings,
+        errors = execution$errors,
+        metadata = list(action_execution = execution$value, audit_event = execution$metadata$audit_event)
+      ))
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$reject_proposal, {
+      proposal <- ctx$genai_action_state$proposal
+      rejection <- genai_reject_action_proposal(proposal, approval_source = "active_user")
+      ctx$genai_action_state$proposal <- rejection$value
+      ctx$genai_action_state$execution_result <- rejection
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$cancel_proposal, {
+      proposal <- ctx$genai_action_state$proposal
+      cancellation <- genai_cancel_action_proposal(proposal, approval_source = "active_user")
+      ctx$genai_action_state$proposal <- cancellation$value
+      ctx$genai_action_state$execution_result <- cancellation
     }, ignoreInit = TRUE)
   })
 }
@@ -160,6 +229,9 @@ qa_global_ai_assistant <- function() {
       "mission_context_reuse",
       "status_degrades_gracefully",
       "status_not_checked_distinct",
+      "proposal_review_ui",
+      "approval_executes_only_registered_action",
+      "audit_log_recorded",
       "fixed_following_dock",
       "themed_response_scrollbar",
       "compact_default"
@@ -172,6 +244,9 @@ qa_global_ai_assistant <- function() {
       if (has(helper, c("mission_control_alerts", "mission_control_workflow_rows", "mission_control_quality_summary"))) "success" else "error",
       if (has(helper, c("tryCatch", "service_result", "Not configured"))) "success" else "error",
       if (has(helper, c("availability_checked", "Not checked", "status_class"))) "success" else "error",
+      if (has(helper, c("ui_genai_action_proposal_review", "approve_proposal", "reject_proposal", "cancel_proposal"))) "success" else "error",
+      if (has(helper, c("genai_approve_action_proposal", "genai_execute_action_proposal", "approval_hash"))) "success" else "error",
+      if (has(helper, c("audit_log", "audit_event", "data.table::rbindlist"))) "success" else "error",
       if (has(css, c(".aq-global-ai-assistant", "position: fixed", "bottom:", "right:"))) "success" else "error",
       if (has(css, c(".aq-global-ai-panel .aq-genai-output::-webkit-scrollbar-thumb", "scrollbar-color", ".aq-global-ai-panel::-webkit-scrollbar"))) "success" else "error",
       if (has(css, c(".aq-global-ai-trigger", ".aq-global-ai-panel", ".aq-global-ai-details[open]"))) "success" else "error"
@@ -184,6 +259,9 @@ qa_global_ai_assistant <- function() {
       "The assistant reuses Mission Control alert and workflow context instead of inventing a second state model.",
       "Provider status errors are captured and rendered as graceful guidance.",
       "The floating assistant distinguishes not-checked provider status from unavailable provider status.",
+      "The floating assistant can render a validated GenAI action proposal review.",
+      "Approval is explicit and execution flows through the registered action handler.",
+      "Successful action execution appends an audit event.",
       "The assistant is fixed-position so it follows the user around the workstation.",
       "The assistant panel and GenAI response output use workstation-themed scrollbars.",
       "The assistant is collapsed by default and expands only when requested."

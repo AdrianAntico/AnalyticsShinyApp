@@ -185,6 +185,22 @@ create_project_artifact_collector <- function(
   "AutoQuant::ObjectToPNG"
 }
 
+.project_collector_close_screenshot_browser <- function() {
+  if (!requireNamespace("chromote", quietly = TRUE)) {
+    return(invisible(FALSE))
+  }
+  has_default <- get("has_default_chromote_object", envir = asNamespace("chromote"))
+  if (!isTRUE(tryCatch(has_default(), error = function(e) FALSE))) {
+    return(invisible(FALSE))
+  }
+  browser <- tryCatch(chromote::default_chromote_object(), error = function(e) NULL)
+  if (is.null(browser)) {
+    return(invisible(FALSE))
+  }
+  tryCatch(browser$close(wait = 2), error = function(e) NULL)
+  invisible(TRUE)
+}
+
 .project_collector_capture_plot <- function(artifact, output_file, width = 1400, height = 900) {
   if (!requireNamespace("AutoQuant", quietly = TRUE) ||
       !"ObjectToPNG" %in% getNamespaceExports("AutoQuant")) {
@@ -617,6 +633,14 @@ project_collector_write <- function(collector) {
   if (!inherits(collector, "project_artifact_collector")) {
     return(service_result(status = "error", errors = "collector must inherit from project_artifact_collector."))
   }
+
+  old_options <- options(
+    chromote.headless = "new",
+    webshot.quiet = TRUE,
+    webshot.concurrent = 1L
+  )
+  on.exit(options(old_options), add = TRUE)
+  on.exit(.project_collector_close_screenshot_browser(), add = TRUE)
 
   screenshot_index <- list()
   warnings <- character()

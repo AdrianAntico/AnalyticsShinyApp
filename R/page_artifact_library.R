@@ -56,7 +56,7 @@ page_artifact_library_ui <- function(id) {
 
 page_artifact_library_server <- function(id, ctx) {
   moduleServer(id, function(input, output, session) {
-    selected_artifact_id <- reactiveVal(NULL)
+    selected_artifact_id <- ctx$artifact_studio_selected_artifact_id %||% reactiveVal(NULL)
     observed_artifact_actions <- new.env(parent = emptyenv())
 
     artifact_quality <- function(artifact) {
