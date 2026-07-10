@@ -591,6 +591,36 @@ body.aq-theme-cyberpunk .aq-disclosure {
   box-shadow: var(--aq-shadow);
 }
 
+.aq-app-shell .selectize-dropdown-content {
+  max-height: 260px;
+  scrollbar-color: color-mix(in srgb, var(--aq-primary) 52%, var(--aq-border)) var(--aq-surface-2);
+  scrollbar-width: thin;
+}
+
+.aq-app-shell .selectize-dropdown-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.aq-app-shell .selectize-dropdown-content::-webkit-scrollbar-track {
+  background: var(--aq-surface-2);
+  border-left: 1px solid var(--aq-border);
+}
+
+.aq-app-shell .selectize-dropdown-content::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--aq-primary) 72%, var(--aq-secondary)),
+      color-mix(in srgb, var(--aq-primary) 40%, var(--aq-surface-hover))
+    );
+  border: 2px solid var(--aq-surface-2);
+  border-radius: 999px;
+}
+
+.aq-app-shell .selectize-dropdown-content::-webkit-scrollbar-thumb:hover {
+  background: var(--aq-primary-hover);
+}
+
 .aq-app-shell .selectize-dropdown .option,
 .aq-app-shell .selectize-dropdown .optgroup-header {
   color: var(--aq-text);
@@ -1583,6 +1613,37 @@ body.aq-theme-cyberpunk .aq-disclosure {
 
 .aq-plot-builder-primary-actions .btn {
   flex: 1 1 150px;
+}
+
+.aq-plot-mapping-controls,
+.aq-plot-mapping-controls .shiny-html-output,
+.aq-plot-mapping-controls .form-group,
+.aq-plot-mapping-controls .shiny-input-container,
+.aq-plot-mapping-controls .selectize-control,
+.aq-plot-mapping-controls .selectize-input {
+  box-sizing: border-box;
+  max-width: 100% !important;
+  min-width: 0;
+  width: 100% !important;
+}
+
+.aq-plot-mapping-controls {
+  overflow-x: hidden;
+}
+
+.aq-plot-mapping-controls .form-group,
+.aq-plot-mapping-controls .shiny-input-container {
+  display: block;
+}
+
+.aq-plot-mapping-controls .selectize-input {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aq-plot-mapping-controls .selectize-input input {
+  max-width: 100% !important;
+  min-width: 0 !important;
 }
 
 .aq-global-ai-assistant {

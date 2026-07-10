@@ -845,6 +845,7 @@ qa_ui_consistency <- function() {
       "quality_ai_primitives",
       "dark_form_control_styling",
       "dark_selectize_dropdown_styling",
+      "themed_selectize_scrollbars",
       "dark_button_styling",
       "dark_table_fallback_styling",
       "table_overflow_containment",
@@ -877,7 +878,9 @@ qa_ui_consistency <- function() {
           grepl("ui_preview_panel", plot_builder_page, fixed = TRUE) &&
           grepl("ui_code_panel", plot_builder_page, fixed = TRUE) &&
           grepl("aq-plot-builder-primary-actions", plot_builder_page, fixed = TRUE) &&
-          grepl(".aq-plot-builder-primary-actions", css, fixed = TRUE)) "success" else "error",
+          grepl(".aq-plot-builder-primary-actions", css, fixed = TRUE) &&
+          grepl("aq-plot-mapping-controls", plot_builder_page, fixed = TRUE) &&
+          grepl(".aq-plot-mapping-controls", css, fixed = TRUE)) "success" else "error",
       if (grepl("Layout Studio", layouts_page, fixed = TRUE) && grepl("ui_split_panel", layouts_page, fixed = TRUE) && grepl("ui_code_panel", layouts_page, fixed = TRUE)) "success" else "error",
       if (grepl("Artifact Studio", artifact_library_page, fixed = TRUE) && grepl("ui_artifact_filmstrip", artifact_library_page, fixed = TRUE) && grepl("artifact_studio_overview", artifact_library_page, fixed = TRUE)) "success" else "error",
       if (grepl("ui_code_panel", analysis_modules_page, fixed = TRUE)) "success" else "error",
@@ -885,6 +888,7 @@ qa_ui_consistency <- function() {
       if (has_patterns(c(".aq-loading-state", ".aq-quality-panel", ".aq-ai-readiness-panel"), css) && grepl("ui_ai_readiness_panel", project_page, fixed = TRUE)) "success" else "error",
       if (has_patterns(c(".aq-app-shell input", ".aq-app-shell textarea", ".aq-app-shell select", ".aq-app-shell .form-control:focus", "--aq-input-bg"), css)) "success" else "error",
       if (has_patterns(c(".aq-app-shell .selectize-input", ".aq-app-shell .selectize-dropdown", ".aq-app-shell .selectize-dropdown .active", ".aq-app-shell .selectize-control.multi"), css)) "success" else "error",
+      if (has_patterns(c(".aq-app-shell .selectize-dropdown-content", "::-webkit-scrollbar-thumb", "scrollbar-color"), css)) "success" else "error",
       if (has_patterns(c(".aq-app-shell .btn", ".aq-app-shell .btn-primary", ".aq-app-shell .btn-success", ".aq-app-shell .btn-danger"), css)) "success" else "error",
       if (has_patterns(c(".aq-app-shell table", ".aq-app-shell .shiny-html-output table", ".aq-html-table tbody tr:nth-child(even)", ".aq-app-shell .table-hover"), css)) "success" else "error",
       if (has_patterns(c(".aq-table-wrapper", "overflow-x: auto", "width: max-content", ".aq-card-body", "min-width: 0"), css)) "success" else "error",
@@ -931,6 +935,7 @@ qa_ui_consistency <- function() {
       "Quality, loading, and AI readiness primitives are present and used.",
       "Text, numeric, select, textarea, and focus states use workstation tokens.",
       "Selectize inputs and dropdown menus use dark workstation styling.",
+      "Long selectize dropdowns use themed scrollbars instead of default browser chrome.",
       "Action and download buttons use dark workstation styling.",
       "Plain HTML, Shiny fallback, and striped/hover table styles use dark tokens.",
       "Tables are constrained to their parent panel and scroll horizontally when needed.",

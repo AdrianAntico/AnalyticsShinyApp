@@ -52,7 +52,10 @@ page_plot_builder_ui <- function(id) {
           selectInput(ns("plot_type"), "Plot Type", choices = plot_type_choices()),
           ui_control_group(
             "Mappings",
-            uiOutput(ns("mapping_inputs"))
+            tags$div(
+              class = "aq-plot-mapping-controls",
+              uiOutput(ns("mapping_inputs"))
+            )
           ),
           tags$div(
             class = "aq-plot-builder-primary-actions",
