@@ -544,6 +544,37 @@ body.aq-theme-cyberpunk .aq-disclosure {
   outline: none;
 }
 
+body.aq-theme-dark .aq-app-shell input[type="number"],
+body.aq-theme-cyberpunk .aq-app-shell input[type="number"],
+body.aq-theme-pimp .aq-app-shell input[type="number"],
+body:not(.aq-theme-light):not(.aq-theme-pimp):not(.aq-theme-cyberpunk) .aq-app-shell input[type="number"] {
+  color-scheme: dark;
+}
+
+body.aq-theme-light .aq-app-shell input[type="number"] {
+  color-scheme: light;
+}
+
+.aq-app-shell input[type="number"]::-webkit-outer-spin-button,
+.aq-app-shell input[type="number"]::-webkit-inner-spin-button {
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+body.aq-theme-dark .aq-app-shell input[type="number"]::-webkit-outer-spin-button,
+body.aq-theme-dark .aq-app-shell input[type="number"]::-webkit-inner-spin-button,
+body.aq-theme-cyberpunk .aq-app-shell input[type="number"]::-webkit-outer-spin-button,
+body.aq-theme-cyberpunk .aq-app-shell input[type="number"]::-webkit-inner-spin-button,
+body:not(.aq-theme-light):not(.aq-theme-pimp):not(.aq-theme-cyberpunk) .aq-app-shell input[type="number"]::-webkit-outer-spin-button,
+body:not(.aq-theme-light):not(.aq-theme-pimp):not(.aq-theme-cyberpunk) .aq-app-shell input[type="number"]::-webkit-inner-spin-button {
+  filter: invert(1) brightness(1.35) saturate(0.8);
+}
+
+body.aq-theme-cyberpunk .aq-app-shell input[type="number"]::-webkit-outer-spin-button,
+body.aq-theme-cyberpunk .aq-app-shell input[type="number"]::-webkit-inner-spin-button {
+  filter: invert(1) brightness(1.55) saturate(1.6) hue-rotate(125deg);
+}
+
 .aq-app-shell input:disabled,
 .aq-app-shell textarea:disabled,
 .aq-app-shell select:disabled,
