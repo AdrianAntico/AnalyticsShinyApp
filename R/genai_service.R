@@ -2286,6 +2286,8 @@ ui_genai_status_panel <- function(status, title = "GenAI Provider", actions = NU
     endpoint_unreachable_or_ollama_not_running = "Ollama is configured but not reachable. Start Ollama or check the base URL.",
     endpoint_unreachable = "Provider endpoint is not reachable. Check the base URL, server process, and network access.",
     available = "Provider is configured and reachable.",
+    available_last_success = "Provider produced a successful response in this session.",
+    available_auto_detected = "Local Ollama was reachable during app startup auto-detection.",
     service_result_message(status)
   )
   ui_card(

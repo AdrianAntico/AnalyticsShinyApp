@@ -52,7 +52,28 @@ server <- function(input, output, session) {
   ctx$evidence_strategy <- reactiveVal("balanced")
   ctx$evidence_strategy_config <- reactiveVal(evidence_strategy_config("balanced"))
   ctx$genai_status <- function(check_availability = FALSE) {
-    genai_provider_status(ctx$genai_config(), check_availability = check_availability)
+    config <- ctx$genai_config()
+    status <- genai_provider_status(config, check_availability = check_availability)
+    if (!isTRUE(check_availability) && genai_configured(config)) {
+      last_result <- ctx$genai_last_result()
+      last_metadata <- last_result$metadata %||% list()
+      last_telemetry <- last_metadata$telemetry %||% list()
+      last_provider <- last_telemetry$provider %||% last_metadata$provider
+      last_model <- last_telemetry$model %||% last_metadata$model
+      last_success <- identical(last_result$status %||% "", "success") &&
+        identical(last_provider %||% config$provider, config$provider) &&
+        identical(last_model %||% config$model, config$model)
+      auto_detected <- identical(config$config_source %||% "", "auto_detect_ollama")
+      if (isTRUE(last_success) || isTRUE(auto_detected)) {
+        status$status <- "success"
+        status$value$available <- TRUE
+        status$value$configured <- TRUE
+        status$metadata$diagnostic_reason <- if (isTRUE(last_success)) "available_last_success" else "available_auto_detected"
+        status$warnings <- character()
+        status$errors <- character()
+      }
+    }
+    status
   }
 
   ctx$uploaded_data <- reactive({

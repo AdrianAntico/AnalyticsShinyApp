@@ -63,14 +63,17 @@ ui_global_ai_status <- function(status) {
   metadata <- status$metadata %||% list()
   configured <- isTRUE(value$configured %||% FALSE)
   available <- isTRUE(value$available %||% FALSE)
+  availability_checked <- isTRUE(value$availability_checked %||% FALSE)
   status_label <- if (!configured) {
     "Not configured"
   } else if (available) {
     "Available"
+  } else if (!availability_checked) {
+    "Not checked"
   } else {
     "Unavailable"
   }
-  status_class <- if (available) "success" else if (configured) "warning" else "neutral"
+  status_class <- if (available) "success" else if (configured && !availability_checked) "info" else if (configured) "warning" else "neutral"
   tags$div(
     class = "aq-global-ai-status",
     ui_status_badge(status_label, status = status_class),
@@ -156,7 +159,9 @@ qa_global_ai_assistant <- function() {
       "read_only_actions",
       "mission_context_reuse",
       "status_degrades_gracefully",
+      "status_not_checked_distinct",
       "fixed_following_dock",
+      "themed_response_scrollbar",
       "compact_default"
     ),
     status = c(
@@ -166,7 +171,9 @@ qa_global_ai_assistant <- function() {
       if (has(helper, c("genai_explain_alerts", "genai_suggest_next_action", "Open Guide", "Read-only mentor"))) "success" else "error",
       if (has(helper, c("mission_control_alerts", "mission_control_workflow_rows", "mission_control_quality_summary"))) "success" else "error",
       if (has(helper, c("tryCatch", "service_result", "Not configured"))) "success" else "error",
+      if (has(helper, c("availability_checked", "Not checked", "status_class"))) "success" else "error",
       if (has(css, c(".aq-global-ai-assistant", "position: fixed", "bottom:", "right:"))) "success" else "error",
+      if (has(css, c(".aq-global-ai-panel .aq-genai-output::-webkit-scrollbar-thumb", "scrollbar-color", ".aq-global-ai-panel::-webkit-scrollbar"))) "success" else "error",
       if (has(css, c(".aq-global-ai-trigger", ".aq-global-ai-panel", ".aq-global-ai-details[open]"))) "success" else "error"
     ),
     message = c(
@@ -176,7 +183,9 @@ qa_global_ai_assistant <- function() {
       "Global assistant actions remain read-only: explain alerts, suggest next action, and open Guide.",
       "The assistant reuses Mission Control alert and workflow context instead of inventing a second state model.",
       "Provider status errors are captured and rendered as graceful guidance.",
+      "The floating assistant distinguishes not-checked provider status from unavailable provider status.",
       "The assistant is fixed-position so it follows the user around the workstation.",
+      "The assistant panel and GenAI response output use workstation-themed scrollbars.",
       "The assistant is collapsed by default and expands only when requested."
     )
   )

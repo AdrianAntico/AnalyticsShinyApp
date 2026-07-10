@@ -1851,6 +1851,36 @@ body.aq-theme-cyberpunk .aq-app-shell input[type="number"]::-webkit-inner-spin-b
   margin-top: 10px;
   max-height: min(70vh, 620px);
   overflow: auto;
+  scrollbar-color: color-mix(in srgb, var(--aq-primary) 54%, var(--aq-border)) transparent;
+  scrollbar-width: thin;
+}
+
+.aq-global-ai-panel::-webkit-scrollbar,
+.aq-global-ai-panel .aq-genai-output::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.aq-global-ai-panel::-webkit-scrollbar-track,
+.aq-global-ai-panel .aq-genai-output::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aq-global-ai-panel::-webkit-scrollbar-thumb,
+.aq-global-ai-panel .aq-genai-output::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--aq-primary) 68%, var(--aq-secondary)),
+      color-mix(in srgb, var(--aq-primary) 34%, var(--aq-surface-hover))
+    );
+  border: 2px solid var(--aq-surface);
+  border-radius: 999px;
+}
+
+.aq-global-ai-panel::-webkit-scrollbar-thumb:hover,
+.aq-global-ai-panel .aq-genai-output::-webkit-scrollbar-thumb:hover {
+  background: var(--aq-primary-hover);
 }
 
 .aq-global-ai-header {
@@ -1900,6 +1930,8 @@ body.aq-theme-cyberpunk .aq-app-shell input[type="number"]::-webkit-inner-spin-b
 .aq-global-ai-panel .aq-genai-output {
   max-height: 280px;
   overflow: auto;
+  scrollbar-color: color-mix(in srgb, var(--aq-primary) 54%, var(--aq-border)) var(--aq-input-bg);
+  scrollbar-width: thin;
   white-space: pre-wrap;
 }
 
