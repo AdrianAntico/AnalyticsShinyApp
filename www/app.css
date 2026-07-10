@@ -1431,6 +1431,19 @@ body.aq-theme-cyberpunk .aq-disclosure {
   font-weight: 600;
 }
 
+.aq-card-body > .form-group:first-child,
+.aq-card-body > .shiny-input-container:first-child {
+  margin-top: 2px;
+}
+
+.aq-card-body > .form-group + .aq-control-group,
+.aq-card-body > .shiny-input-container + .aq-control-group,
+.aq-card-body > .aq-control-group + .aq-control-group,
+.aq-card-body > .aq-control-group + .aq-plot-builder-primary-actions,
+.aq-card-body > .form-group + .aq-plot-builder-primary-actions {
+  margin-top: 18px;
+}
+
 .aq-card-subtitle,
 .aq-control-group-description {
   margin: 6px 0 0;
@@ -1532,6 +1545,222 @@ body.aq-theme-cyberpunk .aq-disclosure {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  margin: 12px 0;
+}
+
+.aq-action-row:first-child {
+  margin-top: 0;
+}
+
+.aq-action-row:last-child {
+  margin-bottom: 0;
+}
+
+.aq-action-row + .shiny-html-output,
+.aq-action-row + .shiny-bound-output,
+.aq-action-row + .aq-table-wrapper,
+.aq-action-row + table,
+.aq-action-row + .form-group,
+.aq-action-row + .shiny-input-container {
+  margin-top: 14px;
+}
+
+.aq-plot-builder-primary-actions {
+  position: sticky;
+  top: 10px;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 14px;
+  padding: 10px;
+  border: 1px solid var(--aq-border);
+  border-radius: var(--aq-radius-sm);
+  background: color-mix(in srgb, var(--aq-surface) 92%, var(--aq-bg-base));
+  box-shadow: var(--aq-shadow-soft);
+}
+
+.aq-plot-builder-primary-actions .btn {
+  flex: 1 1 150px;
+}
+
+.aq-global-ai-assistant {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 1300;
+  width: min(430px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.aq-global-ai-details {
+  pointer-events: auto;
+}
+
+.aq-global-ai-details > summary {
+  list-style: none;
+}
+
+.aq-global-ai-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.aq-global-ai-trigger {
+  align-items: center;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--aq-primary) 22%, transparent), transparent 42%),
+    var(--aq-surface-elevated);
+  border: 1px solid var(--aq-border-strong);
+  border-radius: 999px;
+  box-shadow: var(--aq-shadow);
+  color: var(--aq-text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 10px;
+  margin-left: auto;
+  max-width: 100%;
+  min-height: 52px;
+  padding: 8px 10px 8px 14px;
+  transition:
+    border-color var(--aq-transition-fast),
+    box-shadow var(--aq-transition-fast),
+    transform var(--aq-transition-fast);
+}
+
+.aq-global-ai-trigger:hover,
+.aq-global-ai-trigger:focus {
+  border-color: var(--aq-primary);
+  box-shadow: var(--aq-shadow), 0 0 0 4px color-mix(in srgb, var(--aq-primary) 18%, transparent);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.aq-global-ai-details[open] .aq-global-ai-trigger {
+  border-color: var(--aq-primary);
+  border-radius: 18px;
+}
+
+.aq-global-ai-pulse {
+  background: radial-gradient(circle, var(--aq-secondary) 0 34%, color-mix(in srgb, var(--aq-secondary) 28%, transparent) 36% 100%);
+  border-radius: 999px;
+  box-shadow: 0 0 20px color-mix(in srgb, var(--aq-secondary) 55%, transparent);
+  display: inline-block;
+  height: 14px;
+  width: 14px;
+}
+
+.aq-global-ai-trigger-copy {
+  display: grid;
+  line-height: 1.05;
+}
+
+.aq-global-ai-trigger-copy strong {
+  font-size: 0.92rem;
+}
+
+.aq-global-ai-trigger-copy small {
+  color: var(--aq-text-secondary);
+  font-size: 0.72rem;
+}
+
+.aq-global-ai-trigger-hint {
+  align-items: center;
+  background: var(--aq-surface-2);
+  border: 1px solid var(--aq-border);
+  border-radius: 999px;
+  color: var(--aq-primary-hover);
+  display: inline-flex;
+  font-weight: 800;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.aq-global-ai-panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--aq-primary) 10%, transparent), transparent 34%),
+    var(--aq-surface);
+  border: 1px solid var(--aq-border-strong);
+  border-radius: 12px;
+  box-shadow: var(--aq-shadow);
+  margin-top: 10px;
+  max-height: min(70vh, 620px);
+  overflow: auto;
+}
+
+.aq-global-ai-header {
+  border-bottom: 1px solid var(--aq-border);
+  padding: 16px 18px;
+}
+
+.aq-global-ai-header h3 {
+  color: var(--aq-text-primary);
+  font-size: 1.08rem;
+  margin: 2px 0 4px;
+}
+
+.aq-global-ai-header p:not(.aq-section-eyebrow) {
+  color: var(--aq-text-secondary);
+  margin: 0;
+}
+
+.aq-global-ai-status {
+  align-items: center;
+  border-bottom: 1px solid var(--aq-border);
+  color: var(--aq-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 18px;
+}
+
+.aq-global-ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 18px 4px;
+}
+
+.aq-global-ai-result {
+  display: grid;
+  gap: 10px;
+  padding: 14px 18px 18px;
+}
+
+.aq-global-ai-panel .aq-empty-state {
+  margin: 14px 18px 18px;
+  min-height: 132px;
+}
+
+.aq-global-ai-panel .aq-genai-output {
+  max-height: 280px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+body.aq-theme-cyberpunk .aq-global-ai-trigger,
+body.aq-theme-cyberpunk .aq-global-ai-panel {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--aq-secondary) 28%, transparent),
+    0 0 34px color-mix(in srgb, var(--aq-secondary) 22%, transparent),
+    var(--aq-shadow);
+}
+
+@media (max-width: 720px) {
+  .aq-global-ai-assistant {
+    bottom: 14px;
+    right: 14px;
+    width: calc(100vw - 28px);
+  }
+
+  .aq-global-ai-trigger {
+    min-height: 48px;
+  }
+
+  .aq-global-ai-actions .btn {
+    flex: 1 1 100%;
+  }
 }
 
 .aq-action-bar {
@@ -3176,6 +3405,28 @@ body.aq-theme-cyberpunk .aq-disclosure {
 
 .aq-control-group {
   margin-bottom: 16px;
+}
+
+.aq-control-group-title + .aq-control-group-body,
+.aq-control-group-description + .aq-control-group-body {
+  margin-top: 12px;
+}
+
+.aq-control-group-body {
+  display: grid;
+  gap: 12px;
+}
+
+.aq-control-group-body .form-group,
+.aq-control-group-body .shiny-input-container {
+  margin-bottom: 0;
+}
+
+.aq-control-group .selectize-control,
+.aq-card .selectize-control,
+.aq-control-group .selectize-input,
+.aq-card .selectize-input {
+  max-width: 100%;
 }
 
 .aq-control-group-body > .form-group:last-child {

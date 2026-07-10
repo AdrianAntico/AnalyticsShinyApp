@@ -11,6 +11,7 @@ build_app_ui <- function() {
       theme = "dark",
       titlePanel("Analytics Workstation"),
       ui_command_palette("command_palette"),
+      ui_global_ai_assistant("global_ai"),
       tabsetPanel(
         id = "main_tabs",
         page_guide_ui("guide"),

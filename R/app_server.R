@@ -956,6 +956,7 @@ server <- function(input, output, session) {
   }
 
   command_palette_server("command_palette", navigation_session = session)
+  global_ai_assistant_server("global_ai", ctx)
   page_guide_server("guide", ctx)
   page_knowledge_library_server("knowledge_library", ctx)
   page_mission_control_server("mission_control", ctx)

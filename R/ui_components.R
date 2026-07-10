@@ -852,7 +852,8 @@ qa_ui_consistency <- function() {
       "no_raw_shiny_table_outputs",
       "dark_auto_table_theme",
       "user_friendly_module_labels",
-      "user_friendly_plot_control_labels"
+      "user_friendly_plot_control_labels",
+      "control_spacing_contract"
     ),
     status = c(
       if (all(vapply(component_names, function(name) exists(name, envir = environment(), mode = "function"), logical(1)))) "success" else "error",
@@ -872,7 +873,11 @@ qa_ui_consistency <- function() {
       if (has_patterns(c("body.aq-theme-cyberpunk", "#00f5ff", "#ff2bd6", ".aq-theme-switcher"), css) && has_patterns(c("cyberpunk", "reactable_theme_cyberpunk"), table_theme)) "success" else "error",
       if (has_patterns(c("body.aq-theme-dark", "body:not(.aq-theme-light):not(.aq-theme-pimp):not(.aq-theme-cyberpunk)", "--aq-bg-base", "--aq-focus-ring", "--aq-secondary"), css)) "success" else "error",
       if (has_patterns(c("Data Workspace", "supported_data_accept_types", "aq-data-loader-grid", "aq-data-preview-card"), data_page)) "success" else "error",
-      if (grepl("Plot Builder", plot_builder_page, fixed = TRUE) && grepl("ui_preview_panel", plot_builder_page, fixed = TRUE) && grepl("ui_code_panel", plot_builder_page, fixed = TRUE)) "success" else "error",
+      if (grepl("Plot Builder", plot_builder_page, fixed = TRUE) &&
+          grepl("ui_preview_panel", plot_builder_page, fixed = TRUE) &&
+          grepl("ui_code_panel", plot_builder_page, fixed = TRUE) &&
+          grepl("aq-plot-builder-primary-actions", plot_builder_page, fixed = TRUE) &&
+          grepl(".aq-plot-builder-primary-actions", css, fixed = TRUE)) "success" else "error",
       if (grepl("Layout Studio", layouts_page, fixed = TRUE) && grepl("ui_split_panel", layouts_page, fixed = TRUE) && grepl("ui_code_panel", layouts_page, fixed = TRUE)) "success" else "error",
       if (grepl("Artifact Studio", artifact_library_page, fixed = TRUE) && grepl("ui_artifact_filmstrip", artifact_library_page, fixed = TRUE) && grepl("artifact_studio_overview", artifact_library_page, fixed = TRUE)) "success" else "error",
       if (grepl("ui_code_panel", analysis_modules_page, fixed = TRUE)) "success" else "error",
@@ -891,7 +896,14 @@ qa_ui_consistency <- function() {
         "Plot Type",
         vapply(c("XVar", "YVar", "GroupVar", "CorrVars"), mapping_label, character(1)),
         vapply(option_registry, function(option) option$label %||% "", character(1))
-      ))) "success" else "error"
+      ))) "success" else "error",
+      if (has_patterns(c(
+        ".aq-control-group-title + .aq-control-group-body",
+        ".aq-control-group-body",
+        ".aq-action-row + .shiny-html-output",
+        ".aq-card-body > .form-group + .aq-control-group",
+        ".aq-card-body > .aq-control-group + .aq-plot-builder-primary-actions"
+      ), css)) "success" else "error"
     ),
     message = c(
       "Shared page/card/stat/disclosure/activity components exist.",
@@ -911,7 +923,7 @@ qa_ui_consistency <- function() {
       "Cyberpunk theme tokens and table theme support are available.",
       "Dark-first tokens include base surfaces, focus states, and secondary accent.",
       "Data page uses a top dataset loader/status band with a full-width preview.",
-      "Plot Builder uses shared preview and code panels.",
+      "Plot Builder uses shared preview/code panels and keeps primary plot actions sticky.",
       "Layout Studio uses shared split-panel, disclosure, preview, and code panels.",
       "Artifact Studio surfaces evidence gallery, inspector, and filmstrip.",
       "Analysis Modules uses the shared code panel.",
@@ -926,7 +938,8 @@ qa_ui_consistency <- function() {
       "Page UI/server files use themed table rendering instead of raw Shiny table outputs.",
       "The automatic table theme resolves to dark unless explicitly overridden.",
       "Module registry labels are user-facing names, not implementation package ids.",
-      "Plot Builder controls use user-facing labels instead of raw AutoPlots argument names."
+      "Plot Builder controls use user-facing labels instead of raw AutoPlots argument names.",
+      "Control groups and action rows reserve spacing before adjacent labels and outputs."
     )
   )
 }

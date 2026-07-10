@@ -54,16 +54,17 @@ page_plot_builder_ui <- function(id) {
             "Mappings",
             uiOutput(ns("mapping_inputs"))
           ),
+          tags$div(
+            class = "aq-plot-builder-primary-actions",
+            actionButton(ns("build_plot"), "Build / Refresh Plot", class = "btn-primary"),
+            actionButton(ns("add_plot"), "Add Plot", class = "btn-success"),
+            actionButton(ns("remove_last_plot"), "Remove Last Plot", class = "btn-secondary")
+          ),
           ui_disclosure(
             "Plot Options",
             uiOutput(ns("option_inputs")),
             level = "advanced",
             open = TRUE
-          ),
-          ui_action_row(
-            actionButton(ns("build_plot"), "Build / Refresh Plot", class = "btn-primary"),
-            actionButton(ns("add_plot"), "Add Plot", class = "btn-success"),
-            actionButton(ns("remove_last_plot"), "Remove Last Plot", class = "btn-secondary")
           ),
           ui_callout(
             "Preview cadence",
