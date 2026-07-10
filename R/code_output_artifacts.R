@@ -44,6 +44,19 @@ code_output_to_artifact_candidates <- function(
     source = run_record$source %||% "manual",
     created_by_code_runner = TRUE
   )
+  run_metadata <- run_record$metadata %||% list()
+  run_context <- run_metadata$context %||% list()
+  workflow_stage <- run_metadata$workflow_stage %||% run_context$workflow_stage %||% NA_character_
+  hook_timing <- run_metadata$hook_timing %||% run_context$hook_timing %||% NA_character_
+  if (!is.na(workflow_stage) && nzchar(workflow_stage)) {
+    metadata$workflow_stage <- workflow_stage
+  }
+  if (!is.na(hook_timing) && nzchar(hook_timing)) {
+    metadata$hook_timing <- hook_timing
+  }
+  if (isTRUE(run_metadata$custom_code_hook) || isTRUE(run_context$custom_code_hook)) {
+    metadata$custom_code_hook <- TRUE
+  }
 
   if (data.table::is.data.table(value) || is.data.frame(value)) {
     artifact <- create_artifact(

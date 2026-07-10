@@ -62,18 +62,23 @@ ui_app_shell <- function(..., theme = "dark") {
     ))),
     tags$div(
       class = "aq-app-shell aq-workstation-shell",
-      tags$div(
-        class = "aq-theme-switcher",
-        tags$label(`for` = "aq-theme-select", "Theme"),
-        tags$select(
-          id = "aq-theme-select",
-          class = "aq-theme-select",
-          tags$option(value = "dark", selected = if (identical(theme, "dark")) "selected" else NULL, "Dark"),
-          tags$option(value = "light", selected = if (identical(theme, "light")) "selected" else NULL, "Light"),
-          tags$option(value = "cyberpunk", selected = if (identical(theme, "cyberpunk")) "selected" else NULL, "Cyberpunk")
-        )
-      ),
       ...
+    )
+  )
+}
+
+ui_theme_switcher <- function(theme = "dark") {
+  theme <- match.arg(theme, c("light", "dark", "cyberpunk", "pimp"))
+
+  tags$div(
+    class = "aq-theme-switcher",
+    tags$label(`for` = "aq-theme-select", "Theme"),
+    tags$select(
+      id = "aq-theme-select",
+      class = "aq-theme-select",
+      tags$option(value = "dark", selected = if (identical(theme, "dark")) "selected" else NULL, "Dark"),
+      tags$option(value = "light", selected = if (identical(theme, "light")) "selected" else NULL, "Light"),
+      tags$option(value = "cyberpunk", selected = if (identical(theme, "cyberpunk")) "selected" else NULL, "Cyberpunk")
     )
   )
 }
@@ -812,6 +817,7 @@ qa_ui_consistency <- function() {
     "ui_disclosure",
     "ui_activity_list",
     "ui_loading_state",
+    "ui_theme_switcher",
     "ui_quality_panel",
     "ui_ai_readiness_panel",
     "ui_artifact_studio_card",
@@ -871,7 +877,8 @@ qa_ui_consistency <- function() {
       if (grepl("ui_empty_state", project_page, fixed = TRUE) && grepl("ui_empty_state", workflow_page, fixed = TRUE)) "success" else "error",
       if (grepl("@media (max-width: 900px)", css, fixed = TRUE) && grepl("aq-workspace-grid-main-sidebar", css, fixed = TRUE)) "success" else "error",
       if (grepl("theme = \"dark\"", app_ui, fixed = TRUE) && grepl("ui_app_shell <- function(..., theme = \"dark\")", ui_components, fixed = TRUE)) "success" else "error",
-      if (has_patterns(c("aq-theme-switcher", "aq-theme-select", "window.aqApplyTheme", "localStorage.setItem('aq.theme'"), ui_components)) "success" else "error",
+      if (has_patterns(c("ui_theme_switcher", "aq-theme-switcher", "aq-theme-select", "window.aqApplyTheme", "localStorage.setItem('aq.theme'"), ui_components) &&
+          has_patterns(c("aq-workstation-header", "aq-workstation-utilities", "ui_theme_switcher(theme = \"dark\")"), app_ui)) "success" else "error",
       if (has_patterns(c("body.aq-theme-cyberpunk", "#00f5ff", "#ff2bd6", ".aq-theme-switcher"), css) && has_patterns(c("cyberpunk", "reactable_theme_cyberpunk"), table_theme)) "success" else "error",
       if (has_patterns(c("body.aq-theme-dark", "body:not(.aq-theme-light):not(.aq-theme-pimp):not(.aq-theme-cyberpunk)", "--aq-bg-base", "--aq-focus-ring", "--aq-secondary"), css)) "success" else "error",
       if (has_patterns(c("Data Workspace", "supported_data_accept_types", "aq-data-loader-grid", "aq-data-preview-card"), data_page)) "success" else "error",

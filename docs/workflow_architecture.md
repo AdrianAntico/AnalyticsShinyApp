@@ -13,7 +13,7 @@ The Workflow page is a launchpad, not a wizard. It does not run modules automati
 | order | stage_id | label | status | module/page | purpose |
 | --- | --- | --- | --- | --- | --- |
 | 1 | `eda` | EDA | implemented | `autoquant_eda` | Understand data structure, distributions, correlations, and trends. |
-| 2 | `feature_engineering` | Feature Engineering | external/future | external today | Create modeling features. Rodeo/PolarsFE app integration is future work. |
+| 2 | `feature_engineering` | Feature Engineering | external/future | Code Runner hooks / external today | Create modeling features. Rodeo/PolarsFE app integration is future work. |
 | 3 | `model_prep` | Model Prep | external/future | external today | Define partitions, folds, train/test splits, and leakage-safe model data. |
 | 4 | `model_readiness` | Model Readiness | implemented | `autoquant_model_readiness` | Target diagnostics, leakage/collider risk, drift, class balance, and modeling recommendations. |
 | 5 | `catboost_builder` | CatBoost Builder | experimental | `autoquant_catboost_builder` | Train and score CatBoost regression or binary classification models. |
@@ -38,6 +38,12 @@ Workflow stage buttons deep-link to the existing Analysis Modules page when a st
 - artifact normalization
 - report plan creation
 - CatBoost downstream handoff actions
+
+## External / Future Stages
+
+Feature Engineering and Model Prep are intentionally not native app modules yet. They are represented in Workflow so the project lifecycle remains coherent, but current execution is through Code Runner hooks or external tools.
+
+Artifacts created from a Code Runner request tagged with `workflow_stage = "feature_engineering"` or `workflow_stage = "model_prep"` are counted under the corresponding Workflow stage. The producing surface remains Code Runner; the workflow stage supplies lifecycle placement.
 
 ## Custom Code Hooks
 

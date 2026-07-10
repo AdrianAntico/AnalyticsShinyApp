@@ -217,17 +217,40 @@ body.aq-theme-cyberpunk .aq-app-shell::before {
   letter-spacing: 0;
 }
 
+.aq-workstation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 12px 0 8px;
+}
+
+.aq-workstation-header h1 {
+  flex: 1 1 auto;
+  min-width: 260px;
+  margin: 0;
+}
+
+.aq-workstation-utilities {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .aq-command-palette-root {
   position: relative;
   z-index: 1200;
 }
 
 .aq-theme-switcher {
-  position: absolute;
-  top: 12px;
-  right: 184px;
+  position: static;
   z-index: 1100;
   display: inline-flex;
+  flex: 0 0 auto;
   gap: 8px;
   align-items: center;
   padding: 7px 9px;
@@ -264,10 +287,26 @@ body.aq-theme-cyberpunk .aq-app-shell::before {
 }
 
 @media (max-width: 900px) {
+  .aq-workstation-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .aq-workstation-header h1 {
+    min-width: 0;
+  }
+
+  .aq-workstation-utilities {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    margin-left: 0;
+  }
+
   .aq-theme-switcher {
-    position: static;
     width: max-content;
-    margin: 0 0 8px auto;
+    margin: 0;
   }
 }
 
@@ -286,10 +325,9 @@ body.aq-theme-cyberpunk .aq-disclosure {
 }
 
 .aq-command-launcher {
-  position: absolute;
-  top: -42px;
-  right: 0;
+  position: static;
   display: inline-flex;
+  flex: 0 0 auto;
   gap: 10px;
   align-items: center;
   padding: 7px 10px;
@@ -331,6 +369,7 @@ body.aq-theme-cyberpunk .aq-disclosure {
 .aq-command-panel {
   position: relative;
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 12px;
   width: min(760px, calc(100vw - 32px));
   max-height: min(760px, calc(100vh - 80px));
@@ -390,13 +429,13 @@ body.aq-theme-cyberpunk .aq-disclosure {
   display: grid;
   gap: 12px;
   min-height: 0;
-  overflow: auto;
-  padding-right: 2px;
+  overflow: hidden;
 }
 
 .aq-command-section {
   display: grid;
   gap: 7px;
+  min-height: 0;
 }
 
 .aq-command-section h4 {
@@ -411,6 +450,39 @@ body.aq-theme-cyberpunk .aq-disclosure {
 .aq-command-list {
   display: grid;
   gap: 6px;
+}
+
+.aq-command-section:not(.aq-command-recent-section) .aq-command-list {
+  max-height: min(430px, calc(100vh - 360px));
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-color: color-mix(in srgb, var(--aq-primary) 54%, var(--aq-border)) transparent;
+  scrollbar-width: thin;
+}
+
+.aq-command-section:not(.aq-command-recent-section) .aq-command-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.aq-command-section:not(.aq-command-recent-section) .aq-command-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aq-command-section:not(.aq-command-recent-section) .aq-command-list::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--aq-primary) 72%, var(--aq-secondary)),
+      color-mix(in srgb, var(--aq-primary) 34%, var(--aq-surface-hover))
+    );
+  border: 2px solid var(--aq-surface);
+  border-radius: 999px;
+}
+
+.aq-command-section:not(.aq-command-recent-section) .aq-command-list::-webkit-scrollbar-thumb:hover {
+  background: var(--aq-primary-hover);
 }
 
 .aq-command-item {

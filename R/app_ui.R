@@ -9,8 +9,15 @@ build_app_ui <- function() {
     tags$head(tags$link(rel = "stylesheet", type = "text/css", href = paste0("app.css?v=", css_version))),
     ui_app_shell(
       theme = "dark",
-      titlePanel("Analytics Workstation"),
-      ui_command_palette("command_palette"),
+      tags$header(
+        class = "aq-workstation-header",
+        tags$h1("Analytics Workstation"),
+        tags$div(
+          class = "aq-workstation-utilities",
+          ui_theme_switcher(theme = "dark"),
+          ui_command_palette("command_palette")
+        )
+      ),
       ui_global_ai_assistant("global_ai"),
       tabsetPanel(
         id = "main_tabs",

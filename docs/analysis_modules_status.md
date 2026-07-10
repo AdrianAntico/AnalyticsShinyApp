@@ -8,7 +8,7 @@ Workflow UX v1 organizes implemented and external/future work into the analytica
 
 - Model Readiness is pre-model and maps to the existing Target Analysis / readiness adapter, `autoquant_model_readiness`.
 - Model Assessment is post-model evaluation only. It must not be used as the user-facing name for pre-model target/readiness diagnostics.
-- Feature Engineering and Model Prep are shown as external/future stages until Rodeo/PolarsFE and model-prep integration are intentionally added.
+- Feature Engineering and Model Prep are shown as external/future stages until Rodeo/PolarsFE and model-prep integration are intentionally added. Code Runner hook artifacts tagged with those workflow stages are counted in Workflow, but they are not native modules.
 - Workflow actions open existing modules or draft Code Runner hooks; they do not run modules or custom code automatically.
 
 ## Current Modules

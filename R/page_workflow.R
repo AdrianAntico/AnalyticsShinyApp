@@ -134,6 +134,17 @@ workflow_stage_for_module <- function(module_id) {
   NA_character_
 }
 
+workflow_stage_for_artifact <- function(artifact) {
+  metadata <- artifact$metadata %||% list()
+  explicit_stage <- metadata$workflow_stage %||% metadata$context$workflow_stage %||% NA_character_
+  if (!is.na(explicit_stage) && nzchar(explicit_stage)) {
+    return(explicit_stage)
+  }
+
+  module_id <- metadata$module_id %||% artifact$source_module %||% NA_character_
+  workflow_stage_for_module(module_id)
+}
+
 workflow_status_badge_status <- function(status) {
   if (status %in% c("implemented", "experimental")) {
     return("success")
@@ -165,9 +176,8 @@ workflow_state_summary <- function(ctx = NULL) {
   if (length(artifacts)) {
     artifact_rows <- lapply(artifacts, function(artifact) {
       metadata <- artifact$metadata %||% list()
-      module_id <- metadata$module_id %||% artifact$source_module %||% NA_character_
       data.table::data.table(
-        stage_id = workflow_stage_for_module(module_id),
+        stage_id = workflow_stage_for_artifact(artifact),
         artifact_id = artifact$artifact_id %||% NA_character_,
         catboost_handoff_available = !is.null(metadata$catboost_handoff) || !is.null(metadata$downstream_handoff)
       )
@@ -286,7 +296,10 @@ workflow_stage_card <- function(stage, ns, summary = NULL) {
         )
       }))
     } else {
-      ui_empty_state("External or report stage", "Use the existing app pages or external tools for this stage.")
+      ui_empty_state(
+        "No native module yet.",
+        "Use Code Runner hooks or external tools for this stage. Artifacts created from stage hooks are counted here."
+      )
     },
     ui_action_row(
       actionButton(ns(paste0("hook_pre_", stage$stage_id)), "Draft pre-stage code", class = "btn-default btn-sm"),
@@ -468,6 +481,76 @@ qa_workflow_stage_registry <- function() {
       paste(stages$order, collapse = ", "),
       "Pre-model stages do not use Model Assessment terminology.",
       "Feature Engineering and Model Prep are non-failing external/future stages."
+    )
+  )
+}
+
+qa_workflow_external_stage_artifact_counts <- function() {
+  artifact <- create_artifact(
+    artifact_id = "qa_feature_engineering_table",
+    artifact_type = "table",
+    label = "Feature Engineering QA Table",
+    source_module = "code_runner",
+    object = data.table::data.table(feature = "x", value = 1),
+    metadata = list(
+      module_id = "code_runner",
+      workflow_stage = "feature_engineering",
+      custom_code_hook = TRUE
+    )
+  )
+  ctx <- new.env(parent = emptyenv())
+  ctx$all_artifacts <- function() list(artifact)
+  ctx$report_plan_state <- list(plans = list())
+  ctx$code_runner_state <- list(records = list(), requests = list())
+
+  summary <- workflow_state_summary(ctx)
+  feature_row <- summary[stage_id == "feature_engineering"]
+
+  data.table::data.table(
+    check = c("explicit_artifact_stage", "feature_engineering_artifact_count", "code_runner_source_preserved"),
+    status = c(
+      if (identical(workflow_stage_for_artifact(artifact), "feature_engineering")) "success" else "error",
+      if (nrow(feature_row) && identical(feature_row$artifact_count[[1]], 1L)) "success" else "error",
+      if (identical(artifact$source_module, "code_runner")) "success" else "error"
+    ),
+    message = c(
+      "Workflow summary prefers explicit artifact metadata$workflow_stage when present.",
+      "Feature Engineering counts artifacts created through Code Runner stage hooks.",
+      "The producing surface remains Code Runner; the workflow stage supplies lifecycle placement."
+    )
+  )
+}
+
+qa_workflow_feature_engineering_handoff <- function() {
+  run_record <- create_code_tracker_record(
+    run_id = "qa_feature_engineering_run",
+    label = "Feature Engineering custom code",
+    code = "data.table::data.table(feature = 'x', value = 1)",
+    source = "manual",
+    status = "success",
+    metadata = list(
+      custom_code_hook = TRUE,
+      workflow_stage = "feature_engineering",
+      hook_timing = "standalone"
+    )
+  )
+  artifacts <- code_output_to_artifact_candidates(
+    data.table::data.table(feature = "x", value = 1),
+    run_record
+  )
+  artifact <- artifacts[[1]]
+
+  data.table::data.table(
+    check = c("artifact_created", "workflow_stage_metadata", "hook_metadata"),
+    status = c(
+      if (length(artifacts) == 1L && identical(artifact$artifact_type, "table")) "success" else "error",
+      if (identical(artifact$metadata$workflow_stage, "feature_engineering")) "success" else "error",
+      if (isTRUE(artifact$metadata$custom_code_hook) && identical(artifact$metadata$hook_timing, "standalone")) "success" else "error"
+    ),
+    message = c(
+      "Code Runner output can become a table artifact.",
+      "Code Runner stage metadata is preserved on generated artifacts.",
+      "Custom hook metadata remains available for workflow attribution."
     )
   )
 }

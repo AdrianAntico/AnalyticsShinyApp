@@ -411,6 +411,7 @@ qa_command_palette <- function() {
       "navigation_dispatch",
       "root_navigation_session",
       "styling",
+      "suggestions_list_scroll",
       "documentation"
     ),
     status = c(
@@ -428,6 +429,7 @@ qa_command_palette <- function() {
       if (has(palette, c("updateTabsetPanel", "navigate", "target"))) "success" else "error",
       if (has(palette, c("navigation_session", "tab_session")) && has(app_server, "navigation_session = session")) "success" else "error",
       if (has(css, c(".aq-command-overlay", ".aq-command-panel", ".aq-command-item-active", ".aq-command-launcher"))) "success" else "error",
+      if (has(css, c("grid-template-rows: auto auto minmax(0, 1fr) auto", ".aq-command-section:not(.aq-command-recent-section) .aq-command-list", "overflow-y: auto", "::-webkit-scrollbar-thumb"))) "success" else "error",
       if (has(docs, c("Command Palette", "registry", "Ctrl+Shift+P", "Future AI"))) "success" else "error"
     ),
     message = c(
@@ -445,6 +447,7 @@ qa_command_palette <- function() {
       "Navigation command dispatch is wired.",
       "Navigation uses the root tabset session from the app server.",
       "Command palette CSS selectors are present.",
+      "Command palette scrolling is constrained to the suggestions list instead of the whole modal.",
       "Command palette architecture documentation exists."
     )
   )
