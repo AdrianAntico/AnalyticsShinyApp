@@ -27,6 +27,12 @@ It records expected repository names, environment variable overrides, relative/s
 
 The manifest is intentionally explicit. Do not invent QA function names in a task prompt. If a QA function is not implemented or exported, record that as a skip, warning, or contract failure.
 
+Package QA surface rules are documented in `docs/package_qa_surface.md`. Cross-repository validation should prefer the stable aggregate installed QA entry points:
+
+- `Rodeo::qa_rodeo_package()`
+- `AutoQuant::qa_autoquant_package()`
+- `AutoPlots::qa_autoplots_package()`
+
 ## Path Resolution
 
 The orchestrator resolves paths in this order:

@@ -1151,8 +1151,19 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
   full_suites <- cross_repo_suites_for_mode(discovery$AnalyticsShinyApp, mode = "full")
   package_order <- cross_repo_local_package_order(discovery)
   app_fingerprint <- cross_repo_source_fingerprint(discovery$AnalyticsShinyApp)
-  autoquant_full_suites <- cross_repo_suites_for_mode(discovery$AutoQuant, mode = "full")
-  internal_qa_declared <- any(vapply(autoquant_full_suites, function(suite) identical(suite$qa_scope %||% "public", "internal"), logical(1)))
+  package_qa_contracts <- list(
+    Rodeo = "qa_rodeo_package",
+    AutoQuant = "qa_autoquant_package",
+    AutoPlots = "qa_autoplots_package"
+  )
+  aggregate_qa_declared <- all(vapply(names(package_qa_contracts), function(repo_name) {
+    suites <- cross_repo_suites_for_mode(discovery[[repo_name]], mode = "standard")
+    any(vapply(suites, function(suite) {
+      identical(suite$type %||% "", "package_qa") &&
+        identical(suite[["function"]] %||% "", package_qa_contracts[[repo_name]]) &&
+        identical(suite$qa_scope %||% "public", "public")
+    }, logical(1)))
+  }, logical(1)))
   rodeo_policy <- cross_repo_metadata_policy(discovery$Rodeo)
   autoplots_drift <- cross_repo_metadata_drift(discovery$AutoPlots)
   additive_class <- cross_repo_api_drift_summary(
@@ -1209,7 +1220,7 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       "package_metadata_captured",
       "source_fingerprint_captured",
       "package_dependency_order_resolved",
-      "internal_qa_scope_declared",
+      "aggregate_package_qa_contract_declared",
       "metadata_policy_detected",
       "metadata_drift_snapshot_created",
       "additive_api_drift_classified",
@@ -1233,7 +1244,7 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       if (isTRUE(discovery$AnalyticsShinyApp$package_metadata$available)) "success" else "error",
       if (nzchar(app_fingerprint$fingerprint %||% "")) "success" else "error",
       if (all(c("Rodeo", "AutoPlots", "AutoQuant") %in% package_order)) "success" else "error",
-      if (isTRUE(internal_qa_declared)) "success" else "error",
+      if (isTRUE(aggregate_qa_declared)) "success" else "error",
       if (isTRUE(rodeo_policy$roxygen_used) && nzchar(rodeo_policy$regeneration_command %||% "")) "success" else "error",
       if (all(c("namespace_exports", "rd_aliases", "classification") %in% names(autoplots_drift))) "success" else "error",
       if (identical(additive_class$classification, "additive_backward_compatible_change")) "success" else "error",
@@ -1257,7 +1268,7 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       discovery$AnalyticsShinyApp$package_metadata$package %||% "package metadata unavailable",
       app_fingerprint$fingerprint %||% "missing fingerprint",
       paste(package_order, collapse = " -> "),
-      "Internal installed QA functions are declared explicitly in the manifest.",
+      paste(paste(names(package_qa_contracts), unlist(package_qa_contracts), sep = "::"), collapse = ", "),
       rodeo_policy$regeneration_command %||% "no regeneration command",
       autoplots_drift$classification %||% "no drift classification",
       additive_class$classification,

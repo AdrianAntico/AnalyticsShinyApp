@@ -104,25 +104,9 @@
         ],
         "standard": [
           {
-            "id": "rodeo_vnext",
+            "id": "rodeo_package",
             "type": "package_qa",
-            "function": "qa_rodeo_vnext",
-            "qa_scope": "public",
-            "required": false,
-            "timeout_seconds": 180
-          },
-          {
-            "id": "rodeo_transformation_contract",
-            "type": "package_qa",
-            "function": "qa_rodeo_transformation_contract",
-            "qa_scope": "public",
-            "required": false,
-            "timeout_seconds": 180
-          },
-          {
-            "id": "rodeo_model_prep",
-            "type": "package_qa",
-            "function": "qa_rodeo_vnext_model_prep",
+            "function": "qa_rodeo_package",
             "qa_scope": "public",
             "required": false,
             "timeout_seconds": 180
@@ -133,9 +117,7 @@
       "expected_exports": [
         "generate_rodeo_feature_engineering_artifacts",
         "generate_rodeo_model_prep_artifacts",
-        "qa_rodeo_vnext",
-        "qa_rodeo_transformation_contract",
-        "qa_rodeo_vnext_model_prep"
+        "qa_rodeo_package"
       ]
     },
     {
@@ -160,56 +142,15 @@
         ],
         "standard": [
           {
-            "id": "artifact_schema_framework",
+            "id": "autoquant_package",
             "type": "package_qa",
-            "function": "qa_artifact_schema_framework",
-            "qa_scope": "public",
-            "required": false,
-            "timeout_seconds": 180
-          },
-          {
-            "id": "shap_interaction_guards",
-            "type": "package_qa",
-            "function": "qa_shap_interaction_guards",
-            "qa_scope": "public",
-            "required": false,
-            "timeout_seconds": 180
-          },
-          {
-            "id": "shap_autonls_backend",
-            "type": "package_qa",
-            "function": "qa_shap_autonls_backend",
-            "qa_scope": "public",
-            "required": false,
-            "timeout_seconds": 180
-          }
-        ],
-        "full": [
-          {
-            "id": "regression_shap_analysis_artifacts",
-            "type": "package_qa",
-            "function": "qa_generate_regression_shap_analysis_artifacts",
-            "qa_scope": "internal",
-            "required": false,
-            "timeout_seconds": 600
-          },
-          {
-            "id": "binary_model_insights_artifacts",
-            "type": "package_qa",
-            "function": "qa_generate_binary_classification_model_insights_artifacts",
-            "qa_scope": "public",
-            "required": false,
-            "timeout_seconds": 600
-          },
-          {
-            "id": "catboost_builder_artifacts",
-            "type": "package_qa",
-            "function": "qa_generate_catboost_builder_artifacts",
+            "function": "qa_autoquant_package",
             "qa_scope": "public",
             "required": false,
             "timeout_seconds": 900
           }
-        ]
+        ],
+        "full": []
       },
       "expected_exports": [
         "generate_eda_artifacts",
@@ -218,7 +159,8 @@
         "generate_binary_classification_model_insights_artifacts",
         "generate_regression_shap_analysis_artifacts",
         "generate_binary_classification_shap_analysis_artifacts",
-        "generate_catboost_builder_artifacts"
+        "generate_catboost_builder_artifacts",
+        "qa_autoquant_package"
       ]
     },
     {
@@ -243,18 +185,10 @@
         ],
         "standard": [
           {
-            "id": "importance_pareto",
+            "id": "autoplots_package",
             "type": "package_qa",
-            "function": "qa_importance_pareto",
-            "qa_scope": "internal",
-            "required": false,
-            "timeout_seconds": 180
-          },
-          {
-            "id": "resizable_display_plots",
-            "type": "package_qa",
-            "function": "qa_resizable_display_plots",
-            "qa_scope": "internal",
+            "function": "qa_autoplots_package",
+            "qa_scope": "public",
             "required": false,
             "timeout_seconds": 180
           }
@@ -273,7 +207,8 @@
         "ImportancePareto",
         "display_plots_grid",
         "display_plots_sections",
-        "save_image"
+        "save_image",
+        "qa_autoplots_package"
       ]
     }
   ],
