@@ -6,6 +6,8 @@ This document defines how one developer plus Codex can keep the Analytics Shiny 
 
 This is not a multi-agent architecture. It is a single product ecosystem operating model.
 
+For cross-repository validation across AnalyticsShinyApp, Rodeo, AutoQuant, and AutoPlots, use `docs/cross_repository_agent_guide.md` and the manifest at `config/cross_repo_workspace.json`.
+
 ## Operating Loop
 
 1. Define the product goal.

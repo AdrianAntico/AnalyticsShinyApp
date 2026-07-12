@@ -282,6 +282,7 @@ qa_analysis_modules_integration <- function() {
     remediation_plans = qa_remediation_plans,
     remediation_plan_hardening = qa_remediation_plan_hardening,
     cross_system_invariants = qa_cross_system_invariants,
+    cross_repo_validation_orchestrator = qa_cross_repo_validation_orchestrator,
     production_workflow_exercise = qa_production_workflow_exercise,
     technical_debt_register = qa_technical_debt_register,
     ui_consistency = qa_ui_consistency

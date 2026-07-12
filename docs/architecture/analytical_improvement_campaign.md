@@ -469,8 +469,45 @@ Mission Control now summarizes:
 - uncertain applicability
 - narrowed knowledge
 - broadened knowledge
+- knowledge utility events
+- high-value guidance
+- guidance needing validation
+- low-utility guidance
+- guidance calibration changes
 
 Campaigns also contribute alerts when waiting for approval, blocked, or awaiting adoption.
+
+## Knowledge Utility and Guidance Calibration
+
+Phase 35 adds deterministic utility assessment for reused promoted knowledge. Applicability answers whether a prior lesson appears transferable; utility records whether that transferred guidance actually helped the later campaign.
+
+For each reuse event the campaign can record:
+
+- expected usefulness from applicability
+- observed usefulness from campaign outcomes
+- whether guidance influenced planning
+- whether guidance influenced proposal generation
+- whether guidance influenced prioritization
+- whether uncertainty was reduced
+- whether repeated work was prevented
+- whether campaign confidence improved
+- utility score and classification
+- transfer outcome
+
+Utility classifications are deterministic: `highly_useful`, `useful`, `somewhat_useful`, `neutral`, `misleading`, or `insufficient_evidence`.
+
+Transfer outcomes distinguish validated guidance from overestimated guidance, underestimated guidance, overly broad applicability, overly narrow applicability, unexpected transfer success, unexpected transfer failure, and insufficient evidence.
+
+Guidance calibration aggregates reuse history per knowledge record:
+
+- `consistently_useful`
+- `usually_useful`
+- `situational`
+- `rarely_useful`
+- `no_demonstrated_benefit`
+- `uncalibrated`
+
+Future campaign planning continues to consume only active promoted knowledge, but now avoids low-utility guidance and applies a small bounded prioritization boost to consistently useful guidance. This remains advisory. It does not create a new scoring engine, knowledge graph, probabilistic memory, or autonomous adoption policy.
 
 ## Stopping Rules
 
@@ -527,6 +564,13 @@ Campaigns stop or pause when:
 - conflict specialization through narrowing
 - applicability broadening
 - applicability evidence traceability
+- knowledge utility recording
+- guidance calibration
+- transfer success and failure classification
+- expected vs observed usefulness
+- repeat-prevention utility
+- planning adjustment from calibrated guidance
+- utility summary and traceability
 - reopening guidance
 - future campaign reuse
 - evidence traceability

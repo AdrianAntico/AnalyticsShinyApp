@@ -54,6 +54,7 @@ Related debt: TD-SCHEMA-001.
 | analytical campaign | `analytical_campaign_v1` | `R/analytical_improvement_campaign.R`, `R/app_server.R` | `R/analytical_improvement_campaign.R`, `R/app_server.R` | Campaigns coordinate bounded evidence review, opportunity ranking, feature proposal sequencing, execution memory, and status. State is stored in project state. | Malformed campaigns fail reconciliation and should be paused for review. | TD-SCHEMA-001 |
 | analytical campaign plan | `analytical_campaign_plan_v1` | `R/analytical_improvement_campaign.R` | `R/analytical_improvement_campaign.R` | Plans summarize ranked opportunities, required approvals, stopping criteria, and expected deliverables. | Invalid or empty plans produce campaign warnings rather than execution. | TD-SCHEMA-001 |
 | analytical campaign synthesis | `analytical_campaign_synthesis_v1` | `R/analytical_improvement_campaign.R` | `R/analytical_improvement_campaign.R` | Synthesis records evidence reviewed, opportunities considered, executed experiments, accepted/rejected/inconclusive outcomes, remaining opportunities, and next recommendation. | Missing synthesis does not mutate campaign state; rerun synthesis from campaign memory. | TD-SCHEMA-001 |
+| analytical campaign knowledge utility | `analytical_campaign_knowledge_utility_v1` | `R/analytical_improvement_campaign.R` | `R/analytical_improvement_campaign.R` | Utility records compare expected usefulness from applicability with observed reuse outcomes, repeat prevention, uncertainty reduction, and guidance influence. Calibration is advisory and embedded in campaign knowledge lifecycle summaries. | Missing utility records leave guidance uncalibrated; low-utility guidance is not silently reused for planning boosts. | TD-SCHEMA-001 |
 
 ## Migration Support
 
@@ -144,3 +145,9 @@ The lifecycle registry is embedded in campaign synthesis and summaries. It is no
 Phase 34 added deterministic knowledge applicability inside the existing campaign knowledge lifecycle. Promoted knowledge now embeds `analytical_campaign_applicability_v1` fields describing bounded applicability context: dataset characteristics, target, model family, feature scale, data scale, operator support, required evidence, known exclusions, known limitations, evidence references, and transfer guidance.
 
 Applicability matching is deterministic and returns fully applicable, partially applicable, weakly applicable, not applicable, or insufficient information. Matching is advisory and affects campaign prioritization only when active knowledge is applicable. No global knowledge graph, ontology engine, probabilistic confidence layer, or new persistence system was introduced.
+
+## Phase 35 Update
+
+Phase 35 added deterministic knowledge utility and guidance calibration inside the existing campaign lifecycle. Reused promoted knowledge can now be assessed with `analytical_campaign_knowledge_utility_v1` records that capture expected usefulness, observed usefulness, planning influence, prioritization influence, uncertainty reduction, repeat-work prevention, confidence impact, utility classification, and transfer outcome.
+
+Guidance calibration aggregates reuse history into consistently useful, usually useful, situational, rarely useful, no demonstrated benefit, or uncalibrated guidance. Future campaign planning avoids low-utility guidance and gives only small bounded boosts to guidance that has helped before. This remains deterministic, evidence-driven, project-scoped, and advisory.

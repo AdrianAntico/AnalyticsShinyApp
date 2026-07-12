@@ -231,6 +231,18 @@ Phase 34 adds applicability-aware reuse:
 
 The campaign lifecycle becomes: evidence -> learning -> knowledge -> applicability -> future campaign reuse -> validation -> refinement.
 
+Phase 35 adds utility-aware reuse:
+
+- future campaigns record whether reused knowledge actually helped
+- expected usefulness from applicability is compared with observed usefulness from campaign outcomes
+- guidance can be classified as highly useful, useful, somewhat useful, neutral, misleading, or insufficiently evidenced
+- transfer outcomes identify validated guidance, overestimated guidance, underestimated guidance, overly broad applicability, overly narrow applicability, unexpected transfer success, and unexpected transfer failure
+- guidance calibration summarizes reuse history as consistently useful, usually useful, situational, rarely useful, or no demonstrated benefit
+- low-utility guidance is retained historically but not silently used to influence future planning
+- Mission Control surfaces high-value and low-utility guidance through the existing campaign status tile
+
+The campaign lifecycle becomes: evidence -> learning -> knowledge -> applicability -> reuse -> utility assessment -> guidance calibration -> future refinement.
+
 ## Non-Goals
 
 - no rigid wizard

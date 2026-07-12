@@ -27,6 +27,7 @@ AnalyticsShinyApp is the central product and coordination repo for the local-fir
 Start with these docs before architecture-affecting work:
 
 - `docs/architecture_constitution.md`: product principles, boundary rules, QA expectations, and deferred scope.
+- `docs/cross_repository_agent_guide.md`: cross-repository workspace manifest, validation modes, failure classification, and agent entry commands.
 - `docs/ecosystem_operating_model.md`: single-developer operating loop, workflow lifecycle, artifact flow, and Code Runner rules.
 - `docs/repo_contracts.md`: ownership boundaries for AnalyticsShinyApp, AutoQuant, AutoPlots, Rodeo, PolarsFE, Benchmarks, and shinyelectron.
 - `docs/project_artifact_collector.md`: project-level artifact aggregation contract, bundle lifecycle, manifest, screenshot policy, and DOCX collector workflow.
