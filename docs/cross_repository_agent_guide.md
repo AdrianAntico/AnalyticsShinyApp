@@ -33,6 +33,8 @@ Package QA surface rules are documented in `docs/package_qa_surface.md`. Cross-r
 - `AutoQuant::qa_autoquant_package()`
 - `AutoPlots::qa_autoplots_package()`
 
+Impact-analysis rules are documented in `docs/cross_repo_impact_analysis.md`. For broad cross-repository changes, generate a deterministic `cross_repo_impact_plan()` before implementation so ownership, consumers, contracts, validation scope, and migration order are explicit.
+
 ## Path Resolution
 
 The orchestrator resolves paths in this order:
