@@ -874,6 +874,63 @@ genai_build_project_context <- function(ctx, strategy = "balanced", max_artifact
       preflight_supported = genai_module_preflight_supported(module)
     )
   })
+  context$genai_executable_modules <- if (exists("genai_executable_module_metadata", mode = "function")) {
+    executable <- genai_executable_module_metadata()
+    lapply(seq_len(nrow(executable)), function(index) {
+      row <- executable[index]
+      list(
+        module_id = row$module_id,
+        display_name = row$display_name,
+        module_version = row$module_version,
+        execution_risk = row$execution_risk,
+        supports_cancellation = isTRUE(row$supports_cancellation),
+        temporary_results_only = TRUE
+      )
+    })
+  } else {
+    list()
+  }
+  temporary_results <- tryCatch(ctx$genai_analysis_run_state$results, error = function(e) list())
+  context$persistable_temporary_results <- lapply(Filter(function(result) {
+    identical(result$source_action_id %||% "analysis.run_registered", "analysis.run_registered") &&
+      (result$temporary_result_type %||% "dataset_profile") %in% genai_supported_temporary_result_types() &&
+      identical(result$status %||% "", "temporary_success") &&
+      !isTRUE(result$persisted)
+  }, temporary_results), function(result) {
+    list(
+      temporary_result_id = result$temporary_result_id,
+      result_type = result$temporary_result_type %||% "dataset_profile",
+      module_display_name = result$module_display_name %||% "Dataset Profile",
+      dataset_display_name = result$dataset_display_name %||% "Active Dataset",
+      status = result$status,
+      created_at = as.character(result$created_at),
+      expires_at = as.character(result$expires_at),
+      already_persisted = isTRUE(result$persisted),
+      brief_summary = result$summary %||% ""
+    )
+  })
+  persisted_results <- tryCatch({
+    project <- if (is.function(ctx$current_project)) ctx$current_project() else NULL
+    if (is.list(project) && identical(project$project_state %||% "", "project_ready")) {
+      list_project_persisted_results(project, include_invalid = TRUE)
+    } else {
+      data.table::data.table()
+    }
+  }, error = function(e) data.table::data.table())
+  context$inspectable_persisted_results <- lapply(seq_len(nrow(persisted_results)), function(i) {
+    row <- persisted_results[i]
+    list(
+      persisted_result_id = row$persisted_result_id[[1]],
+      display_name = row$display_name[[1]],
+      result_type = row$result_type[[1]],
+      module_display_name = row$module_id[[1]],
+      dataset_display_name = row$dataset_id[[1]],
+      persisted_at = row$persisted_at[[1]],
+      health_status = row$health_status[[1]],
+      brief_summary = if (identical(row$health_status[[1]], "healthy")) paste("Persisted", row$result_type[[1]], "result available for read-only inspection.") else "Persisted result bundle is not healthy and cannot be inspected.",
+      evidence_refs = paste0("persisted_result:", row$persisted_result_id[[1]])
+    )
+  })
   context$artifacts <- lapply(utils::head(artifacts, max_artifacts), function(artifact) {
     genai_build_artifact_context(artifact, strategy = strategy)
   })
@@ -1074,11 +1131,13 @@ genai_project_context <- function(ctx, max_artifacts = 30L) {
   collector <- tryCatch(ctx$project_collector_summary(), error = function(e) data.table::data.table())
   data_info <- tryCatch(ctx$project_data_info(), error = function(e) list(path = NULL, name = NULL))
   artifact_rows <- lapply(utils::head(artifacts, max_artifacts), genai_artifact_context)
+  debt_summary <- tryCatch(genai_technical_debt_context_summary(max_items = 12L), error = function(e) NULL)
   list(
     data = list(name = data_info$name %||% "", path = data_info$path %||% ""),
     artifact_count = length(artifacts),
     collector = if (nrow(collector)) as.list(collector[1]) else list(status = "not_created"),
-    artifacts = artifact_rows
+    artifacts = artifact_rows,
+    technical_debt_summary = if (!is.null(debt_summary) && identical(debt_summary$status, "success")) debt_summary$value else list(status = "unavailable")
   )
 }
 
@@ -1146,9 +1205,9 @@ genai_suggest_next_action <- function(ctx, config = genai_config(), context_stra
   prompt <- paste(
     "Suggest the next analytical action for this project using only project metadata, collector status, artifact quality, diagnostics, and recommendations.",
     "Do not execute anything. Provide one recommended next step and two alternatives.",
-    "If and only if opening a registered module, inspecting one listed artifact, opening one listed existing report, or running a bounded preflight on the trusted active dataset is the single safest next step, you may include one JSON action proposal in a fenced ```json block under key action_proposal.",
-    "Supported action_ids are module.open, artifact.inspect, report.open, and analysis.preflight. module.open arguments may contain only module_id. artifact.inspect arguments may contain only artifact_id from the listed artifact metadata. report.open arguments may contain only report_id from the listed report metadata. analysis.preflight arguments may contain only module_id from registered_modules and dataset_id from trusted_dataset.",
-    "Do not invent artifact ids, report ids, dataset ids, filesystem locations, URLs, project ids, callbacks, function names, target variables, predictor lists, formulas, sampling sizes, timeouts, rendering parameters, persistence, state mutations, code execution, report generation, report rendering, artifact saving, or chained actions.",
+    "If and only if opening a registered module, inspecting one listed artifact, opening one listed existing report, running a bounded preflight, running the one allowlisted temporary registered analysis on the trusted active dataset, or persisting one listed completed temporary result is the single safest next step, you may include one JSON action proposal in a fenced ```json block under key action_proposal.",
+    "Supported action_ids are module.open, artifact.inspect, report.open, result.inspect, analysis.preflight, analysis.run_registered, and result.persist. module.open arguments may contain only module_id. artifact.inspect arguments may contain only artifact_id from the listed artifact metadata. report.open arguments may contain only report_id from the listed report metadata. result.inspect arguments may contain only persisted_result_id from inspectable_persisted_results and must not request persistence. analysis.preflight arguments may contain only module_id from registered_modules and dataset_id from trusted_dataset. analysis.run_registered arguments may contain only module_id from genai_executable_modules and dataset_id from trusted_dataset. result.persist arguments may contain only temporary_result_id from persistable_temporary_results, must set persistence_requested true, and must use risk_tier high.",
+    "Do not invent artifact ids, report ids, temporary result ids, dataset ids, filesystem locations, URLs, project ids, provider ids, callbacks, function names, target variables, predictor lists, formulas, filters, joins, transformations, module options, sampling sizes, timeouts, rendering parameters, output names, output paths, filenames, overwrite flags, report generation, report rendering, artifact saving, or chained actions.",
     genai_context_json(context),
     sep = "\n\n"
   )

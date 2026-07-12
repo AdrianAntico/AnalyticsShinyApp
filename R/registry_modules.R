@@ -11,6 +11,24 @@ module_registry <- function() {
       supports_genai = FALSE,
       supports_code_generation = TRUE
     ),
+    dataset_profile = list(
+      module_id = "dataset_profile",
+      label = "Dataset Profile",
+      category = "EDA",
+      description = "Compute a bounded, temporary dataset profile for schema, missingness, numeric summaries, categorical summaries, and data-quality diagnostics.",
+      status = "experimental",
+      output_artifact_types = c("table", "text", "diagnostic"),
+      required_packages = character(),
+      supports_genai = TRUE,
+      supports_code_generation = FALSE,
+      minimum_rows = 1L,
+      minimum_columns = 1L,
+      required_roles = character(),
+      optional_roles = character(),
+      genai_execution_enabled = TRUE,
+      genai_execution_risk = "medium",
+      preflight_handler_id = "generic_dataset_preflight"
+    ),
     autoquant_model_readiness = list(
       module_id = "autoquant_model_readiness",
       label = "Model Readiness",
@@ -19,6 +37,17 @@ module_registry <- function() {
       status = "experimental",
       output_artifact_types = c("plot", "table", "text"),
       required_packages = c("AutoQuant", "AutoPlots"),
+      supports_genai = FALSE,
+      supports_code_generation = TRUE
+    ),
+    feature_engineering_model_prep = list(
+      module_id = "feature_engineering_model_prep",
+      label = "Feature Engineering / Model Preparation",
+      category = "Modeling",
+      description = "Prepare deterministic modeling data with visible transformations, lineage, and reusable artifacts.",
+      status = "implemented",
+      output_artifact_types = c("table", "text", "diagnostic"),
+      required_packages = character(),
       supports_genai = FALSE,
       supports_code_generation = TRUE
     ),
@@ -122,12 +151,20 @@ module_registry <- function() {
       module_id = "model_assessment",
       label = "Model Assessment",
       category = "Modeling",
-      description = "Summarize model performance, diagnostics, calibration, and lift/gains.",
-      status = "planned",
-      output_artifact_types = c("table", "plot", "text", "metric", "model_summary"),
-      required_packages = "AutoQuant",
+      description = "Evaluate scored model performance and bounded diagnostics. GenAI execution is enabled for safe regression and binary classification scored-output contracts.",
+      status = "experimental",
+      output_artifact_types = c("table", "metric", "diagnostic"),
+      required_packages = character(),
       supports_genai = TRUE,
-      supports_code_generation = TRUE
+      supports_code_generation = FALSE,
+      minimum_rows = 5L,
+      minimum_columns = 2L,
+      required_roles = c("target", "prediction"),
+      optional_roles = c("weight", "positive_class", "decision_threshold"),
+      genai_execution_enabled = TRUE,
+      genai_execution_risk = "medium",
+      supported_problem_types = c("regression", "binary_classification"),
+      preflight_handler_id = "model_assessment_mode_preflight"
     ),
     model_insights = list(
       module_id = "model_insights",
@@ -272,11 +309,12 @@ qa_module_terminology_consistency <- function(root = ".") {
   post_model_id <- "model_assessment"
   readiness_prefix <- "aq_mr_"
 
-  result_row <- function(rule, result, file, issue, recommendation) {
+  result_row <- function(rule, result, file, issue, recommendation, warning_category = NA_character_) {
     data.table::data.table(
       rule = rule,
       result = result,
       status = switch(result, PASS = "success", WARNING = "warning", FAIL = "error"),
+      warning_category = warning_category,
       file = file,
       issue = issue,
       recommendation = recommendation,
@@ -298,8 +336,8 @@ qa_module_terminology_consistency <- function(root = ".") {
   }
 
   rows <- list()
-  add <- function(rule, result, file, issue, recommendation) {
-    rows[[length(rows) + 1L]] <<- result_row(rule, result, file, issue, recommendation)
+  add <- function(rule, result, file, issue, recommendation, warning_category = NA_character_) {
+    rows[[length(rows) + 1L]] <<- result_row(rule, result, file, issue, recommendation, warning_category)
   }
 
   registry <- get_module_registry()
@@ -385,10 +423,11 @@ qa_module_terminology_consistency <- function(root = ".") {
   assessment_stage <- workflow[[which(vapply(workflow, function(stage) identical(stage$stage_id, "model_assessment"), logical(1)))]]
   add(
     "planned_post_model_module",
-    if (!is.null(post_model) && identical(post_model$status, "planned")) "PASS" else "FAIL",
+    if (!is.null(post_model) && identical(post_model$status, "experimental") &&
+        isTRUE(post_model$genai_execution_enabled)) "PASS" else "FAIL",
     "R/registry_modules.R",
-    "Post-model Model Assessment remains planned.",
-    "Do not mark model_assessment implemented until a true post-model evaluator exists."
+    "Post-model Model Assessment exists only as the experimental GenAI regression slice.",
+    "Keep pre-model readiness separate; broaden model_assessment only through explicit post-model evaluator work."
   )
   add(
     "planned_post_model_module",
@@ -400,10 +439,10 @@ qa_module_terminology_consistency <- function(root = ".") {
   )
   add(
     "planned_post_model_module",
-    if (is.null(workflow_stage_module_ids(assessment_stage)) || !length(workflow_stage_module_ids(assessment_stage))) "PASS" else "FAIL",
+    if (is.null(workflow_stage_module_ids(assessment_stage)) || !canonical_id %in% workflow_stage_module_ids(assessment_stage)) "PASS" else "FAIL",
     "R/page_workflow.R",
-    "Model Assessment workflow stage has no implemented module binding.",
-    "Leave model_assessment unbound until the post-model adapter is implemented."
+    "Model Assessment workflow stage is not bound to pre-model readiness.",
+    "Keep workflow assessment routing post-model and separate from autoquant_model_readiness."
   )
   add(
     "planned_post_model_module",
@@ -492,6 +531,11 @@ qa_module_terminology_consistency <- function(root = ".") {
         "Allowed historical, migration, or compatibility reference. Do not rewrite historical records."
       } else {
         "Current documentation should instruct users to use autoquant_model_readiness, not autoquant_model_assessment."
+      },
+      warning_category = if (allowed_context) {
+        if (grepl("historical|smoke-test records", lower_context) || identical(doc, "docs/electron_smoke_test_results.md")) "historical_documentation_reference" else "intentional_compatibility_alias"
+      } else {
+        "active_terminology_violation"
       }
     )
   }

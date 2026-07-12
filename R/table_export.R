@@ -35,6 +35,12 @@ export_table_csv <- function(
     if (!dir.exists(path)) {
       return(service_result(status = "error", errors = "Export path could not be created."))
     }
+    path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+    if (exists("storage_repo_root", mode = "function") &&
+        exists("path_within_root", mode = "function") &&
+        path_within_root(path, storage_repo_root())) {
+      return(service_result(status = "error", errors = "Export path is inside the application repository and was blocked."))
+    }
 
     output_path <- file.path(path, .table_export_name(name, ".csv"))
     if (file.exists(output_path) && !isTRUE(overwrite)) {
@@ -101,6 +107,12 @@ export_table_xlsx <- function(
     }
     if (!dir.exists(path)) {
       return(service_result(status = "error", errors = "Export path could not be created."))
+    }
+    path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+    if (exists("storage_repo_root", mode = "function") &&
+        exists("path_within_root", mode = "function") &&
+        path_within_root(path, storage_repo_root())) {
+      return(service_result(status = "error", errors = "Export path is inside the application repository and was blocked."))
     }
 
     tables <- artifacts_or_tables

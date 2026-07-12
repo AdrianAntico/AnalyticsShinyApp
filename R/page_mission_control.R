@@ -50,14 +50,33 @@ mission_control_ai_status <- function(collector, artifacts) {
   "Incomplete"
 }
 
-mission_control_alerts <- function(artifacts, collector, quality, workflow) {
+mission_control_priority_summary <- function(alerts) {
+  if (!length(alerts)) {
+    return(list(
+      title = "No active priorities",
+      message = "Mission Control has no open warnings or operational blockers.",
+      status = "success"
+    ))
+  }
+  severity_rank <- c(high = 1L, medium = 2L, low = 3L, success = 4L)
+  ordered <- alerts[order(vapply(alerts, function(alert) severity_rank[[alert$severity %||% "low"]] %||% 3L, integer(1)))]
+  top <- ordered[[1L]]
+  status <- switch(top$severity %||% "low", high = "error", medium = "warning", low = "info", success = "success", "neutral")
+  list(
+    title = paste("Priority:", top$title),
+    message = top$message %||% "Review the alert queue for details.",
+    status = status
+  )
+}
+
+mission_control_alerts <- function(artifacts, collector, quality, workflow, improvement = NULL, remediation = NULL, feature_experiments = NULL, campaigns = NULL) {
   alerts <- list()
   add <- function(title, message, severity = "medium", source = NULL) {
     alerts[[length(alerts) + 1L]] <<- list(title = title, message = message, severity = severity, source = source)
   }
 
   if (!length(artifacts)) {
-    add("No evidence generated", "Run EDA, Model Readiness, Model Insights, or SHAP to populate the project evidence base.", "high", "Artifacts")
+    add("No evidence generated", "Run Explore Data, Model Readiness, Model Insights, or SHAP to populate the project evidence base.", "high", "Artifacts")
   }
   if (!nrow(collector) || (collector$artifact_count[[1]] %||% 0L) == 0L) {
     add("Collector has no artifacts", "The Project Artifact Collector is not yet preserving evidence for this project.", "high", "Collector")
@@ -81,6 +100,59 @@ mission_control_alerts <- function(artifacts, collector, quality, workflow) {
       "low",
       "Workflow"
     )
+  }
+  if (!is.null(improvement) && nrow(improvement)) {
+    if ((improvement$critical_open[[1]] %||% 0L) > 0L) {
+      add("Critical improvement items open", paste(improvement$critical_open[[1]], "critical item(s) require governed review."), "high", "Improvement Ledger")
+    }
+    if ((improvement$awaiting_user[[1]] %||% 0L) > 0L) {
+      add("Improvement items need triage", paste(improvement$awaiting_user[[1]], "item(s) are awaiting user input, approval, or triage."), "medium", "Improvement Ledger")
+    }
+    if ((improvement$high_priority[[1]] %||% 0L) > 0L) {
+      add("High priority improvement work", paste(improvement$high_priority[[1]], "open high-priority item(s) are tracked."), "medium", "Improvement Ledger")
+    }
+    if (!identical(improvement$ledger_health[[1]] %||% "missing", "healthy") && !identical(improvement$ledger_health[[1]] %||% "missing", "missing")) {
+      add("Improvement ledger health issue", paste("Ledger health:", improvement$ledger_health[[1]]), "high", "Improvement Ledger")
+    }
+  }
+  if (!is.null(remediation) && nrow(remediation)) {
+    if ((remediation$failed_plans[[1]] %||% 0L) > 0L) {
+      add("Remediation plan failed", paste(remediation$failed_plans[[1]], "remediation plan(s) failed or expired."), "high", "Remediation Plans")
+    }
+    if ((remediation$awaiting_input[[1]] %||% 0L) > 0L) {
+      add("Remediation needs manual input", paste(remediation$awaiting_input[[1]], "plan(s) are waiting for user input."), "medium", "Remediation Plans")
+    }
+    if ((remediation$awaiting_approval[[1]] %||% 0L) > 0L) {
+      add("Remediation approval required", paste(remediation$awaiting_approval[[1]], "plan(s) are waiting for approval."), "medium", "Remediation Plans")
+    }
+    if (!identical(remediation$ledger_health[[1]] %||% "missing", "healthy") && !identical(remediation$ledger_health[[1]] %||% "missing", "missing")) {
+      add("Remediation ledger health issue", paste("Ledger health:", remediation$ledger_health[[1]]), "high", "Remediation Plans")
+    }
+  }
+  if (!is.null(feature_experiments) && nrow(feature_experiments)) {
+    if ((feature_experiments$awaiting_review[[1]] %||% 0L) > 0L) {
+      add("Feature proposals need review", paste(feature_experiments$awaiting_review[[1]], "feature proposal(s) are awaiting approval or rejection."), "medium", "Feature Experiments")
+    }
+    if ((feature_experiments$approved_proposals[[1]] %||% 0L) > (feature_experiments$executions[[1]] %||% 0L)) {
+      add("Approved feature proposal not executed", "At least one approved feature proposal has not produced a Rodeo execution artifact.", "medium", "Feature Experiments")
+    }
+    if ((feature_experiments$failed_executions[[1]] %||% 0L) > 0L) {
+      add("Feature execution failed", paste(feature_experiments$failed_executions[[1]], "Rodeo feature execution(s) failed."), "high", "Feature Experiments")
+    }
+    if ((feature_experiments$accepted[[1]] %||% 0L) > (feature_experiments$adoptions[[1]] %||% 0L)) {
+      add("Accepted challenger awaiting adoption", "A feature challenger was accepted but has not been explicitly adopted.", "medium", "Feature Experiments")
+    }
+  }
+  if (!is.null(campaigns) && nrow(campaigns)) {
+    if ((campaigns$awaiting_approval[[1]] %||% 0L) > 0L) {
+      add("Analytical campaign awaiting approval", paste(campaigns$awaiting_approval[[1]], "campaign(s) are paused at a governance gate."), "medium", "Analytical Campaign")
+    }
+    if ((campaigns$blocked_campaigns[[1]] %||% 0L) > 0L) {
+      add("Analytical campaign blocked", paste(campaigns$blocked_campaigns[[1]], "campaign(s) need recovery or human decision."), "high", "Analytical Campaign")
+    }
+    if ((campaigns$awaiting_adoption[[1]] %||% 0L) > 0L) {
+      add("Campaign has accepted challenger", "A campaign found an accepted challenger and is waiting for an explicit adoption decision.", "medium", "Analytical Campaign")
+    }
   }
 
   if (!length(alerts)) {
@@ -156,11 +228,12 @@ page_mission_control_ui <- function(id) {
       eyebrow = "Operations",
       actions = ui_action_row(
         actionButton(ns("open_artifacts"), "Open Artifact Studio", class = "btn-primary"),
-        actionButton(ns("open_modules"), "Open Analysis Modules", class = "btn-secondary")
+        actionButton(ns("open_modules"), "Run Analysis", class = "btn-secondary")
       ),
       tags$div(
         class = "aq-mission-control",
         uiOutput(ns("project_health")),
+        uiOutput(ns("priority_summary")),
         tags$div(
           class = "aq-mission-control-grid",
           ui_card(
@@ -211,6 +284,21 @@ page_mission_control_server <- function(id, ctx) {
       plans <- tryCatch(ctx$report_plan_state$plans, error = function(e) list())
       workflow <- mission_control_workflow_rows(ctx)
       async <- tryCatch(async_job_status_counts(), error = function(e) list(total = 0L, running = 0L, completed = 0L, failed = 0L, latest_status = "unavailable", latest_job_id = NA_character_))
+      project <- tryCatch(ctx$current_project(), error = function(e) NULL)
+      genai_jobs <- tryCatch(genai_job_summary(project), error = function(e) data.table::data.table())
+      improvement <- tryCatch({
+        if (is.list(project) && identical(project$project_state %||% "", "project_ready")) improvement_ledger_summary(project) else data.table::data.table(ledger_health = "missing", total_items = 0L, open_items = 0L, critical_open = 0L, awaiting_user = 0L, high_priority = 0L, resolved_items = 0L)
+      }, error = function(e) data.table::data.table(ledger_health = "unavailable", total_items = 0L, open_items = 0L, critical_open = 0L, awaiting_user = 0L, high_priority = 0L, resolved_items = 0L))
+      remediation <- tryCatch({
+        if (is.list(project) && identical(project$project_state %||% "", "project_ready")) remediation_plan_summary(project) else data.table::data.table(ledger_health = "missing", total_plans = 0L, active_plans = 0L, awaiting_input = 0L, awaiting_approval = 0L, failed_plans = 0L)
+      }, error = function(e) data.table::data.table(ledger_health = "unavailable", total_plans = 0L, active_plans = 0L, awaiting_input = 0L, awaiting_approval = 0L, failed_plans = 0L))
+      feature_experiments <- tryCatch(feature_experiment_state_summary(list(
+        proposals = ctx$feature_experiment_state$proposals,
+        executions = ctx$feature_experiment_state$executions,
+        experiments = ctx$feature_experiment_state$experiments,
+        adoptions = ctx$feature_experiment_state$adoptions
+      )), error = function(e) data.table::data.table(total_proposals = 0L, awaiting_review = 0L, approved_proposals = 0L, unsupported_or_blocked = 0L, executions = 0L, failed_executions = 0L, experiments = 0L, accepted = 0L, rejected = 0L, inconclusive = 0L, adoptions = 0L))
+      campaigns <- tryCatch(analytical_campaign_state_summary(ctx$analytical_campaign_state$campaigns), error = function(e) data.table::data.table(total_campaigns = 0L, active_campaigns = 0L, awaiting_approval = 0L, awaiting_adoption = 0L, blocked_campaigns = 0L, completed_campaigns = 0L, latest_status = "none", latest_evidence_readiness = "unknown", latest_evidence_score = NA_integer_, current_opportunity = "", remaining_opportunities = 0L, blocked_opportunities = 0L, completed_opportunities = 0L, learning_assessments = 0L, resolved_learning = 0L, uncertainty_reduced = 0L, unresolved_questions = 0L, closure_recommendation = "none", campaign_confidence = NA_integer_, promoted_knowledge = 0L))
       counts <- mission_control_artifact_counts(artifacts)
       quality <- mission_control_quality_summary(artifacts)
       ai_status <- mission_control_ai_status(collector, artifacts)
@@ -221,10 +309,15 @@ page_mission_control_server <- function(id, ctx) {
         plans = plans,
         workflow = workflow,
         async = async,
+        genai_jobs = genai_jobs,
+        improvement = improvement,
+        remediation = remediation,
+        feature_experiments = feature_experiments,
+        campaigns = campaigns,
         counts = counts,
         quality = quality,
         ai_status = ai_status,
-        alerts = mission_control_alerts(artifacts, collector, quality, workflow),
+        alerts = mission_control_alerts(artifacts, collector, quality, workflow, improvement, remediation, feature_experiments, campaigns),
         timeline = mission_control_timeline(ctx, artifacts, collector)
       )
     })
@@ -261,22 +354,32 @@ page_mission_control_server <- function(id, ctx) {
       )
       mission_facts <- list(
         Evidence = paste(state$counts$total, "artifacts"),
-        Collector = collector_status,
+        Collector = ui_status_label(collector_status),
         Quality = if (is.na(state$quality$avg)) "Not scored" else paste0(state$quality$avg, "%"),
         Alerts = length(state$alerts)
       )
       ui_health_summary(
         ui_mission_state_banner(mission_status, mission_title, mission_message, mission_facts),
         ui_status_tile("Project", if (is.null(state$data)) "Waiting" else "Active", status = if (is.null(state$data)) "neutral" else "success", detail = if (is.null(state$data)) "No dataset loaded" else paste(nrow(state$data), "rows")),
-        ui_status_tile("Collector", collector_status, status = mission_control_status_group(collector_status, artifact_count = state$counts$total), detail = paste(state$counts$total, "artifacts")),
-        ui_status_tile("AI Readiness", state$ai_status, status = mission_control_status_group(tolower(state$ai_status), artifact_count = state$counts$total), detail = manifest_status),
+        ui_status_tile("Collector", ui_status_label(collector_status), status = mission_control_status_group(collector_status, artifact_count = state$counts$total), detail = paste(state$counts$total, "artifacts")),
+        ui_status_tile("AI Readiness", state$ai_status, status = mission_control_status_group(tolower(state$ai_status), artifact_count = state$counts$total), detail = ui_status_label(manifest_status)),
         ui_status_tile("Artifact Quality", if (is.na(state$quality$avg)) "Not scored" else paste0(state$quality$avg, "%"), status = quality_status, detail = paste(state$quality$warnings, "warnings")),
         ui_status_tile("Workflow", paste(sum(state$workflow$artifact_count > 0L), "/", nrow(state$workflow)), status = if (sum(state$workflow$artifact_count > 0L) > 0L) "success" else "neutral", detail = "stages with evidence"),
         ui_status_tile("Async Jobs", paste(state$async$running, "running"), status = if (state$async$failed > 0L) "warning" else if (state$async$running > 0L) "info" else "neutral", detail = paste(state$async$total, "tracked")),
+        ui_status_tile("GenAI Jobs", paste(sum((state$genai_jobs$status %||% character()) %in% c("queued", "starting", "running", "cancel_requested", "cancelling")), "running"), status = if (any((state$genai_jobs$status %||% character()) %in% c("failed", "timed_out", "orphaned"))) "warning" else if (nrow(state$genai_jobs)) "info" else "neutral", detail = paste(nrow(state$genai_jobs), "tracked")),
+        ui_status_tile("Improvement Ledger", paste(state$improvement$open_items[[1]] %||% 0L, "open"), status = if ((state$improvement$critical_open[[1]] %||% 0L) > 0L) "error" else if ((state$improvement$awaiting_user[[1]] %||% 0L) > 0L) "warning" else if ((state$improvement$open_items[[1]] %||% 0L) > 0L) "info" else "success", detail = paste(state$improvement$awaiting_user[[1]] %||% 0L, "awaiting user")),
+        ui_status_tile("Remediation Plans", paste(state$remediation$active_plans[[1]] %||% 0L, "active"), status = if ((state$remediation$failed_plans[[1]] %||% 0L) > 0L) "error" else if (((state$remediation$awaiting_input[[1]] %||% 0L) + (state$remediation$awaiting_approval[[1]] %||% 0L)) > 0L) "warning" else if ((state$remediation$active_plans[[1]] %||% 0L) > 0L) "info" else "success", detail = paste((state$remediation$awaiting_input[[1]] %||% 0L) + (state$remediation$awaiting_approval[[1]] %||% 0L), "waiting")),
+        ui_status_tile("Feature Experiments", paste(state$feature_experiments$experiments[[1]] %||% 0L, "experiments"), status = if ((state$feature_experiments$failed_executions[[1]] %||% 0L) > 0L) "error" else if (((state$feature_experiments$awaiting_review[[1]] %||% 0L) + (state$feature_experiments$approved_proposals[[1]] %||% 0L)) > 0L) "warning" else if ((state$feature_experiments$experiments[[1]] %||% 0L) > 0L) "info" else "neutral", detail = paste(state$feature_experiments$awaiting_review[[1]] %||% 0L, "awaiting review")),
+        ui_status_tile("Analytical Campaigns", paste(state$campaigns$total_campaigns[[1]] %||% 0L, "campaigns"), status = if ((state$campaigns$blocked_campaigns[[1]] %||% 0L) > 0L) "error" else if (((state$campaigns$awaiting_approval[[1]] %||% 0L) + (state$campaigns$awaiting_adoption[[1]] %||% 0L)) > 0L) "warning" else if ((state$campaigns$active_campaigns[[1]] %||% 0L) > 0L) "info" else if ((state$campaigns$completed_campaigns[[1]] %||% 0L) > 0L) "success" else "neutral", detail = paste(ui_status_label(state$campaigns$closure_recommendation[[1]] %||% state$campaigns$latest_status[[1]] %||% "none"), "-", state$campaigns$remaining_opportunities[[1]] %||% 0L, "remaining,", state$campaigns$uncertainty_reduced[[1]] %||% 0L, "learned")),
         ui_status_tile("Reports", length(state$plans), status = if (length(state$plans)) "success" else "neutral", detail = "report plans"),
         ui_status_tile("Warnings", state$quality$warnings + state$quality$failures, status = if ((state$quality$warnings + state$quality$failures) > 0L) "warning" else "success", detail = "quality signals"),
         ui_status_tile("QA", qa_status, status = if (identical(qa_status, "healthy")) "success" else "warning", detail = "studio smoke")
       )
+    })
+
+    output$priority_summary <- renderUI({
+      priority <- mission_control_priority_summary(mission_state()$alerts)
+      ui_callout(priority$title, priority$message, status = priority$status)
     })
 
     output$system_status <- renderUI({
@@ -304,8 +407,26 @@ page_mission_control_server <- function(id, ctx) {
 
     output$async_jobs <- renderUI({
       summary <- tryCatch(async_job_summary(), error = function(e) data.table::data.table())
+      project <- tryCatch(ctx$current_project(), error = function(e) NULL)
+      genai_jobs <- tryCatch(genai_job_summary(project), error = function(e) data.table::data.table())
       if (!nrow(summary)) {
-        return(ui_empty_state("No async jobs yet.", "Long-running work will appear here when submitted."))
+        if (!nrow(genai_jobs)) {
+          return(ui_empty_state("No async jobs yet.", "Long-running work will appear here when submitted."))
+        }
+        latest_genai <- genai_jobs[order(created_at, decreasing = TRUE)][1:min(.N, 4L)]
+        return(tags$div(
+          class = "aq-async-job-list",
+          lapply(seq_len(nrow(latest_genai)), function(i) {
+            row <- latest_genai[i]
+            status <- row$status[[1]] %||% "neutral"
+            status_group <- if (status %in% c("failed", "timed_out", "cancelled", "orphaned")) "error" else if (status %in% c("queued", "starting", "running", "cancel_requested", "cancelling")) "info" else "success"
+            tags$div(
+              class = paste("aq-async-job-row", paste0("aq-async-job-row-", status_group)),
+              tags$div(tags$strong(row$result_type[[1]] %||% row$job_id[[1]]), tags$span(row$progress_message[[1]] %||% "")),
+              ui_status_badge(status, status_group)
+            )
+          })
+        ))
       }
       latest <- summary[order(submitted_at, decreasing = TRUE)][1:min(.N, 4L)]
       tags$div(
@@ -413,6 +534,7 @@ qa_mission_control <- function() {
       "collector_summary",
       "ai_readiness",
       "alert_queue",
+      "priority_summary",
       "timeline",
       "empty_state",
       "selection_behavior",
@@ -438,6 +560,7 @@ qa_mission_control <- function() {
       if (has(page, c("project_collector_summary", "Collector", "manifest_status"))) "success" else "error",
       if (has(page, c("mission_control_ai_status", "AI Readiness"))) "success" else "error",
       if (has(page, c("mission_control_alerts", "Alerts / Open Decisions", "aq-alert-queue"))) "success" else "error",
+      if (has(page, c("mission_control_priority_summary", "priority_summary", "Priority:"))) "success" else "error",
       if (has(page, c("mission_control_timeline", "Run Timeline", "ui_timeline"))) "success" else "error",
       if (has(components, c("No activity yet.", "Workflow status unavailable."))) "success" else "error",
       if (has(page, c("mission_open_", "observeEvent", "open_artifacts"))) "success" else "error",
@@ -463,6 +586,7 @@ qa_mission_control <- function() {
       "Collector status is surfaced.",
       "AI readiness is surfaced.",
       "Alert queue is present.",
+      "Mission Control surfaces the top operational priority before detailed queues.",
       "Run timeline is present.",
       "Empty states are present.",
       "Selection/open behavior is wired.",

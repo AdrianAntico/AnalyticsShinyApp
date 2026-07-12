@@ -195,6 +195,20 @@ Generated work should not be hidden behind deep navigation.
 
 Defaults should be excellent. Required parameters should be minimal. Advanced parameters should remain accessible, but not compete visually with the primary action.
 
+## Production Workflow Polish
+
+Workflow-oriented pages should reduce the amount of translation users must do while moving through a project.
+
+Phase 19 adds the following production UX rules:
+
+- Use user-facing labels in page copy, badges, tables, and status summaries. Internal ids such as `not_created`, `not_written`, `workspace_ready`, `llm_docx`, or module ids should be translated before they reach the user.
+- Use "Explore Data" as the beginner-facing action name for EDA while preserving EDA as technical context where useful.
+- Separate workstation modes clearly. Project Workspace owns project file/state management. Mission Control owns operational awareness. Workflow owns lifecycle orientation and launch.
+- Surface the next recommended action near the status surface that creates the need. Users should not have to infer the next step from a table alone.
+- Mission Control should present the highest-priority operational issue before detailed queues.
+- Workflow should behave like a launchpad: stage cards and summaries should use friendly labels, concise purpose text, and visible next-step guidance.
+- Status summaries should prefer stable language such as "Ready", "Not Created", "Not Written", "Available", and "Not Detected" over implementation-specific values.
+
 ## Current UX Audit
 
 | Page | Strengths | Weaknesses | Friction Points | Recommendation | Priority | Estimated User Impact |
@@ -223,6 +237,10 @@ Defaults should be excellent. Required parameters should be minimal. Advanced pa
 - Workflow and Analysis Modules now use shared collector/code primitives instead of standalone headings.
 - Export is framed as a report/export workspace.
 - Shared stat tiles support compact project status readouts.
+- Shared display-label helpers convert internal status ids and render-target ids into user-facing labels before they appear in UI tables, cards, and badges.
+- Mission Control surfaces a top-priority operational callout before detailed alerts and queues.
+- Workflow now uses "Explore Data" as the first-stage user-facing label, keeps EDA as context, and exposes a deterministic next-step callout.
+- Project Workspace includes a deterministic next-step callout tied to lifecycle progress.
 - Shared workspace grids standardize main/sidebar and multi-column layouts.
 - Shared action bars, split panels, callouts, workflow progress steps, artifact preview cards, collector panels, quality panels, loading states, and AI-readiness panels establish the internal design system.
 - Shared disclosure sections support progressive parameter exposure.

@@ -1,5 +1,5 @@
 normalize_bundle_dir <- function(path) {
-  path <- selected_value(path)
+  path <- storage_normalize_path(path, must_work = FALSE)
   if (is.null(path)) {
     stop("Project bundle directory is required.", call. = FALSE)
   }
@@ -8,6 +8,7 @@ normalize_bundle_dir <- function(path) {
 }
 
 ensure_bundle_dirs <- function(bundle_dir) {
+  bundle_dir <- normalize_bundle_dir(bundle_dir)
   if (!dir.exists(bundle_dir)) {
     dir.create(bundle_dir, recursive = TRUE, showWarnings = FALSE)
   }

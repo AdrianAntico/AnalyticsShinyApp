@@ -2,7 +2,9 @@
 
 Analytics Workstation uses a provider-agnostic GenAI service layer. The app should call shared functions such as `genai_chat()`, `genai_generate()`, `genai_summarize_artifact()`, and `genai_brief_project()` rather than calling a provider directly.
 
-This layer is intentionally not Agentic Lab. It does not execute app actions, run modules, mutate projects, or automate workflows. Phase 1 is read-only analytical assistance.
+This layer is intentionally not Agentic Lab. GenAI text helpers remain read-only. The separate GenAI Action Layer may propose tightly registered app actions, but application code validates, approves, executes, and audits them. Project-scoped approved actions can also write the durable audit ledger documented in `docs/architecture/genai_action_audit_ledger.md`.
+
+Phase 13 adds bounded Improvement Ledger context. GenAI may receive a compact summary of open project concerns, severity, priority, confidence, evidence counts, and remediation summaries through application-owned context helpers. The full ledger is not injected into every prompt. GenAI may suggest triage or remediation, but the application owns durable state, validates evidence IDs, and keeps remediation bound to registered actions or manual steps. See `docs/architecture/improvement_ledger.md`.
 
 ## Product Philosophy
 
@@ -159,6 +161,29 @@ Implemented service functions:
 - `genai_suggest_next_action()`
 
 These functions generate text only. They do not execute commands or change project state.
+
+## Safe Action Context
+
+Project context now exposes two result inventories:
+
+- `persistable_temporary_results`: completed session-local supported temporary results that can be proposed for `result.persist`. Current supported types are `dataset_profile` and `model_assessment_regression`.
+- `inspectable_persisted_results`: active-project persisted result ids, display names, result types, module/dataset labels, health status, timestamps, and evidence refs that can be proposed for `result.inspect`.
+
+These inventories intentionally omit raw paths, provider roots, project roots, full manifests, raw result payloads, raw rows, serialization internals, callbacks, prompts, credentials, and secrets.
+
+Supported action ids in the prompt contract are:
+
+- `module.open`
+- `artifact.inspect`
+- `report.open`
+- `result.inspect`
+- `analysis.preflight`
+- `analysis.run_registered`
+- `result.persist`
+
+`analysis.run_registered` currently supports exactly two executable modules: `dataset_profile` and `model_assessment`. The `model_assessment` module is mode-aware and supports regression plus binary classification scored-output diagnostics. Both modes use trusted application configuration for analytical roles; GenAI may not supply target, prediction, positive class, threshold, probability scale, weights, filters, metrics, paths, or code. Binary classification accepts only trusted probability predictions in `[0,1]` and uses the trusted threshold without optimization. See BOUNDARY-GENAI-008.
+
+`result.inspect` may use only a `persisted_result_id` from `inspectable_persisted_results`. It is UI-only and read-only; it cannot repair, export, rerun, persist, or convert a result. See TD-RESULT-003, DEFERRED-RESULT-001, and DEFERRED-RESULT-004.
 
 ## Information Transfer Efficiency
 
@@ -327,27 +352,38 @@ Current maturity:
 
 - Mode 0: Read only - implemented.
 - Mode 1: Propose only - implemented for registered proposals.
-- Mode 2: Explicit approval execution - implemented for UI-only actions `module.open`, `artifact.inspect`, `report.open`; implemented for bounded computational action `analysis.preflight`.
-- Mode 3: Delegated safe actions - not implemented.
+- Mode 2: Explicit approval execution - implemented for UI-only actions `module.open`, `artifact.inspect`, `report.open`, `result.inspect`; implemented for bounded computational actions `analysis.preflight`, `analysis.run_registered`; implemented for persistent project action `result.persist`.
+- Mode 3: Delegated safe actions - implemented for session-scoped, low-risk UI-only actions.
 - Mode 4: Bounded autonomy - not implemented.
 
-GenAI remains non-autonomous. It may produce a structured proposal, but the application validates, requires explicit user approval, executes deterministic registered handlers, and records audit events.
+GenAI remains non-autonomous. It may produce a structured proposal, but the application validates, requires explicit user approval or an active session delegation grant, executes deterministic registered handlers, and records audit events. Session-local audit remains available for immediate UI feedback; eligible project-scoped actions also write append-only durable events under the active project.
+
+Session delegation is limited to `module.open`, `artifact.inspect`, `report.open`, and `result.inspect`. Delegation does not apply to computational, persistent, or data-mutating actions such as `analysis.preflight`, `analysis.run_registered`, or `result.persist`. Grants are explicit user opt-ins, action-specific, project/provider-bound, use-limited, time-limited, and revocable. See BOUNDARY-GENAI-001 and BOUNDARY-GENAI-004.
 
 Current approved-execution UI-only actions:
 
 - `module.open`: opens a registered analysis module without running it.
 - `artifact.inspect`: opens Artifact Studio and selects one existing artifact by trusted artifact id.
 - `report.open`: opens Layout Studio and selects one existing report plan by trusted report id.
+- `result.inspect`: opens the Project page Persisted Results browser and selects one healthy persisted result by trusted persisted result id.
 
-Current approved-execution bounded computational action:
+Current approved-execution bounded computational actions:
 
 - `analysis.preflight`: runs bounded, read-only readiness checks for one registered module against the trusted active dataset id, `active_dataset`.
+- `analysis.run_registered`: runs one allowlisted temporary registered analysis module against `active_dataset` and creates a session-local temporary result. Current isolated project-scoped handlers are `dataset_profile`, `model_assessment_regression`, and `model_assessment_binary`.
+- `result.persist`: persists one completed supported temporary result into trusted active-project result storage.
 
 `artifact.inspect` is resource-scoped. Approval is bound to both the proposal hash and a trusted artifact fingerprint so changed projects, deleted artifacts, unavailable artifacts, or changed artifact versions invalidate execution.
 
 `report.open` is also resource-scoped. In the current app, `report_id` maps to an existing `aq_report_plan$plan_id`; it does not open arbitrary files or URLs. Approval is bound to both the proposal hash and a trusted report fingerprint so changed projects, deleted reports, archived reports, failed/generating render states, unavailable reports, or changed report versions invalidate execution. The action is UI-only and never generates, renders, exports, saves, or mutates a report.
 
+`result.inspect` is resource-scoped to persisted project results. It resolves through active project storage, validates manifests and content hashes, and opens only healthy supported result bundles. Approval is bound to proposal hash and a persisted-result fingerprint so provider changes, project changes, unsupported schemas, incomplete manifests, missing content, hash mismatches, or result changes invalidate execution. The action is UI-only and never modifies, repairs, exports, reruns, deletes, converts, or persists a result.
+
 `analysis.preflight` is resource-scoped across both a module and dataset. Approval is bound to the proposal hash plus a composite fingerprint built from active project id, module id/version, dataset id/version, schema version, and dataset availability. It performs metadata-first checks and a bounded row/column scan under app-defined limits. It creates only a session-local temporary result and never returns raw rows, runs the full analysis, creates artifacts, creates report plans, mutates data, or writes persistent files.
+
+`analysis.run_registered` is also resource-scoped across a module, dataset, trusted configuration snapshot, and preflight binding. It supports `dataset_profile`, a deterministic bounded data-profile handler, and `model_assessment` scored-output handlers for regression and binary classification. Approval is bound to proposal hash, resource versions, configuration fingerprint, preflight fingerprint, and active project identity. In a ready project/workspace, the computation runs in an isolated `callr` worker and the main process validates the worker handoff before creating a temporary result. The result may be inspected or summarized, but it is not an artifact, report plan, collector entry, export, or project mutation. No-project compatibility remains narrow and synchronous; hosted child-process availability is tracked by TD-GENAI-006.
+
+`result.persist` is provider-bound and project-bound. The model may supply only `temporary_result_id`; application code resolves the active provider, workspace, project, destination, persisted result id, bundle format, manifest, hashes, and idempotency key. The action is high risk, requires explicit approval, writes only allowlisted bounded supported result content, and never reruns analysis or generates a report.
 
 ## Future Agentic Lab Integration
 

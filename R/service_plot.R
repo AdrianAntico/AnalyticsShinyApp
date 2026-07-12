@@ -406,6 +406,11 @@ write_report_code <- function(code, path, name) {
   if (!dir.exists(export_dir)) {
     stop("Export directory could not be created.", call. = FALSE)
   }
+  if (exists("storage_repo_root", mode = "function") &&
+      exists("path_within_root", mode = "function") &&
+      path_within_root(export_dir, storage_repo_root())) {
+    stop("Export directory is inside the application repository and was blocked.", call. = FALSE)
+  }
 
   output_path <- file.path(
     normalizePath(export_dir, winslash = "/", mustWork = TRUE),

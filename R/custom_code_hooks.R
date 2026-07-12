@@ -3,6 +3,7 @@ custom_code_hook_stages <- function() {
     "data",
     "eda",
     "feature_engineering",
+    "feature_engineering_model_prep",
     "model_prep",
     "model_readiness",
     "plot_builder",

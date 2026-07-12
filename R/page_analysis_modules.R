@@ -1,3 +1,165 @@
+analysis_context_from_data <- function(data) {
+  empty <- list(
+    has_data = FALSE,
+    rows = 0L,
+    columns = 0L,
+    target = NA_character_,
+    prediction = NA_character_,
+    date = NA_character_,
+    group = NA_character_,
+    features = character(),
+    shap_columns = character(),
+    problem_hint = "Unknown"
+  )
+  if (is.null(data) || !length(data)) {
+    return(empty)
+  }
+
+  choices <- names(data)
+  numeric_choices <- choices[vapply(data, is.numeric, logical(1))]
+  pick <- function(candidates, pool = choices) {
+    matched <- pool[tolower(pool) %in% tolower(candidates)]
+    if (length(matched)) matched[[1]] else NA_character_
+  }
+
+  target <- pick(c("target", "y", "revenue", "sales", "conversions", "conversion"))
+  prediction <- pick(c("prediction", "predict", "yhat", "score", "p", "p1", "probability"), numeric_choices)
+  date <- pick(c("date", "event_date", "ds", "month", "week"))
+  group <- pick(c("channel", "segment", "customer_segment", "region", "group", "cohort"))
+  shap_columns <- choices[startsWith(choices, "Shap_")]
+  reserved <- unique(stats::na.omit(c(target, prediction, date, group, shap_columns, "predicted_class", "PredictedClass")))
+  features <- setdiff(choices, reserved)
+  problem_hint <- "Regression"
+  if (!is.na(target) && target %in% choices) {
+    target_values <- unique(stats::na.omit(data[[target]]))
+    if (length(target_values) <= 2L) {
+      problem_hint <- "Binary Classification"
+    }
+  }
+  if (!is.na(prediction) && grepl("^(p|p1|prob|probability|score)$", prediction, ignore.case = TRUE)) {
+    problem_hint <- "Binary Classification"
+  }
+
+  list(
+    has_data = TRUE,
+    rows = nrow(data),
+    columns = ncol(data),
+    target = target,
+    prediction = prediction,
+    date = date,
+    group = group,
+    features = features,
+    shap_columns = shap_columns,
+    problem_hint = problem_hint
+  )
+}
+
+analysis_context_value <- function(context, field, fallback = character()) {
+  value <- context[[field]] %||% fallback
+  if (!length(value) || is.na(value[[1]]) || !nzchar(value[[1]])) {
+    return(fallback)
+  }
+  value[[1]]
+}
+
+analysis_context_panel <- function(context, module_id = NULL) {
+  if (!isTRUE(context$has_data)) {
+    return(ui_callout(
+      "No dataset loaded",
+      "Load data before running analysis modules. Once data are available, common target, prediction, date, group, and feature choices are reused as visible defaults.",
+      status = "warning"
+    ))
+  }
+  module_label <- module_display_label(module_id %||% "autoquant_eda")
+  tags$div(
+    class = "aq-analysis-context-panel",
+    ui_callout(
+      paste("Context for", module_label),
+      paste(
+        context$rows, "rows x", context$columns, "columns.",
+        "Target:", analysis_context_value(context, "target", "not detected"),
+        "| Prediction:", analysis_context_value(context, "prediction", "not detected"),
+        "| Date:", analysis_context_value(context, "date", "not detected"),
+        "| Group:", analysis_context_value(context, "group", "not detected")
+      ),
+      status = "info"
+    )
+  )
+}
+
+analysis_module_next_action <- function(module_id, result = NULL) {
+  module_id <- normalize_module_id(module_id %||% "autoquant_eda")
+  if (!is.null(result) && !identical(result$status, "success")) {
+    return(list(
+      title = "Resolve run issues",
+      message = "Review the run message and warnings before continuing to the next analytical stage.",
+      status = if (identical(result$status, "error")) "error" else "warning",
+      next_module = NA_character_,
+      button_label = NA_character_
+    ))
+  }
+
+  next_map <- list(
+    autoquant_eda = list(
+      title = "Next: Model Readiness",
+      message = "Explore Data created foundational evidence. Continue with Model Readiness to review target suitability, leakage risk, drift, and modeling recommendations.",
+      next_module = "autoquant_model_readiness"
+    ),
+    autoquant_model_readiness = list(
+      title = "Next: Feature Engineering / Model Preparation",
+      message = "Readiness evidence is available. Prepare a deterministic modeling dataset before training so transformations, exclusions, and splits are visible and reproducible.",
+      next_module = "feature_engineering_model_prep"
+    ),
+    feature_engineering_model_prep = list(
+      title = "Next: CatBoost Builder",
+      message = "Prepared modeling data and lineage artifacts are available. Continue to CatBoost Builder when you are ready to train against the prepared feature set.",
+      next_module = "autoquant_catboost_builder"
+    ),
+    autoquant_catboost_builder = list(
+      title = "Next: Downstream model evidence",
+      message = "CatBoost can hand off scored output to Model Assessment, Model Insights, and SHAP when the required columns are available.",
+      next_module = NA_character_
+    ),
+    model_assessment = list(
+      title = "Next: Model Insights",
+      message = "Post-model performance evidence is available. Continue with Model Insights to inspect behavior, effects, and diagnostics.",
+      next_module = "autoquant_regression_model_insights"
+    ),
+    autoquant_regression_model_insights = list(
+      title = "Next: Regression SHAP Insights",
+      message = "Model behavior evidence is available. Continue with SHAP when precomputed SHAP columns exist or a CatBoost handoff produced them.",
+      next_module = "autoquant_regression_shap_analysis"
+    ),
+    autoquant_binary_model_insights = list(
+      title = "Next: Binary SHAP Insights",
+      message = "Classification behavior evidence is available. Continue with SHAP when precomputed SHAP columns exist or a CatBoost handoff produced them.",
+      next_module = "autoquant_binary_shap_analysis"
+    ),
+    autoquant_regression_shap_analysis = list(
+      title = "Next: Review artifacts and reports",
+      message = "Prediction-surface evidence is available. Inspect the artifacts, then curate reporting through Layout or Export.",
+      next_module = NA_character_
+    ),
+    autoquant_binary_shap_analysis = list(
+      title = "Next: Review artifacts and reports",
+      message = "Prediction-surface evidence is available. Inspect the artifacts, then curate reporting through Layout or Export.",
+      next_module = NA_character_
+    )
+  )
+  item <- next_map[[module_id]] %||% list(
+    title = "Next: Review artifacts",
+    message = "Inspect generated artifacts and continue through Workflow when ready.",
+    next_module = NA_character_
+  )
+  item$status <- "success"
+  item$button_label <- if (!is.na(item$next_module %||% NA_character_)) {
+    paste("Open", module_display_label(item$next_module))
+  } else {
+    NA_character_
+  }
+  item
+}
+
 page_analysis_modules_ui <- function(id) {
   ns <- NS(id)
 
@@ -15,7 +177,9 @@ page_analysis_modules_ui <- function(id) {
             choices = stats::setNames(
               c(
                 "autoquant_eda",
+                "model_assessment",
                 "autoquant_model_readiness",
+                "feature_engineering_model_prep",
                 "autoquant_regression_model_insights",
                 "autoquant_binary_model_insights",
                 "autoquant_regression_shap_analysis",
@@ -26,7 +190,9 @@ page_analysis_modules_ui <- function(id) {
               vapply(
                 c(
                   "autoquant_eda",
+                  "model_assessment",
                   "autoquant_model_readiness",
+                  "feature_engineering_model_prep",
                   "autoquant_regression_model_insights",
                   "autoquant_binary_model_insights",
                   "autoquant_regression_shap_analysis",
@@ -40,6 +206,7 @@ page_analysis_modules_ui <- function(id) {
             ),
             selected = "autoquant_eda"
           ),
+          uiOutput(ns("analysis_context_panel")),
           uiOutput(ns("analysis_module_settings")),
           ui_action_row(
             actionButton(ns("run_analysis_module"), "Run Module", class = "btn-primary")
@@ -65,35 +232,49 @@ page_analysis_modules_server <- function(id, ctx) {
     module_result <- reactiveVal(NULL)
     handoff_result <- reactiveVal(NULL)
 
+    output$analysis_context_panel <- renderUI({
+      data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
+      analysis_context_panel(
+        analysis_context_from_data(data),
+        selected_value(input$analysis_module_id) %||% "autoquant_eda"
+      )
+    })
+
     output$analysis_module_settings <- renderUI({
       module_id <- selected_value(input$analysis_module_id) %||% "autoquant_eda"
       data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
+      context <- analysis_context_from_data(data)
       choices <- if (is.null(data)) character() else names(data)
       numeric_choices <- if (is.null(data)) {
         character()
       } else {
         names(data)[vapply(data, is.numeric, logical(1))]
       }
+      target_default <- analysis_context_value(context, "target", character())
+      prediction_default <- analysis_context_value(context, "prediction", character())
+      date_default <- analysis_context_value(context, "date", "")
+      group_default <- analysis_context_value(context, "group", "")
+      feature_defaults <- context$features %||% character()
 
-      if (identical(module_id, "autoquant_model_readiness")) {
+      if (identical(module_id, "autoquant_model_readiness") || identical(module_id, "model_assessment")) {
         return(tagList(
           selectInput(
             session$ns("assessment_problem_type"),
             "Problem Type",
             choices = c("Regression", "Binary Classification"),
-            selected = "Regression"
+            selected = context$problem_hint %||% "Regression"
           ),
           selectInput(
             session$ns("actual_var"),
             "Actual",
             choices = choices,
-            selected = if ("y" %in% choices) "y" else character()
+            selected = target_default
           ),
           selectInput(
             session$ns("prediction_var"),
             "Prediction / Score",
             choices = numeric_choices,
-            selected = if ("yhat" %in% numeric_choices) "yhat" else if ("p" %in% numeric_choices) "p" else character()
+            selected = prediction_default
           ),
           selectInput(
             session$ns("predicted_class_var"),
@@ -106,13 +287,13 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("assessment_date_var"),
             "Date",
             choices = c("(none)" = "", choices),
-            selected = if ("Date" %in% choices) "Date" else ""
+            selected = date_default
           ),
           selectInput(
             session$ns("assessment_group_var"),
             "Group",
             choices = c("(none)" = "", choices),
-            selected = if ("Channel" %in% choices) "Channel" else ""
+            selected = group_default
           ),
           textInput(session$ns("model_name"), "Model Name", value = "Model"),
           textInput(session$ns("artifact_section"), "Artifact Section", value = "Model Readiness"),
@@ -127,32 +308,91 @@ page_analysis_modules_server <- function(id, ctx) {
         ))
       }
 
+      if (identical(module_id, "feature_engineering_model_prep")) {
+        return(tagList(
+          selectInput(
+            session$ns("prep_include_columns"),
+            "Columns to Keep",
+            choices = choices,
+            selected = choices,
+            multiple = TRUE
+          ),
+          selectInput(
+            session$ns("prep_exclude_columns"),
+            "Columns to Exclude",
+            choices = choices,
+            selected = character(),
+            multiple = TRUE
+          ),
+          selectInput(
+            session$ns("prep_target_col"),
+            "Target Column",
+            choices = c("(none)" = "", choices),
+            selected = target_default
+          ),
+          selectInput(
+            session$ns("prep_date_col"),
+            "Date Column",
+            choices = c("(none)" = "", choices),
+            selected = date_default
+          ),
+          selectInput(
+            session$ns("prep_group_cols"),
+            "Group Columns",
+            choices = choices,
+            selected = group_default[group_default %in% choices],
+            multiple = TRUE
+          ),
+          selectInput(
+            session$ns("prep_missing_method"),
+            "Missing Value Handling",
+            choices = c(
+              "Leave as-is" = "none",
+              "Median / Mode" = "median_mode",
+              "Zero / Unknown" = "zero_unknown",
+              "Drop rows with missing values" = "drop_rows"
+            ),
+            selected = "median_mode"
+          ),
+          checkboxInput(session$ns("prep_drop_constant"), "Remove constant columns", value = TRUE),
+          checkboxInput(session$ns("prep_drop_near_zero_variance"), "Remove near-zero variance numeric columns", value = TRUE),
+          numericInput(session$ns("prep_nzv_threshold"), "Near-Zero Variance Threshold", value = 0.95, min = 0.50, max = 1, step = 0.01),
+          checkboxInput(session$ns("prep_drop_duplicate_columns"), "Remove duplicate columns", value = TRUE),
+          checkboxInput(session$ns("prep_add_date_features"), "Add basic date features", value = TRUE),
+          checkboxInput(session$ns("prep_categorical_as_factor"), "Convert text categories to factors", value = TRUE),
+          checkboxInput(session$ns("prep_create_validation_split"), "Create validation split column", value = FALSE),
+          numericInput(session$ns("prep_validation_fraction"), "Validation Fraction", value = 0.20, min = 0.01, max = 0.80, step = 0.01),
+          numericInput(session$ns("prep_split_seed"), "Split Seed", value = 20260711, min = 1, step = 1),
+          textInput(session$ns("prep_prepared_data_name"), "Prepared Dataset Name", value = "Prepared Modeling Data")
+        ))
+      }
+
       if (identical(module_id, "autoquant_regression_model_insights")) {
         return(tagList(
           selectInput(
             session$ns("rmi_target_column"),
             "Target",
             choices = numeric_choices,
-            selected = if ("y" %in% numeric_choices) "y" else character()
+            selected = if (target_default %in% numeric_choices) target_default else character()
           ),
           selectInput(
             session$ns("rmi_prediction_column"),
             "Prediction",
             choices = numeric_choices,
-            selected = if ("Predict" %in% numeric_choices) "Predict" else if ("yhat" %in% numeric_choices) "yhat" else character()
+            selected = if (prediction_default %in% numeric_choices) prediction_default else character()
           ),
           selectInput(
             session$ns("rmi_feature_columns"),
             "Feature Columns",
             choices = choices,
-            selected = setdiff(numeric_choices, c("y", "Predict", "yhat", "p")),
+            selected = intersect(feature_defaults, numeric_choices),
             multiple = TRUE
           ),
           selectInput(
             session$ns("rmi_segment_vars"),
             "Segment Vars",
             choices = c("(none)" = "", choices),
-            selected = if ("segment" %in% choices) "segment" else if ("Channel" %in% choices) "Channel" else "",
+            selected = group_default,
             multiple = TRUE
           ),
           selectInput(
@@ -166,7 +406,7 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("rmi_date_var"),
             "Date",
             choices = c("(none)" = "", choices),
-            selected = if ("date" %in% choices) "date" else if ("Date" %in% choices) "Date" else ""
+            selected = date_default
           ),
           textInput(session$ns("rmi_algo"), "Algo", value = "external_predictions"),
           selectInput(
@@ -194,19 +434,19 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("bmi_target_column"),
             "Target",
             choices = choices,
-            selected = if ("target" %in% choices) "target" else if ("y" %in% choices) "y" else character()
+            selected = target_default
           )),
           bmi_input("PredictionColumnName", selectInput(
             session$ns("bmi_prediction_column"),
             "Prediction / Score",
             choices = numeric_choices,
-            selected = if ("p1" %in% numeric_choices) "p1" else if ("p" %in% numeric_choices) "p" else character()
+            selected = if (prediction_default %in% numeric_choices) prediction_default else character()
           )),
           bmi_input("FeatureColumnNames", selectInput(
             session$ns("bmi_feature_columns"),
             "Feature Columns",
             choices = choices,
-            selected = setdiff(choices, c("target", "y", "p1", "p", "Predict", "yhat")),
+            selected = feature_defaults,
             multiple = TRUE
           )),
           bmi_input("PositiveClass", textInput(session$ns("bmi_positive_class"), "Positive Class", value = "1")),
@@ -253,13 +493,13 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("rshap_target_col"),
             "Target",
             choices = c("(optional)" = "", numeric_choices),
-            selected = if ("y" %in% numeric_choices) "y" else ""
+            selected = if (target_default %in% numeric_choices) target_default else ""
           ),
           selectInput(
             session$ns("rshap_prediction_col"),
             "Prediction",
             choices = c("(infer Predict)" = "", numeric_choices),
-            selected = if ("Predict" %in% numeric_choices) "Predict" else ""
+            selected = if (prediction_default %in% numeric_choices) prediction_default else ""
           ),
           textInput(session$ns("rshap_shap_prefix"), "SHAP Prefix", value = "Shap_"),
           selectInput(
@@ -280,7 +520,7 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("rshap_date_var"),
             "Date",
             choices = c("(none)" = "", choices),
-            selected = if ("Date" %in% choices) "Date" else if ("date" %in% choices) "date" else ""
+            selected = date_default
           ),
           selectInput(
             session$ns("rshap_date_aggregation"),
@@ -292,7 +532,7 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("rshap_by_vars"),
             "Segment Columns",
             choices = choices,
-            selected = by_defaults,
+            selected = unique(c(group_default[group_default %in% choices], by_defaults)),
             multiple = TRUE
           ),
           selectInput(
@@ -354,13 +594,13 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("bshap_target_col"),
             "Target",
             choices = c("(required)" = "", target_choices),
-            selected = if ("Target" %in% target_choices) "Target" else if ("target" %in% target_choices) "target" else ""
+            selected = if (target_default %in% target_choices) target_default else ""
           ),
           selectInput(
             session$ns("bshap_prediction_col"),
             "Prediction Probability",
             choices = c("(infer Predict)" = "", prediction_choices),
-            selected = if ("Predict" %in% prediction_choices) "Predict" else if ("prediction" %in% prediction_choices) "prediction" else ""
+            selected = if (prediction_default %in% prediction_choices) prediction_default else ""
           ),
           selectInput(
             session$ns("bshap_predicted_class_col"),
@@ -395,7 +635,7 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("bshap_date_var"),
             "Date",
             choices = c("(none)" = "", choices),
-            selected = if ("Date" %in% choices) "Date" else if ("date" %in% choices) "date" else ""
+            selected = date_default
           ),
           selectInput(
             session$ns("bshap_date_aggregation"),
@@ -407,7 +647,7 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("bshap_by_vars"),
             "Segment Columns",
             choices = choices,
-            selected = by_defaults,
+            selected = unique(c(group_default[group_default %in% choices], by_defaults)),
             multiple = TRUE
           ),
           selectInput(
@@ -454,7 +694,9 @@ page_analysis_modules_server <- function(id, ctx) {
       }
 
       if (identical(module_id, "autoquant_catboost_builder")) {
-        target_default <- if ("Revenue" %in% choices) {
+        catboost_target_default <- if (length(target_default) && target_default %in% choices) {
+          target_default
+        } else if ("Revenue" %in% choices) {
           "Revenue"
         } else if ("Target" %in% choices) {
           "Target"
@@ -463,7 +705,7 @@ page_analysis_modules_server <- function(id, ctx) {
         } else {
           ""
         }
-        feature_defaults <- setdiff(choices, c(target_default))
+        catboost_feature_defaults <- setdiff(choices, c(catboost_target_default))
         by_defaults <- intersect(c("Channel", "Region", "CustomerTier", "segment", "Segment"), choices)
 
         return(tagList(
@@ -471,19 +713,19 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("catboost_problem_type"),
             "Problem Type",
             choices = c("Regression" = "regression", "Binary Classification" = "binary"),
-            selected = "regression"
+            selected = if (identical(context$problem_hint, "Binary Classification")) "binary" else "regression"
           ),
           selectInput(
             session$ns("catboost_target_col"),
             "Target",
             choices = choices,
-            selected = target_default
+            selected = catboost_target_default
           ),
           selectInput(
             session$ns("catboost_feature_cols"),
             "Feature Columns",
             choices = choices,
-            selected = feature_defaults,
+            selected = catboost_feature_defaults,
             multiple = TRUE
           ),
           textInput(session$ns("catboost_positive_class"), "Positive Class", value = "Yes"),
@@ -491,13 +733,13 @@ page_analysis_modules_server <- function(id, ctx) {
             session$ns("catboost_date_var"),
             "Date",
             choices = c("(none)" = "", choices),
-            selected = if ("Date" %in% choices) "Date" else if ("date" %in% choices) "date" else ""
+            selected = date_default
           ),
           selectInput(
             session$ns("catboost_by_vars"),
             "Segment Columns",
             choices = choices,
-            selected = by_defaults,
+            selected = unique(c(group_default[group_default %in% choices], by_defaults)),
             multiple = TRUE
           ),
           numericInput(session$ns("catboost_iterations"), "Iterations", value = 100, min = 1, step = 10),
@@ -531,40 +773,50 @@ page_analysis_modules_server <- function(id, ctx) {
           session$ns("eda_univariate_vars"),
           "Distribution Columns",
           choices = choices,
-          selected = intersect(c("Spend", "Revenue", "Clicks", "Channel"), choices),
+          selected = unique(c(
+            target_default[target_default %in% choices],
+            group_default[group_default %in% choices],
+            intersect(c("Spend", "Revenue", "Clicks", "Channel"), choices)
+          )),
           multiple = TRUE
         ),
         selectInput(
           session$ns("eda_corr_vars"),
           "Correlation Columns",
           choices = numeric_choices,
-          selected = intersect(c("Spend", "Revenue", "Clicks"), numeric_choices),
+          selected = unique(c(
+            target_default[target_default %in% numeric_choices],
+            intersect(c("Spend", "Revenue", "Clicks"), numeric_choices)
+          )),
           multiple = TRUE
         ),
         selectInput(
           session$ns("eda_trend_vars"),
           "Trend Columns",
           choices = numeric_choices,
-          selected = intersect("Revenue", numeric_choices),
+          selected = unique(c(
+            target_default[target_default %in% numeric_choices],
+            intersect("Revenue", numeric_choices)
+          )),
           multiple = TRUE
         ),
         selectInput(
           session$ns("eda_trend_date_var"),
           "Trend Date Column",
           choices = c("(none)" = "", choices),
-          selected = if ("Date" %in% choices) "Date" else ""
+          selected = date_default
         ),
         selectInput(
           session$ns("eda_trend_group_var"),
           "Trend Group Column",
           choices = c("(none)" = "", choices),
-          selected = if ("Channel" %in% choices) "Channel" else ""
+          selected = group_default
         ),
         selectInput(
           session$ns("eda_target_var"),
           "Target Column",
           choices = c("(none)" = "", choices),
-          selected = ""
+          selected = target_default
         ),
         selectInput(
           session$ns("eda_theme"),
@@ -605,9 +857,30 @@ page_analysis_modules_server <- function(id, ctx) {
         group_var = selected_value(input$assessment_group_var),
         model_name = selected_value(input$model_name) %||% "Model",
         artifact_section = selected_value(input$artifact_section) %||% "Model Readiness",
-        theme = selected_value(input$assessment_theme) %||% "light",
+        theme = selected_value(input$assessment_theme) %||% "dark",
         max_rows = as.integer(input$assessment_max_rows %||% 1000L),
         max_groups = as.integer(input$assessment_max_groups %||% 25L)
+      )
+    }
+
+    feature_preparation_config <- function() {
+      list(
+        include_columns = feature_prep_clean_choices(input$prep_include_columns),
+        exclude_columns = feature_prep_clean_choices(input$prep_exclude_columns),
+        target_col = selected_value(input$prep_target_col),
+        date_col = selected_value(input$prep_date_col),
+        group_cols = feature_prep_clean_choices(input$prep_group_cols),
+        missing_method = selected_value(input$prep_missing_method) %||% "median_mode",
+        drop_constant = isTRUE(input$prep_drop_constant),
+        drop_near_zero_variance = isTRUE(input$prep_drop_near_zero_variance),
+        near_zero_variance_threshold = as.numeric(input$prep_nzv_threshold %||% 0.95),
+        drop_duplicate_columns = isTRUE(input$prep_drop_duplicate_columns),
+        add_date_features = isTRUE(input$prep_add_date_features),
+        categorical_as_factor = isTRUE(input$prep_categorical_as_factor),
+        create_validation_split = isTRUE(input$prep_create_validation_split),
+        validation_fraction = as.numeric(input$prep_validation_fraction %||% 0.20),
+        split_seed = as.integer(input$prep_split_seed %||% 20260711L),
+        prepared_data_name = selected_value(input$prep_prepared_data_name) %||% "Prepared Modeling Data"
       )
     }
 
@@ -625,7 +898,7 @@ page_analysis_modules_server <- function(id, ctx) {
         by_vars = clean_choices(input$rmi_by_vars),
         date_var = selected_value(input$rmi_date_var),
         algo = selected_value(input$rmi_algo) %||% "external_predictions",
-        theme = selected_value(input$rmi_theme) %||% "light",
+        theme = selected_value(input$rmi_theme) %||% "dark",
         sample_size = as.integer(input$rmi_sample_size %||% 100000L),
         max_pdp_features = as.integer(input$rmi_max_pdp_features %||% 10L),
         generate_calibration_pdp = isTRUE(input$rmi_generate_calibration_pdp),
@@ -657,7 +930,7 @@ page_analysis_modules_server <- function(id, ctx) {
         utility_fp = as.numeric(input$bmi_utility_fp %||% -1),
         utility_fn = as.numeric(input$bmi_utility_fn %||% -5),
         beta = as.numeric(input$bmi_beta %||% 1),
-        theme = selected_value(input$bmi_theme) %||% "light"
+        theme = selected_value(input$bmi_theme) %||% "dark"
       )
     }
 
@@ -832,8 +1105,16 @@ page_analysis_modules_server <- function(id, ctx) {
     }
 
     module_config <- function(module_id) {
+      if (identical(module_id, "model_assessment")) {
+        config <- model_readiness_config()
+        config$artifact_section <- "Model Assessment"
+        return(config)
+      }
       if (identical(module_id, "autoquant_model_readiness")) {
         return(model_readiness_config())
+      }
+      if (identical(module_id, "feature_engineering_model_prep")) {
+        return(feature_preparation_config())
       }
       if (identical(module_id, "autoquant_regression_model_insights")) {
         return(regression_model_insights_config())
@@ -848,13 +1129,34 @@ page_analysis_modules_server <- function(id, ctx) {
         return(binary_shap_config())
       }
       if (identical(module_id, "autoquant_catboost_builder")) {
-        return(catboost_builder_config())
+        config <- catboost_builder_config()
+        config$modeling_context <- ctx$current_modeling_context()
+        return(config)
       }
       if (identical(module_id, "autoquant_multiclass_shap_analysis")) {
         return(shap_scaffold_config(module_id))
       }
 
       eda_config()
+    }
+
+    open_analysis_module <- function(module_id) {
+      module_id <- normalize_module_id(module_id)
+      updateSelectInput(session, "analysis_module_id", selected = module_id)
+      if (is.function(ctx$select_analysis_module)) {
+        ctx$select_analysis_module(module_id)
+      }
+    }
+
+    ctx$genai_registered_analysis_config <- function(module_id) {
+      module_id <- normalize_module_id(module_id)
+      if (identical(module_id, "model_assessment")) {
+        return(module_config("model_assessment"))
+      }
+      if (identical(module_id, "dataset_profile")) {
+        return(genai_registered_analysis_default_config("dataset_profile"))
+      }
+      module_config(module_id)
     }
 
     accept_module_result <- function(result) {
@@ -881,6 +1183,16 @@ page_analysis_modules_server <- function(id, ctx) {
         return(NULL)
       }
       result$metadata$catboost_handoff
+    })
+
+    current_prepared_dataset_artifact_id <- reactive({
+      result <- module_result()
+      if (is.null(result) ||
+          !identical(result$metadata$module_id, "feature_engineering_model_prep") ||
+          !identical(result$status, "success")) {
+        return(NA_character_)
+      }
+      feature_preparation_prepared_artifact_id(result)
     })
 
     run_catboost_handoff_action <- function(module_id) {
@@ -955,6 +1267,19 @@ page_analysis_modules_server <- function(id, ctx) {
         return(ui_empty_state("No analysis module has been run yet."))
       }
 
+      module_id <- result$metadata$module_id %||% selected_value(input$analysis_module_id) %||% "unknown_module"
+      next_action <- analysis_module_next_action(module_id, result)
+      next_action_ui <- ui_callout(
+        next_action$title,
+        next_action$message,
+        status = next_action$status,
+        actions = if (!is.na(next_action$next_module %||% NA_character_)) {
+          actionButton(session$ns("open_next_analysis_module"), next_action$button_label, class = "btn-secondary btn-sm")
+        } else {
+          NULL
+        }
+      )
+
       status <- if (identical(result$status, "success")) "success" else if (identical(result$status, "error")) "error" else "warning"
       summary <- analysis_module_status_table(result)
       details <- NULL
@@ -978,15 +1303,70 @@ page_analysis_modules_server <- function(id, ctx) {
         ui_status_badge(result$status, status = status),
         tags$p(class = "aq-export-message", service_result_message(result)),
         details,
+        next_action_ui,
         if (identical(result$status, "success")) {
-          ui_action_row(
-            actionButton(session$ns("open_artifact_studio_after_run"), "Inspect in Artifact Studio", class = "btn-primary btn-sm"),
-            actionButton(session$ns("open_export_after_run"), "Open Export", class = "btn-secondary btn-sm"),
-            actionButton(session$ns("open_mission_control_after_run"), "Return to Mission Control", class = "btn-secondary btn-sm")
+          tags$div(
+            if (identical(module_id, "feature_engineering_model_prep")) {
+              ui_callout(
+                "Prepared dataset handoff",
+                "Use the prepared dataset as the active modeling dataset before training. The source dataset is not mutated.",
+                status = "success",
+                actions = ui_action_row(
+                  actionButton(session$ns("activate_prepared_dataset"), "Use Prepared Dataset", class = "btn-primary btn-sm"),
+                  actionButton(session$ns("activate_prepared_dataset_and_open_catboost"), "Use and Open CatBoost", class = "btn-secondary btn-sm"),
+                  actionButton(session$ns("revert_to_source_dataset"), "Revert to Source Data", class = "btn-secondary btn-sm")
+                )
+              )
+            },
+            ui_action_row(
+              actionButton(session$ns("open_artifact_studio_after_run"), "Inspect in Artifact Studio", class = "btn-primary btn-sm"),
+              actionButton(session$ns("open_export_after_run"), "Open Export", class = "btn-secondary btn-sm"),
+              actionButton(session$ns("open_mission_control_after_run"), "Return to Mission Control", class = "btn-secondary btn-sm")
+            )
           )
         }
       )
     })
+
+    observeEvent(input$open_next_analysis_module, {
+      result <- module_result()
+      if (is.null(result)) {
+        return(invisible(NULL))
+      }
+      module_id <- result$metadata$module_id %||% selected_value(input$analysis_module_id) %||% "autoquant_eda"
+      next_action <- analysis_module_next_action(module_id, result)
+      if (!is.na(next_action$next_module %||% NA_character_)) {
+        open_analysis_module(next_action$next_module)
+      }
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$activate_prepared_dataset, {
+      artifact_id <- current_prepared_dataset_artifact_id()
+      if (is.na(artifact_id) || !nzchar(artifact_id)) {
+        showNotification("No prepared dataset artifact is available to activate.", type = "error")
+        return(invisible(NULL))
+      }
+      result <- ctx$activate_prepared_dataset_artifact(artifact_id)
+      showNotification(service_result_message(result), type = if (identical(result$status, "success")) "message" else "error")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$activate_prepared_dataset_and_open_catboost, {
+      artifact_id <- current_prepared_dataset_artifact_id()
+      if (is.na(artifact_id) || !nzchar(artifact_id)) {
+        showNotification("No prepared dataset artifact is available to activate.", type = "error")
+        return(invisible(NULL))
+      }
+      result <- ctx$activate_prepared_dataset_artifact(artifact_id)
+      showNotification(service_result_message(result), type = if (identical(result$status, "success")) "message" else "error")
+      if (identical(result$status, "success")) {
+        open_analysis_module("autoquant_catboost_builder")
+      }
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$revert_to_source_dataset, {
+      result <- ctx$revert_to_source_dataset()
+      showNotification(service_result_message(result), type = if (identical(result$status, "success")) "message" else "error")
+    }, ignoreInit = TRUE)
 
     observeEvent(input$open_artifact_studio_after_run, {
       if (!is.null(ctx$navigate_to)) ctx$navigate_to("Artifact Studio")
@@ -1096,4 +1476,82 @@ page_analysis_modules_server <- function(id, ctx) {
       result$code
     })
   })
+}
+
+qa_analytical_workflow_integration <- function() {
+  sample_data <- data.frame(
+    event_date = as.Date("2026-01-01") + 0:5,
+    channel = rep(c("Search", "Social"), 3),
+    spend = c(10, 20, 15, 18, 22, 19),
+    revenue = c(100, 150, 130, 170, 180, 160),
+    prediction = c(98, 148, 129, 169, 181, 159),
+    Shap_spend = c(1, 2, 1, 3, 2, 1)
+  )
+  context <- analysis_context_from_data(sample_data)
+  eda_next <- analysis_module_next_action("autoquant_eda")
+  readiness_next <- analysis_module_next_action("autoquant_model_readiness")
+  preparation_next <- analysis_module_next_action("feature_engineering_model_prep")
+  failed_next <- analysis_module_next_action(
+    "autoquant_eda",
+    service_result(status = "error", errors = "qa failure")
+  )
+  page <- paste(readLines("R/page_analysis_modules.R", warn = FALSE), collapse = "\n")
+
+  data.table::data.table(
+    check = c(
+      "context_detects_dataset",
+      "context_detects_target",
+      "context_detects_prediction",
+      "context_detects_date_group",
+      "context_detects_shap_columns",
+      "context_panel_rendered",
+      "next_action_eda_to_readiness",
+      "next_action_readiness_to_feature_preparation",
+      "next_action_feature_preparation_to_catboost",
+      "feature_preparation_activation_buttons_wired",
+      "source_dataset_revert_action_wired",
+      "prepared_dataset_context_activation_wired",
+      "failure_next_action_blocks_progression",
+      "open_next_module_action_wired",
+      "dark_theme_fallbacks_consistent"
+    ),
+    status = c(
+      if (isTRUE(context$has_data) && identical(context$rows, 6L) && identical(context$columns, 6L)) "success" else "error",
+      if (identical(context$target, "revenue")) "success" else "error",
+      if (identical(context$prediction, "prediction")) "success" else "error",
+      if (identical(context$date, "event_date") && identical(context$group, "channel")) "success" else "error",
+      if (identical(context$shap_columns, "Shap_spend")) "success" else "error",
+      if (grepl("analysis_context_panel", page, fixed = TRUE) && grepl("Context for", page, fixed = TRUE)) "success" else "error",
+      if (identical(eda_next$next_module, "autoquant_model_readiness")) "success" else "error",
+      if (identical(readiness_next$next_module, "feature_engineering_model_prep")) "success" else "error",
+      if (identical(preparation_next$next_module, "autoquant_catboost_builder")) "success" else "error",
+      if (grepl("activate_prepared_dataset", page, fixed = TRUE) &&
+          grepl("Use Prepared Dataset", page, fixed = TRUE) &&
+          grepl("Use and Open CatBoost", page, fixed = TRUE)) "success" else "error",
+      if (grepl("revert_to_source_dataset", page, fixed = TRUE) &&
+          grepl("Revert to Source Data", page, fixed = TRUE)) "success" else "error",
+      if (grepl("current_prepared_dataset_artifact_id", page, fixed = TRUE) &&
+          grepl("ctx$activate_prepared_dataset_artifact", page, fixed = TRUE)) "success" else "error",
+      if (identical(failed_next$status, "error") && is.na(failed_next$next_module)) "success" else "error",
+      if (grepl("open_next_analysis_module", page, fixed = TRUE) && grepl("open_analysis_module <- function", page, fixed = TRUE)) "success" else "error",
+      if (all(grepl('theme = selected_value\\(input\\$(assessment_theme|rmi_theme|bmi_theme)\\) %\\|\\|% "dark"', page))) "success" else "error"
+    ),
+    message = c(
+      "Dataset context captures rows and columns.",
+      "Dataset context detects a reusable target column.",
+      "Dataset context detects a reusable prediction column.",
+      "Dataset context detects reusable date and group columns.",
+      "Dataset context detects SHAP columns for downstream interpretation.",
+      "Analysis Modules renders a visible context-preservation panel.",
+      "Explore Data naturally leads to Model Readiness.",
+      "Model Readiness naturally leads to Feature Engineering / Model Preparation.",
+      "Feature Engineering / Model Preparation naturally leads to CatBoost Builder.",
+      "Feature Preparation exposes explicit prepared-dataset activation actions.",
+      "Feature Preparation exposes an explicit source-dataset revert action.",
+      "Prepared dataset activation is wired through app context instead of silent dataset mutation.",
+      "Failed runs recommend resolving issues instead of continuing blindly.",
+      "The next-module action is wired without adding a workflow engine.",
+      "Module theme fallbacks match the visible dark-first defaults."
+    )
+  )
 }

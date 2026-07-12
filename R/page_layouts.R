@@ -1157,7 +1157,7 @@ page_layouts_server <- function(id, ctx) {
       if (length(ctx$text_artifacts()) || length(ctx$table_artifacts())) {
         code <- paste(
           code,
-          "# TODO: Mixed text/table artifact export/report code generation is not fully supported yet.",
+          "# Note: mixed text/table artifact export and report-plan code generation is intentionally omitted from this replay snippet.",
           sep = "\n\n"
         )
       }

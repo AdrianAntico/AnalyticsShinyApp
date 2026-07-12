@@ -3,38 +3,16 @@ workflow_stage_registry <- function() {
     list(
       order = 1L,
       stage_id = "eda",
-      label = "EDA",
-      subtitle = NULL,
+      label = "Explore Data",
+      subtitle = "EDA",
       status = "implemented",
       modules = list("autoquant_eda"),
       page = "Analysis Modules",
       purpose = "Understand data structure, distributions, correlations, and trends.",
-      recommended_next_stage = "Feature Engineering"
-    ),
-    list(
-      order = 2L,
-      stage_id = "feature_engineering",
-      label = "Feature Engineering",
-      subtitle = NULL,
-      status = "external_or_future",
-      modules = list(NULL),
-      page = NULL,
-      purpose = "Create modeling features. This can be completed outside the app today.",
-      recommended_next_stage = "Model Prep"
-    ),
-    list(
-      order = 3L,
-      stage_id = "model_prep",
-      label = "Model Prep",
-      subtitle = NULL,
-      status = "external_or_future",
-      modules = list(NULL),
-      page = NULL,
-      purpose = "Define partitions, folds, train/test splits, and leakage-safe model data.",
       recommended_next_stage = "Model Readiness"
     ),
     list(
-      order = 4L,
+      order = 2L,
       stage_id = "model_readiness",
       label = "Model Readiness",
       subtitle = "Target Analysis",
@@ -42,10 +20,21 @@ workflow_stage_registry <- function() {
       modules = list("autoquant_model_readiness"),
       page = "Analysis Modules",
       purpose = "Review target diagnostics, leakage/collider risk, drift, class balance, and modeling recommendations.",
+      recommended_next_stage = "Feature Engineering / Model Preparation"
+    ),
+    list(
+      order = 3L,
+      stage_id = "feature_engineering_model_prep",
+      label = "Feature Engineering / Model Preparation",
+      subtitle = NULL,
+      status = "implemented",
+      modules = list("feature_engineering_model_prep"),
+      page = "Analysis Modules",
+      purpose = "Prepare deterministic modeling data with visible transformations, lineage, and reusable prepared-data artifacts.",
       recommended_next_stage = "CatBoost Builder"
     ),
     list(
-      order = 5L,
+      order = 4L,
       stage_id = "catboost_builder",
       label = "CatBoost Builder",
       subtitle = NULL,
@@ -56,7 +45,7 @@ workflow_stage_registry <- function() {
       recommended_next_stage = "Model Assessment"
     ),
     list(
-      order = 6L,
+      order = 5L,
       stage_id = "model_assessment",
       label = "Model Assessment",
       subtitle = "Post-model evaluation",
@@ -67,7 +56,7 @@ workflow_stage_registry <- function() {
       recommended_next_stage = "Model Insights"
     ),
     list(
-      order = 7L,
+      order = 6L,
       stage_id = "model_insights",
       label = "Model Insights",
       subtitle = NULL,
@@ -78,7 +67,7 @@ workflow_stage_registry <- function() {
       recommended_next_stage = "SHAP Insights"
     ),
     list(
-      order = 8L,
+      order = 7L,
       stage_id = "shap_insights",
       label = "SHAP Insights",
       subtitle = NULL,
@@ -89,7 +78,7 @@ workflow_stage_registry <- function() {
       recommended_next_stage = "Report / Export"
     ),
     list(
-      order = 9L,
+      order = 8L,
       stage_id = "report_export",
       label = "Report / Export",
       subtitle = NULL,
@@ -156,6 +145,10 @@ workflow_status_badge_status <- function(status) {
     return("neutral")
   }
   "warning"
+}
+
+workflow_status_label <- function(status) {
+  ui_status_label(status)
 }
 
 workflow_state_summary <- function(ctx = NULL) {
@@ -272,8 +265,8 @@ workflow_stage_card <- function(stage, ns, summary = NULL) {
     subtitle = stage$subtitle,
     tags$div(
       class = "aq-workflow-stage-meta",
-      ui_status_badge(stage$status, status),
-      if (length(module_ids)) tags$span(class = "aq-workflow-module-id", paste(module_ids, collapse = " / "))
+      ui_status_badge(workflow_status_label(stage$status), status),
+      if (length(module_ids)) tags$span(class = "aq-workflow-module-id", paste(vapply(module_ids, module_display_label, character(1)), collapse = " / "))
     ),
     tags$p(class = "aq-workflow-purpose", stage$purpose),
     tags$dl(
@@ -321,6 +314,7 @@ page_workflow_ui <- function(id) {
         title = "Workflow Summary",
         uiOutput(ns("workflow_message")),
         uiOutput(ns("workflow_summary")),
+        uiOutput(ns("workflow_next_step")),
         ui_disclosure(
           "Project Artifact Collector",
           uiOutput(ns("collector_summary")),
@@ -353,22 +347,44 @@ page_workflow_server <- function(id, ctx) {
     })
 
     output$workflow_summary <- renderUI({
+      summary <- data.table::copy(summary_reactive())
+      summary[, `:=`(
+        status = vapply(status, workflow_status_label, character(1)),
+        latest_run_status = vapply(latest_run_status, ui_status_label, character(1)),
+        catboost_handoff_available = data.table::fifelse(catboost_handoff_available, "Available", "Not Detected")
+      )]
       render_table(
-        summary_reactive()[, list(
+        summary[, list(
           order,
-          stage_id,
-          label,
+          stage = label,
           status,
-          artifact_count,
-          report_plan_count,
-          custom_code_hook_count,
-          latest_run_status,
-          catboost_handoff_available
+          artifacts = artifact_count,
+          report_plans = report_plan_count,
+          code_drafts = custom_code_hook_count,
+          latest_run = latest_run_status,
+          handoff = catboost_handoff_available
         )],
         title = NULL,
         page_size = 9,
         searchable = FALSE,
         filterable = FALSE
+      )
+    })
+
+    output$workflow_next_step <- renderUI({
+      summary <- summary_reactive()
+      next_stage <- summary[status %in% c("implemented", "experimental") & artifact_count == 0L][order(order)][1]
+      if (nrow(next_stage)) {
+        return(ui_callout(
+          paste("Next:", next_stage$label[[1]]),
+          paste(next_stage$purpose[[1]], "Open the stage card below to run the module or draft supporting code."),
+          status = "info"
+        ))
+      }
+      ui_callout(
+        "Workflow evidence is populated",
+        "Review Artifact Studio or Mission Control to inspect quality, recommendations, and any remaining open decisions.",
+        status = "success"
       )
     })
 
@@ -458,9 +474,8 @@ qa_workflow_stage_registry <- function() {
   stages <- workflow_stage_table()
   expected <- c(
     "eda",
-    "feature_engineering",
-    "model_prep",
     "model_readiness",
+    "feature_engineering_model_prep",
     "catboost_builder",
     "model_assessment",
     "model_insights",
@@ -469,32 +484,34 @@ qa_workflow_stage_registry <- function() {
   )
 
   data.table::data.table(
-    check = c("stage_ids", "stage_order", "no_pre_model_assessment_label", "external_stages_allowed"),
+    check = c("stage_ids", "stage_order", "no_pre_model_assessment_label", "feature_preparation_implemented", "user_friendly_eda_label"),
     status = c(
       if (identical(stages$stage_id, expected)) "success" else "error",
       if (identical(stages$order, seq_along(expected))) "success" else "error",
-      if (!any(stages$stage_id %in% c("eda", "feature_engineering", "model_prep", "model_readiness") & grepl("Model Assessment", stages$label))) "success" else "error",
-      if (all(stages$status[stages$stage_id %in% c("feature_engineering", "model_prep")] == "external_or_future")) "success" else "error"
+      if (!any(stages$stage_id %in% c("eda", "model_readiness", "feature_engineering_model_prep") & grepl("Model Assessment", stages$label))) "success" else "error",
+      if (identical(stages$status[stages$stage_id == "feature_engineering_model_prep"], "implemented")) "success" else "error",
+      if (identical(stages$label[stages$stage_id == "eda"], "Explore Data") && identical(stages$subtitle[stages$stage_id == "eda"], "EDA")) "success" else "error"
     ),
     message = c(
       paste(stages$stage_id, collapse = " -> "),
       paste(stages$order, collapse = ", "),
       "Pre-model stages do not use Model Assessment terminology.",
-      "Feature Engineering and Model Prep are non-failing external/future stages."
+      "Feature Engineering / Model Preparation is an implemented native workflow stage.",
+      "The first workflow stage uses a friendly label while preserving EDA as context."
     )
   )
 }
 
 qa_workflow_external_stage_artifact_counts <- function() {
   artifact <- create_artifact(
-    artifact_id = "qa_feature_engineering_table",
+    artifact_id = "qa_feature_preparation_table",
     artifact_type = "table",
-    label = "Feature Engineering QA Table",
+    label = "Feature Preparation QA Table",
     source_module = "code_runner",
     object = data.table::data.table(feature = "x", value = 1),
     metadata = list(
       module_id = "code_runner",
-      workflow_stage = "feature_engineering",
+      workflow_stage = "feature_engineering_model_prep",
       custom_code_hook = TRUE
     )
   )
@@ -504,18 +521,18 @@ qa_workflow_external_stage_artifact_counts <- function() {
   ctx$code_runner_state <- list(records = list(), requests = list())
 
   summary <- workflow_state_summary(ctx)
-  feature_row <- summary[stage_id == "feature_engineering"]
+  feature_row <- summary[stage_id == "feature_engineering_model_prep"]
 
   data.table::data.table(
-    check = c("explicit_artifact_stage", "feature_engineering_artifact_count", "code_runner_source_preserved"),
+    check = c("explicit_artifact_stage", "feature_preparation_artifact_count", "code_runner_source_preserved"),
     status = c(
-      if (identical(workflow_stage_for_artifact(artifact), "feature_engineering")) "success" else "error",
+      if (identical(workflow_stage_for_artifact(artifact), "feature_engineering_model_prep")) "success" else "error",
       if (nrow(feature_row) && identical(feature_row$artifact_count[[1]], 1L)) "success" else "error",
       if (identical(artifact$source_module, "code_runner")) "success" else "error"
     ),
     message = c(
       "Workflow summary prefers explicit artifact metadata$workflow_stage when present.",
-      "Feature Engineering counts artifacts created through Code Runner stage hooks.",
+      "Feature Engineering / Model Preparation counts artifacts created through Code Runner stage hooks.",
       "The producing surface remains Code Runner; the workflow stage supplies lifecycle placement."
     )
   )
@@ -523,14 +540,14 @@ qa_workflow_external_stage_artifact_counts <- function() {
 
 qa_workflow_feature_engineering_handoff <- function() {
   run_record <- create_code_tracker_record(
-    run_id = "qa_feature_engineering_run",
-    label = "Feature Engineering custom code",
+    run_id = "qa_feature_preparation_run",
+    label = "Feature Engineering / Model Preparation custom code",
     code = "data.table::data.table(feature = 'x', value = 1)",
     source = "manual",
     status = "success",
     metadata = list(
       custom_code_hook = TRUE,
-      workflow_stage = "feature_engineering",
+      workflow_stage = "feature_engineering_model_prep",
       hook_timing = "standalone"
     )
   )
@@ -544,7 +561,7 @@ qa_workflow_feature_engineering_handoff <- function() {
     check = c("artifact_created", "workflow_stage_metadata", "hook_metadata"),
     status = c(
       if (length(artifacts) == 1L && identical(artifact$artifact_type, "table")) "success" else "error",
-      if (identical(artifact$metadata$workflow_stage, "feature_engineering")) "success" else "error",
+      if (identical(artifact$metadata$workflow_stage, "feature_engineering_model_prep")) "success" else "error",
       if (isTRUE(artifact$metadata$custom_code_hook) && identical(artifact$metadata$hook_timing, "standalone")) "success" else "error"
     ),
     message = c(

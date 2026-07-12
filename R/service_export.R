@@ -88,6 +88,15 @@ validate_export_config <- function(export_dir, export_name) {
     }
 
     normalized_dir <- normalizePath(export_dir, winslash = "/", mustWork = TRUE)
+    if (exists("storage_repo_root", mode = "function") &&
+        exists("path_within_root", mode = "function") &&
+        path_within_root(normalized_dir, storage_repo_root())) {
+      return(service_result(
+        status = "error",
+        errors = "Export directory is inside the application repository and was blocked.",
+        metadata = list(error_code = "EXPORT_INSIDE_REPOSITORY")
+      ))
+    }
     test_file <- tempfile(tmpdir = normalized_dir)
     can_write <- tryCatch({
       writeLines("", con = test_file, useBytes = TRUE)

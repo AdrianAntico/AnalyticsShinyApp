@@ -1,5 +1,11 @@
 server <- function(input, output, session) {
   ctx <- new.env(parent = environment())
+  initial_workspace_result <- load_workspace_state()
+  initial_workspace <- if (identical(initial_workspace_result$status, "success")) {
+    initial_workspace_result$value
+  } else {
+    initial_workspace_result$value %||% list(workspace_state = "workspace_unconfigured")
+  }
 
   ctx$mapping_state <- reactiveValues(values = list())
   ctx$saved_plots <- reactiveValues(
@@ -37,13 +43,40 @@ server <- function(input, output, session) {
     validation = NULL,
     approved_proposal = NULL,
     execution_result = NULL,
+    executed_proposal_ids = character(),
     audit_log = data.table::data.table()
+  )
+  ctx$feature_experiment_state <- reactiveValues(
+    proposals = list(),
+    executions = list(),
+    experiments = list(),
+    adoptions = list()
+  )
+  ctx$analytical_campaign_state <- reactiveValues(
+    campaigns = list()
+  )
+  ctx$genai_delegation_state <- reactiveValues(
+    session_id = genai_delegation_session_id(),
+    grants = list(),
+    selected_delegation_id = NULL
   )
   ctx$genai_preflight_state <- reactiveValues(
     results = list(),
     cancel_requested = FALSE,
     running = FALSE
   )
+  ctx$genai_analysis_run_state <- reactiveValues(
+    jobs = list(),
+    results = list(),
+    cancel_requested = FALSE,
+    running = FALSE,
+    selected_result_id = NULL
+  )
+  ctx$genai_persistence_locks <- list()
+  ctx$workspace_runtime <- reactiveVal(initial_workspace)
+  ctx$workspace_status_result <- reactiveVal(initial_workspace_result)
+  ctx$active_project <- reactiveVal(NULL)
+  ctx$project_lifecycle_state <- reactiveVal("no_project")
 
   ctx$plot_result <- reactiveVal(NULL)
   ctx$plot_error <- reactiveVal(NULL)
@@ -59,13 +92,83 @@ server <- function(input, output, session) {
   ctx$code_runner_message <- reactiveVal("")
   ctx$project_data <- reactiveVal(NULL)
   ctx$project_data_info <- reactiveVal(list(path = NULL, name = NULL))
+  ctx$source_project_data <- reactiveVal(NULL)
+  ctx$source_project_data_info <- reactiveVal(list(path = NULL, name = NULL, source = "source_dataset"))
+  ctx$active_modeling_context <- reactiveVal(modeling_context_from_source())
   ctx$artifact_studio_selected_artifact_id <- reactiveVal(NULL)
   ctx$selected_report_plan_id <- reactiveVal(NULL)
+  ctx$selected_persisted_result_id <- reactiveVal(NULL)
   ctx$genai_config <- reactiveVal(genai_default_config(auto_detect_local = TRUE))
   ctx$genai_last_result <- reactiveVal(NULL)
   ctx$genai_action_policy <- reactiveVal(genai_action_policy("approval_required"))
   ctx$evidence_strategy <- reactiveVal("balanced")
   ctx$evidence_strategy_config <- reactiveVal(evidence_strategy_config("balanced"))
+  ctx$workspace_state <- function() {
+    workspace <- ctx$workspace_runtime()
+    workspace$workspace_state %||% if (identical(ctx$workspace_status_result()$status, "success")) "workspace_ready" else "workspace_unconfigured"
+  }
+  ctx$workspace_ready <- function() {
+    identical(ctx$workspace_status_result()$status, "success")
+  }
+  ctx$project_state_status <- function() {
+    ctx$project_lifecycle_state()
+  }
+  ctx$project_ready <- function() {
+    project <- ctx$active_project()
+    identical(ctx$project_lifecycle_state(), "project_ready") &&
+      is.list(project) &&
+      identical(project$project_state %||% "", "project_ready")
+  }
+  ctx$current_workspace <- function() ctx$workspace_runtime()
+  ctx$current_project <- function() ctx$active_project()
+  ctx$configure_workspace <- function(path, provider_id = "configured_workspace") {
+    result <- configure_workspace_root(path, provider_id = provider_id)
+    ctx$workspace_status_result(result)
+    if (identical(result$status, "success")) {
+      ctx$workspace_runtime(result$value)
+      genai_delegation_revoke_all(ctx, source = "provider_change")
+    } else {
+      ctx$workspace_runtime(result$value %||% list(workspace_state = "workspace_invalid"))
+    }
+    result
+  }
+  ctx$create_project <- function(project_name = "Analytics Project") {
+    if (!ctx$workspace_ready()) {
+      return(storage_error_result(
+        "workspace_unconfigured",
+        "Choose a workspace directory before creating a project.",
+        workspace_state = ctx$workspace_state(),
+        project_state = ctx$project_state_status(),
+        requested_resource_type = "project"
+      ))
+    }
+    result <- create_project_in_workspace(ctx$current_workspace(), project_name)
+    if (identical(result$status, "success")) {
+      ctx$active_project(result$value)
+      ctx$project_lifecycle_state("project_ready")
+      ctx$project_collector_state$collector <- NULL
+      ctx$project_collector_state$restored_summary <- NULL
+      ctx$selected_persisted_result_id(NULL)
+      genai_delegation_revoke_all(ctx, source = "project_change")
+      ctx$set_export_settings(
+        export_dir = project_report_path(result$value, create_dir = TRUE),
+        export_name = safe_path_component(project_name, "analytics_report")
+      )
+    }
+    result
+  }
+  ctx$close_project <- function() {
+    ctx$active_project(NULL)
+    ctx$project_lifecycle_state("no_project")
+    ctx$project_collector_state$collector <- NULL
+    ctx$project_collector_state$restored_summary <- NULL
+    ctx$project_collector_state$last_result <- NULL
+    ctx$project_collector_state$last_run_id <- NULL
+    ctx$selected_persisted_result_id(NULL)
+    genai_delegation_revoke_all(ctx, source = "project_close")
+    ctx$project_message("Project closed. Persistent writes are blocked until a project is opened or created.")
+    TRUE
+  }
   ctx$genai_status <- function(check_availability = FALSE) {
     config <- ctx$genai_config()
     status <- genai_provider_status(config, check_availability = check_availability)
@@ -92,11 +195,35 @@ server <- function(input, output, session) {
   }
   ctx$set_genai_action_proposal <- function(proposal) {
     validation <- genai_validate_action_proposal(proposal, policy = ctx$genai_action_policy(), ctx = ctx)
+    if (exists("genai_record_durable_audit", mode = "function")) {
+      genai_record_durable_audit("proposal_created", proposal, validation = validation, ctx = ctx)
+      if (identical(validation$status, "success")) {
+        genai_record_durable_audit("proposal_validated", proposal, validation = validation, ctx = ctx)
+      } else {
+        genai_record_durable_audit("proposal_rejected", proposal, validation = validation, ctx = ctx)
+      }
+    }
     ctx$genai_action_state$proposal <- proposal
     ctx$genai_action_state$validation <- validation
     ctx$genai_action_state$approved_proposal <- NULL
     ctx$genai_action_state$execution_result <- NULL
     validation
+  }
+  ctx$genai_action_proposal_executed <- function(proposal_id) {
+    proposal_id %in% (ctx$genai_action_state$executed_proposal_ids %||% character())
+  }
+  ctx$mark_genai_action_proposal_executed <- function(proposal_id) {
+    ctx$genai_action_state$executed_proposal_ids <- unique(c(ctx$genai_action_state$executed_proposal_ids %||% character(), proposal_id))
+    TRUE
+  }
+  ctx$genai_delegations <- function(active_only = FALSE) {
+    genai_delegation_list(ctx, active_only = active_only)
+  }
+  ctx$revoke_genai_delegation <- function(delegation_id) {
+    genai_delegation_revoke(ctx, delegation_id, source = "active_user")
+  }
+  ctx$revoke_all_genai_delegations <- function() {
+    genai_delegation_revoke_all(ctx, source = "active_user")
   }
 
   ctx$uploaded_data <- reactive({
@@ -109,7 +236,39 @@ server <- function(input, output, session) {
   ctx$current_data_path <- function() ctx$project_data_info()$path
   ctx$current_data_name <- function() ctx$project_data_info()$name
   ctx$has_upload_or_project_data <- function() !is.null(ctx$project_data())
-  ctx$current_dataset_id <- function() "active_dataset"
+  ctx$current_dataset_id <- function() ctx$active_modeling_context()$active_dataset_id %||% "active_dataset"
+  ctx$current_modeling_context <- function() ctx$active_modeling_context()
+  ctx$persist_project_data_if_needed <- function() {
+    if (!ctx$project_ready()) {
+      return(invisible(NULL))
+    }
+    data <- tryCatch(ctx$project_data(), error = function(e) NULL)
+    source_path <- tryCatch(ctx$current_data_path(), error = function(e) NULL)
+    source_name <- tryCatch(ctx$current_data_name(), error = function(e) NULL) %||% "data.csv"
+    if (is.null(data) && (is.null(source_path) || !file.exists(source_path))) {
+      return(invisible(NULL))
+    }
+    source_available <- !is.null(source_path) && file.exists(source_path)
+    ext <- tolower(tools::file_ext(source_name))
+    ext <- if (nzchar(ext) && isTRUE(source_available)) ext else "csv"
+    data_name <- paste0("data.", ext)
+    target <- project_path(ctx$current_project(), "data", data_name)
+    gate <- persistent_write_gate(ctx$current_workspace(), ctx$current_project(), target, "project_data")
+    if (!identical(gate$status, "success")) {
+      stop(paste(gate$errors, collapse = " "), call. = FALSE)
+    }
+    if (isTRUE(source_available)) {
+      file.copy(source_path, target, overwrite = TRUE)
+    } else {
+      data.table::fwrite(data, target)
+    }
+    previous_info <- ctx$project_data_info() %||% list()
+    ctx$project_data_info(c(
+      previous_info,
+      list(path = storage_normalize_path(target, must_work = TRUE), name = data_name)
+    ))
+    invisible(target)
+  }
   ctx$store_genai_preflight_result <- function(result) {
     result_id <- result$preflight_result_id %||% paste0("preflight_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", sample.int(999999, 1L))
     result$preflight_result_id <- result_id
@@ -127,6 +286,50 @@ server <- function(input, output, session) {
   ctx$genai_preflight_cancel_requested <- function() {
     isTRUE(ctx$genai_preflight_state$cancel_requested)
   }
+  ctx$store_genai_analysis_job <- function(job) {
+    job_id <- job$job_id %||% paste0("job_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", sample.int(999999, 1L))
+    job$job_id <- job_id
+    ctx$genai_analysis_run_state$jobs[[job_id]] <- job
+    job_id
+  }
+  ctx$update_genai_analysis_job <- function(job_id, fields = list()) {
+    job <- ctx$genai_analysis_run_state$jobs[[job_id]] %||% list(job_id = job_id)
+    for (field in names(fields)) {
+      job[[field]] <- fields[[field]]
+    }
+    ctx$genai_analysis_run_state$jobs[[job_id]] <- job
+    job
+  }
+  ctx$store_genai_analysis_result <- function(result) {
+    result_id <- result$temporary_result_id %||% paste0("tmp_result_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", sample.int(999999, 1L))
+    result$temporary_result_id <- result_id
+    ctx$genai_analysis_run_state$results[[result_id]] <- result
+    ctx$genai_analysis_run_state$selected_result_id <- result_id
+    result_id
+  }
+  ctx$mark_genai_analysis_result_persisted <- function(temporary_result_id, persisted_result_id, persisted_project_id) {
+    result <- ctx$genai_analysis_run_state$results[[temporary_result_id]]
+    if (is.null(result)) {
+      return(FALSE)
+    }
+    result$persisted <- TRUE
+    result$persisted_result_id <- persisted_result_id
+    result$persisted_at <- Sys.time()
+    result$persisted_project_id <- persisted_project_id
+    ctx$genai_analysis_run_state$results[[temporary_result_id]] <- result
+    TRUE
+  }
+  ctx$request_genai_analysis_cancel <- function() {
+    ctx$genai_analysis_run_state$cancel_requested <- TRUE
+    TRUE
+  }
+  ctx$reset_genai_analysis_cancel <- function() {
+    ctx$genai_analysis_run_state$cancel_requested <- FALSE
+    TRUE
+  }
+  ctx$genai_analysis_cancel_requested <- function() {
+    isTRUE(ctx$genai_analysis_run_state$cancel_requested)
+  }
   ctx$navigate_to <- function(page) {
     updateTabsetPanel(session, "main_tabs", selected = page)
   }
@@ -139,6 +342,19 @@ server <- function(input, output, session) {
     ctx$selected_report_plan_id(report_id)
     ctx$navigate_to("Layout")
     invisible(TRUE)
+  }
+  ctx$inspect_persisted_result <- function(persisted_result_id) {
+    resolution <- genai_resolve_persisted_result(persisted_result_id, ctx = ctx)
+    if (!identical(resolution$status, "success")) {
+      return(resolution)
+    }
+    ctx$selected_persisted_result_id(resolution$value$persisted_result_id)
+    ctx$navigate_to("Project")
+    service_result(
+      status = "success",
+      value = resolution$value,
+      messages = paste("Selected persisted result:", resolution$value$display_name)
+    )
   }
   ctx$code_tracker_summary <- function() {
     code_tracker_summary(ctx$code_runner_state$records)
@@ -210,23 +426,35 @@ server <- function(input, output, session) {
   ctx$layout_cols_value <- function() 2L
   ctx$get_layout_type <- function() "Grid"
   ctx$set_layout_settings <- function(layout_type = NULL, layout_cols = NULL) invisible(NULL)
-  ctx$get_export_dir <- function() getwd()
+  ctx$get_export_dir <- function() {
+    project <- ctx$active_project()
+    if (ctx$project_ready()) {
+      return(project_report_path(project, create_dir = TRUE))
+    }
+    NULL
+  }
   ctx$get_export_name <- function() "autoplots_report"
   ctx$export_name_value <- function() "autoplots_report"
   ctx$set_export_settings <- function(export_dir = NULL, export_name = NULL) invisible(NULL)
 
   ctx$project_collector_output_dir <- function() {
-    export_dir <- tryCatch(selected_value(ctx$get_export_dir()), error = function(e) NULL)
-    if (is.null(export_dir) || !nzchar(export_dir)) {
-      export_dir <- getwd()
+    if (!ctx$project_ready()) {
+      stop("No project is open. Current analytical results are temporary and cannot be saved until a project is created or opened.", call. = FALSE)
     }
-    file.path(export_dir, "project_artifact_collector")
+    project_path(ctx$active_project(), "collector", create_dir = TRUE)
   }
   ctx$project_collector_project_id <- function() {
+    project <- ctx$active_project()
+    if (is.list(project) && nzchar(project$project_id %||% "")) {
+      return(project$project_id)
+    }
     raw <- ctx$current_data_name() %||% "analytics_project"
     .project_collector_slug(tools::file_path_sans_ext(basename(raw)))
   }
   ctx$ensure_project_collector <- function() {
+    if (!ctx$project_ready()) {
+      stop("No project is open. Current analytical results are temporary and cannot be saved until a project is created or opened.", call. = FALSE)
+    }
     collector <- ctx$project_collector_state$collector
     if (inherits(collector, "project_artifact_collector")) {
       return(collector)
@@ -259,7 +487,19 @@ server <- function(input, output, session) {
     }), use.names = FALSE))
   }
   ctx$append_module_result_to_collector <- function(result, module_id, run_id = NULL, record_skipped = TRUE) {
-    collector <- ctx$ensure_project_collector()
+    collector <- tryCatch(ctx$ensure_project_collector(), error = function(e) e)
+    if (inherits(collector, "error")) {
+      blocked <- storage_error_result(
+        "project_required",
+        conditionMessage(collector),
+        workspace_state = ctx$workspace_state(),
+        project_state = ctx$project_state_status(),
+        requested_resource_type = "collector"
+      )
+      ctx$project_collector_state$last_result <- blocked
+      ctx$project_collector_state$message <- service_result_message(blocked)
+      return(blocked)
+    }
     module_id <- normalize_module_id(module_id)
     module <- get_module_definition(module_id)
     run_id <- run_id %||% ctx$next_project_run_id()
@@ -401,6 +641,93 @@ server <- function(input, output, session) {
 
   ctx$all_artifacts <- function() {
     c(ctx$plot_artifacts(), ctx$module_artifacts(), ctx$text_artifacts(), ctx$table_artifacts())
+  }
+
+  ctx$activate_prepared_dataset_artifact <- function(artifact_id) {
+    artifacts <- ctx$all_artifacts()
+    artifact <- artifacts[[artifact_id]]
+    if (is.null(artifact)) {
+      return(service_result(
+        status = "error",
+        errors = sprintf("Prepared dataset artifact '%s' was not found.", artifact_id),
+        metadata = list(
+          error_code = "PREPARED_DATASET_ARTIFACT_NOT_FOUND",
+          artifact_id = artifact_id
+        )
+      ))
+    }
+
+    current_data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
+    current_info <- tryCatch(ctx$project_data_info(), error = function(e) list())
+    current_context <- tryCatch(ctx$active_modeling_context(), error = function(e) NULL)
+    if (!identical((current_context %||% list())$active_dataset_source, "prepared_artifact") &&
+        !is.null(current_data)) {
+      ctx$source_project_data(data.table::as.data.table(data.table::copy(current_data)))
+      ctx$source_project_data_info(c(
+        current_info,
+        list(source = "source_dataset")
+      ))
+    }
+
+    activation <- prepared_dataset_activation_result(
+      artifact,
+      current_dataset_name = tryCatch(ctx$current_data_name(), error = function(e) NULL)
+    )
+    if (!identical(activation$status, "success")) {
+      return(activation)
+    }
+
+    ctx$project_data(activation$value$data)
+    ctx$project_data_info(activation$value$data_info)
+    ctx$active_modeling_context(modeling_context_from_prepared_activation(
+      artifact = artifact,
+      activation = activation,
+      source_info = ctx$source_project_data_info(),
+      project = ctx$current_project()
+    ))
+    ctx$project_message(service_result_message(activation))
+    activation
+  }
+
+  ctx$revert_to_source_dataset <- function() {
+    data <- ctx$source_project_data()
+    info <- ctx$source_project_data_info()
+    if (is.null(data)) {
+      source_path <- info$path %||% NULL
+      if (!is.null(source_path) && file.exists(source_path)) {
+        data <- read_dataset_file(source_path, name = info$name %||% source_path)
+      }
+    }
+    if (is.null(data)) {
+      return(service_result(
+        status = "error",
+        errors = "The original source dataset is not available in this session. Reload the project source data to revert.",
+        metadata = list(error_code = "SOURCE_DATASET_UNAVAILABLE")
+      ))
+    }
+    ctx$project_data(data.table::as.data.table(data.table::copy(data)))
+    ctx$project_data_info(c(info, list(source = "source_dataset")))
+    ctx$active_modeling_context(modeling_context_from_source(
+      data = data,
+      data_info = info,
+      project = ctx$current_project()
+    ))
+    result <- service_result(
+      status = "success",
+      messages = sprintf("Reverted active modeling dataset to '%s'.", info$name %||% "Source Dataset"),
+      metadata = list(active_dataset_source = "source_dataset")
+    )
+    ctx$project_message(service_result_message(result))
+    result
+  }
+
+  ctx$validate_active_modeling_context <- function() {
+    validate_modeling_context(
+      ctx$active_modeling_context(),
+      artifacts = ctx$all_artifacts(),
+      data = tryCatch(ctx$uploaded_data(), error = function(e) NULL),
+      project_id = (ctx$current_project() %||% list())$project_id %||% NULL
+    )
   }
 
   ctx$combined_artifact_summary <- function() {
@@ -830,12 +1157,26 @@ server <- function(input, output, session) {
 
   ctx$current_project_state <- function() {
     data_path <- ctx$current_data_path()
+    project <- ctx$active_project()
     list(
       app_version = APP_VERSION,
       saved_at = Sys.time(),
+      project_metadata = project,
+      workspace_root = ctx$current_workspace()$workspace_root %||% NA_character_,
       data_path = data_path,
       data_name = ctx$current_data_name(),
       original_data_path = data_path,
+      active_modeling_context = ctx$active_modeling_context(),
+      feature_experiment_state = list(
+        proposals = ctx$feature_experiment_state$proposals,
+        executions = ctx$feature_experiment_state$executions,
+        experiments = ctx$feature_experiment_state$experiments,
+        adoptions = ctx$feature_experiment_state$adoptions
+      ),
+      analytical_campaign_state = list(
+        campaigns = ctx$analytical_campaign_state$campaigns
+      ),
+      source_data_info = ctx$source_project_data_info(),
       plot_configs = ctx$saved_plots$configs,
       plot_code = ctx$saved_plots$code,
       plot_metadata = ctx$saved_plots$metadata,
@@ -899,7 +1240,7 @@ server <- function(input, output, session) {
     failures
   }
 
-  ctx$load_project_state <- function(project_state, preferred_data_path = NULL, export_dir_override = NULL) {
+  ctx$load_project_state <- function(project_state, preferred_data_path = NULL, export_dir_override = NULL, active_project = NULL) {
     validation <- validate_project_state(project_state)
     if (!isTRUE(validation$valid)) {
       stop(paste(validation$errors, collapse = " "), call. = FALSE)
@@ -907,6 +1248,20 @@ server <- function(input, output, session) {
 
     project_state <- validation$repaired_state
     messages <- validation$warnings
+    if (!is.null(active_project)) {
+      ctx$active_project(active_project)
+      ctx$project_lifecycle_state("project_ready")
+      genai_delegation_revoke_all(ctx, source = "project_load")
+    } else if (is.list(project_state$project_metadata) &&
+               identical(project_state$project_metadata$project_state %||% "", "project_ready")) {
+      root_validation <- validate_project_root(project_state$project_metadata$project_root, create = FALSE)
+      if (!identical(root_validation$status, "success")) {
+        stop(paste(root_validation$errors, collapse = " "), call. = FALSE)
+      }
+      ctx$active_project(project_state$project_metadata)
+      ctx$project_lifecycle_state("project_ready")
+      genai_delegation_revoke_all(ctx, source = "project_load")
+    }
 
     if (!is.null(preferred_data_path) && file.exists(preferred_data_path)) {
       project_state$data_path <- preferred_data_path
@@ -915,6 +1270,8 @@ server <- function(input, output, session) {
 
     if (!is.null(export_dir_override)) {
       project_state$export_dir <- export_dir_override
+    } else if (isTRUE(ctx$project_ready())) {
+      project_state$export_dir <- project_report_path(ctx$current_project(), create_dir = TRUE)
     }
 
     ctx$saved_plots$configs <- project_state$plot_configs
@@ -947,7 +1304,22 @@ server <- function(input, output, session) {
     ctx$project_data(NULL)
     ctx$project_data_info(list(
       path = project_state$data_path,
-      name = project_state$data_name
+      name = project_state$data_name,
+      source = (project_state$active_modeling_context %||% list())$active_dataset_source %||% "source_dataset"
+    ))
+    ctx$source_project_data(NULL)
+    ctx$source_project_data_info(project_state$source_data_info %||% list(path = project_state$original_data_path %||% project_state$data_path, name = project_state$data_name, source = "source_dataset"))
+    feature_state <- project_state$feature_experiment_state %||% list()
+    ctx$feature_experiment_state$proposals <- feature_state$proposals %||% list()
+    ctx$feature_experiment_state$executions <- feature_state$executions %||% list()
+    ctx$feature_experiment_state$experiments <- feature_state$experiments %||% list()
+    ctx$feature_experiment_state$adoptions <- feature_state$adoptions %||% list()
+    campaign_state <- project_state$analytical_campaign_state %||% list()
+    ctx$analytical_campaign_state$campaigns <- campaign_state$campaigns %||% list()
+    ctx$active_modeling_context(project_state$active_modeling_context %||% modeling_context_from_source(
+      data = NULL,
+      data_info = list(path = project_state$data_path, name = project_state$data_name),
+      project = ctx$current_project()
     ))
 
     restored_collector <- project_state$project_collector %||% NULL
@@ -986,6 +1358,13 @@ server <- function(input, output, session) {
       ctx$saved_plots$metadata <- project_state$plot_metadata
       messages <- c(messages, data_validation$warnings)
       ctx$project_data(data)
+      if (!identical((ctx$active_modeling_context() %||% list())$active_dataset_source, "prepared_artifact")) {
+        ctx$active_modeling_context(modeling_context_from_source(
+          data = data,
+          data_info = ctx$project_data_info(),
+          project = ctx$current_project()
+        ))
+      }
       failures <- ctx$rebuild_saved_plots(data)
       if (length(failures)) {
         messages <- c(

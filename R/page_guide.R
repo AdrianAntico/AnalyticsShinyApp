@@ -98,7 +98,7 @@ guide_recommendation <- function(state) {
       title = "Start with a project",
       action = "Load data or open an existing project.",
       reason = "No project state is loaded, so the workstation has no evidence, collector memory, or Knowledge State to reason over.",
-      benefit = "Creates the project context needed for EDA, Model Readiness, artifacts, and recommendations.",
+      benefit = "Creates the project context needed for Explore Data, Model Readiness, artifacts, and recommendations.",
       cost = "Low",
       confidence = "High",
       target = "Project"
@@ -119,9 +119,9 @@ guide_recommendation <- function(state) {
 
   if (!is.null(state$data) && state$artifact_count == 0L) {
     return(list(
-      title = "Run EDA",
-      action = "Generate foundational EDA artifacts.",
-      reason = "Data are loaded, but no foundational evidence exists yet. EDA establishes distributions, missingness, correlations, and early diagnostics.",
+      title = "Run Explore Data",
+      action = "Generate foundational Explore Data artifacts.",
+      reason = "Data are loaded, but no foundational evidence exists yet. Explore Data establishes distributions, missingness, correlations, and early diagnostics.",
       benefit = "Creates the first evidence layer for the project.",
       cost = "Low",
       confidence = "High",
@@ -517,7 +517,7 @@ qa_guide_page <- function() {
       if (!isTRUE(empty_state$project_exists) && identical(empty_state$decision_readiness, "Insufficient Evidence")) "success" else "error",
       if (isTRUE(loaded_state$project_exists) && identical(loaded_state$project_name, "Demo Project")) "success" else "error",
       if (identical(empty_rec$title, "Start with a project")) "success" else "error",
-      if (identical(loaded_rec$title, "Run EDA")) "success" else "error",
+      if (identical(loaded_rec$title, "Run Explore Data")) "success" else "error",
       if (identical(artifact_rec$title, "Run Model Readiness")) "success" else "error",
       if (grepl("Recommended Next Step", panel_text, fixed = TRUE)) "success" else "error",
       if (regexpr("page_guide_ui", app_ui_text, fixed = TRUE)[[1]] > 0L && regexpr("page_guide_ui", app_ui_text, fixed = TRUE)[[1]] < regexpr("page_mission_control_ui", app_ui_text, fixed = TRUE)[[1]]) "success" else "error",
@@ -530,7 +530,7 @@ qa_guide_page <- function() {
       "No-project state degrades gracefully.",
       "Loaded project state is summarized.",
       "No-project recommendation asks user to start with project context.",
-      "Loaded data without artifacts recommends EDA.",
+      "Loaded data without artifacts recommends Explore Data.",
       "Artifacts without readiness recommend Model Readiness.",
       "Recommendation panel renders.",
       "Guide is registered before Mission Control as the default landing tab.",

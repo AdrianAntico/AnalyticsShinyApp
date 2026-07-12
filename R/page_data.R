@@ -46,6 +46,14 @@ page_data_ui <- function(id) {
 page_data_server <- function(id, ctx) {
   moduleServer(id, function(input, output, session) {
     ctx$uploaded_data <- reactive({
+      project_info <- ctx$project_data_info()
+      if (identical(project_info$source, "prepared_artifact")) {
+        data <- ctx$project_data()
+        if (!is.null(data)) {
+          return(data)
+        }
+      }
+
       if (is.null(input$csv_file)) {
         data <- ctx$project_data()
         if (!is.null(data)) {
@@ -70,19 +78,29 @@ page_data_server <- function(id, ctx) {
     })
 
     ctx$current_data_path <- function() {
+      project_info <- ctx$project_data_info()
+      if (identical(project_info$source, "prepared_artifact")) {
+        return(project_info$path)
+      }
+
       if (!is.null(input$csv_file$datapath)) {
         return(input$csv_file$datapath)
       }
 
-      ctx$project_data_info()$path
+      project_info$path
     }
 
     ctx$current_data_name <- function() {
+      project_info <- ctx$project_data_info()
+      if (identical(project_info$source, "prepared_artifact")) {
+        return(project_info$name)
+      }
+
       if (!is.null(input$csv_file$name)) {
         return(input$csv_file$name)
       }
 
-      ctx$project_data_info()$name
+      project_info$name
     }
 
     ctx$has_upload_or_project_data <- function() {

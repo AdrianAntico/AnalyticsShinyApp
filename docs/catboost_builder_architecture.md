@@ -70,6 +70,20 @@ V1 should collect a bounded configuration:
 - whether to compute SHAP columns
 - whether to produce scored train, test, and/or full data
 
+## Active Modeling Context
+
+CatBoost Builder consumes the trusted active dataset from the app, but the active dataset is now accompanied by `modeling_context_v1` metadata. The context records whether the data is the original source dataset or an explicitly activated prepared dataset artifact.
+
+CatBoost Builder records the context in:
+
+- module run metadata
+- configured input metadata
+- downstream handoff metadata
+- active dataset artifact id fields
+- feature manifest fields
+
+This preserves the exact dataset and feature lineage for historical model results. Changing or reverting the active modeling context later does not rewrite previous CatBoost results.
+
 The CatBoost parameter set should stay intentionally small in v1. Suggested controls:
 
 - `task_type`: CPU/GPU

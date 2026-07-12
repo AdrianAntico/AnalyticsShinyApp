@@ -52,7 +52,8 @@ normalize_catboost_builder_config <- function(config = list()) {
     compute_shap = isTRUE(config$compute_shap),
     include_plots = isTRUE(config$include_plots %||% TRUE),
     top_n = as.integer(config$top_n %||% 20L),
-    data_name = config$data_name %||% "Uploaded Data"
+    data_name = config$data_name %||% "Uploaded Data",
+    modeling_context = config$modeling_context %||% NULL
   )
 }
 
@@ -530,6 +531,9 @@ create_catboost_handoff <- function(
     ByVars = ByVars,
     shap_prefix = shap_prefix,
     shap_cols = shap_cols,
+    modeling_context = config$modeling_context %||% NULL,
+    active_dataset_artifact_id = (config$modeling_context %||% list())$active_dataset_artifact_id %||% NA_character_,
+    active_dataset_source = (config$modeling_context %||% list())$active_dataset_source %||% "source_dataset",
     available_downstream_modules = character(),
     recommended_configs = list()
   )
@@ -911,6 +915,10 @@ run_autoquant_catboost_builder <- function(data, config) {
         catboost_handoff = catboost_handoff,
         available_downstream_modules = catboost_handoff$available_downstream_modules,
         recommended_downstream_configs = catboost_handoff$recommended_configs,
+        modeling_context = config$modeling_context,
+        active_dataset_artifact_id = (config$modeling_context %||% list())$active_dataset_artifact_id %||% NA_character_,
+        active_dataset_source = (config$modeling_context %||% list())$active_dataset_source %||% "source_dataset",
+        feature_manifest = config$feature_cols,
         autoquant_metadata = result$metadata %||% list()
       )
     ),
@@ -945,6 +953,14 @@ qa_autoquant_catboost_builder_integration <- function() {
 
   binary_data <- data.table::copy(regression_data)
   binary_data[, Target := ifelse(Revenue > stats::median(Revenue), "Yes", "No")]
+  qa_modeling_context <- new_modeling_context(
+    project_id = "catboost_qa_project",
+    active_dataset_source = "prepared_artifact",
+    active_dataset_label = "QA Prepared Dataset",
+    active_dataset_artifact_id = "qa_prepared_dataset",
+    feature_manifest = names(regression_data),
+    lineage_summary = "QA prepared dataset is active."
+  )
 
   regression_result <- run_autoquant_catboost_builder(
     regression_data,
@@ -959,7 +975,8 @@ qa_autoquant_catboost_builder_integration <- function() {
       depth = 4L,
       compute_shap = TRUE,
       include_plots = TRUE,
-      top_n = 5L
+      top_n = 5L,
+      modeling_context = qa_modeling_context
     )
   )
   binary_result <- run_autoquant_catboost_builder(
@@ -977,7 +994,8 @@ qa_autoquant_catboost_builder_integration <- function() {
       threshold = 0.5,
       compute_shap = TRUE,
       include_plots = TRUE,
-      top_n = 5L
+      top_n = 5L,
+      modeling_context = qa_modeling_context
     )
   )
 
@@ -1010,7 +1028,9 @@ qa_autoquant_catboost_builder_integration <- function() {
         "scored_data",
         "predict_col",
         "residual_or_class_col",
-        "downstream_handoff"
+        "downstream_handoff",
+        "modeling_context_recorded",
+        "feature_manifest_recorded"
       )),
       status = c(
         result$status,
@@ -1021,7 +1041,10 @@ qa_autoquant_catboost_builder_integration <- function() {
         if ("Predict" %in% scored_cols) "success" else "error",
         if ((identical(expected_problem_type, "regression") && "residual" %in% scored_cols) ||
             (identical(expected_problem_type, "binary") && "PredictedClass" %in% scored_cols)) "success" else "error",
-        if (identical(result$metadata$downstream_handoff$problem_type, expected_problem_type)) "success" else "error"
+        if (identical(result$metadata$downstream_handoff$problem_type, expected_problem_type)) "success" else "error",
+        if (identical(result$metadata$active_dataset_artifact_id, "qa_prepared_dataset") &&
+            identical(result$metadata$catboost_handoff$active_dataset_artifact_id, "qa_prepared_dataset")) "success" else "error",
+        if (identical(result$metadata$feature_manifest, result$metadata$configured_inputs$feature_cols)) "success" else "error"
       ),
       message = c(
         service_result_message(result),
@@ -1031,7 +1054,9 @@ qa_autoquant_catboost_builder_integration <- function() {
         paste("Scored rows:", if (is.null(scored_data)) 0L else nrow(scored_data)),
         "Predict column is preserved in scored output.",
         if (identical(expected_problem_type, "regression")) "Regression residual column is preserved." else "Binary PredictedClass column is preserved.",
-        "Downstream handoff metadata is preserved."
+        "Downstream handoff metadata is preserved.",
+        "CatBoost result and handoff record the active prepared dataset artifact id.",
+        "CatBoost result records the exact feature manifest used for training."
       )
     )
   }

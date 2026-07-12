@@ -1,0 +1,1481 @@
+schema_version: technical_debt_v1
+
+items:
+  - debt_id: TD-GENAI-001
+    title: Synchronous Shiny-process execution
+    category: technical_debt
+    status: resolved
+    severity: high
+    introduced_phase: 4
+    last_reviewed_phase: 12
+    resolved_phase: 12
+    affected_components:
+      - analysis.preflight
+      - analysis.run_registered
+      - Shiny server session
+    description: >
+      GenAI-approved computational actions execute synchronously inside the
+      active Shiny R process.
+    rationale: >
+      This was acceptable for bounded prototype modules, but it constrains
+      long-running modules, UI responsiveness, hard cancellation, and future
+      multi-user deployments.
+    current_mitigation:
+      - bounded execution profiles
+      - row and column limits
+      - short timeout checks
+      - no training or artifact generation in temporary execution
+    resolution_trigger: >
+      Must be addressed before enabling long-running registered analysis,
+      delegated computation, or modules with indivisible expensive stages.
+    acceptance_criteria:
+      - registered analysis execution can run in an isolated worker
+      - the UI remains responsive while execution runs
+      - worker failure is captured without crashing the app
+      - audit records distinguish worker failure from handler failure
+    blocks:
+      - long-running registered modules
+      - delegated computation
+      - robust multi-user execution
+    intentional_for_now: false
+    source_refs:
+      - docs/architecture/genai_action_layer.md
+      - docs/async_processing_architecture.md
+    owner: null
+    target_phase: null
+    resolution_summary: >
+      Phase 12 introduced project-scoped isolated worker execution through
+      callr for analysis.run_registered handlers dataset_profile,
+      model_assessment_regression, and model_assessment_binary. Legacy
+      no-project compatibility remains synchronous and is intentionally
+      excluded from durable job recovery.
+    notes: Phase 12 QA verified isolated execution for the three enabled handlers through qa_genai_isolated_execution() and qa_genai_action_layer().
+
+  - debt_id: TD-GENAI-002
+    title: Cooperative cancellation only
+    category: technical_debt
+    status: resolved
+    severity: medium
+    introduced_phase: 4
+    last_reviewed_phase: 12
+    resolved_phase: 12
+    affected_components:
+      - analysis.preflight
+      - analysis.run_registered
+    description: >
+      Cancellation is observed only between bounded stages. It cannot interrupt
+      a running indivisible operation.
+    rationale: >
+      Cooperative cancellation is easy to reason about for bounded handlers but
+      is insufficient for slow model execution, network calls, rendering, or
+      external package operations that cannot yield control.
+    current_mitigation:
+      - staged handlers
+      - cancellation flags
+      - timeout checks
+      - bounded module allowlist
+    resolution_trigger: >
+      Must be addressed before enabling modules whose single execution stage can
+      materially exceed the action timeout.
+    acceptance_criteria:
+      - cancellation can terminate an isolated worker
+      - partial temporary state is cleaned safely
+      - terminal audit events identify hard cancellation
+      - user-facing job status remains inspectable
+    blocks:
+      - long-running model execution
+      - autonomous execution modes
+    intentional_for_now: false
+    source_refs:
+      - docs/architecture/genai_action_layer.md
+      - docs/async_processing_architecture.md
+    owner: null
+    target_phase: null
+    resolution_summary: >
+      Phase 12 added hard cancellation for project-scoped isolated registered
+      analysis jobs. Cancelling an isolated job terminates the worker process,
+      removes incomplete handoff output, marks the job cancelled, and leaves no
+      temporary result.
+    notes: Legacy no-project synchronous compatibility can still use cooperative checks, but the canonical project-scoped execution path supports hard cancellation.
+
+  - debt_id: TD-GENAI-003
+    title: Oversized GenAI action layer file
+    category: technical_debt
+    status: open
+    severity: medium
+    introduced_phase: 5
+    last_reviewed_phase: 12
+    affected_components:
+      - R/genai_actions.R
+    description: >
+      R/genai_actions.R contains action registry definitions, proposal parsing,
+      policy validation, resource resolution, execution, temporary-result
+      contracts, persistence handoff, result inspection, module-specific
+      preflight, module-specific execution, QA, and UI helpers.
+    rationale: >
+      Keeping the first vertical slices together reduced integration risk, but
+      the file is now large enough to slow review and make ownership boundaries
+      less obvious.
+    current_mitigation:
+      - extensive QA coverage
+      - stable action registry
+      - explicit future decomposition recommendation
+      - targeted result/mode contracts extracted to R/genai_result_contracts.R
+    resolution_trigger: >
+      Split before adding a third executable module or materially changing
+      persistence/audit behavior.
+    acceptance_criteria:
+      - registry/proposal/policy/execution/result modules are separated
+      - public function names remain stable
+      - existing GenAI action QA remains green
+      - no behavior changes are introduced by extraction
+    blocks:
+      - rapid module onboarding
+      - low-risk code review
+    intentional_for_now: true
+    source_refs:
+      - R/genai_actions.R
+      - docs/architecture/genai_action_layer.md
+    owner: null
+    target_phase: null
+    notes: Phase 12 kept worker orchestration outside R/genai_actions.R by adding R/genai_worker_contracts.R, R/genai_worker_runtime.R, and R/genai_job_manager.R. The action layer still owns proposal policy, execution normalization, persistence, UI helpers, and broad QA. Suggested future files include R/genai_action_registry.R, R/genai_action_proposals.R, R/genai_action_policy.R, R/genai_action_execution.R, R/genai_action_results.R, R/genai_action_persistence.R, and R/genai_action_modules.R.
+
+  - debt_id: TD-GENAI-004
+    title: Duplicated result-type branching
+    category: technical_debt
+    status: open
+    severity: low
+    introduced_phase: 10
+    last_reviewed_phase: 11
+    affected_components:
+      - temporary result validation
+      - result persistence
+      - persisted result browser
+      - GenAI safe summaries
+    description: >
+      Dataset-profile and model-assessment result handling share similar
+      branching across validation, fingerprints, persistence serialization,
+      browser rendering, and summaries.
+    rationale: >
+      Explicit branches were safer for the second module, but additional result
+      types will make the duplication harder to audit.
+    current_mitigation:
+      - supported result-type allowlist
+      - output contract versions
+      - result-type QA
+      - result-type descriptors in R/genai_result_contracts.R
+      - model_assessment mode descriptors in R/genai_result_contracts.R
+    resolution_trigger: >
+      Must be addressed before adding a third executable module or adding
+      module-specific browser/render behavior that cannot use descriptors.
+    acceptance_criteria:
+      - result-type descriptors define required components centrally
+      - validation, serialization, summary, and browser behavior share the descriptor
+      - existing result bundles remain readable
+    blocks:
+      - scalable result-type onboarding
+    intentional_for_now: true
+    source_refs:
+      - R/genai_actions.R
+      - R/storage_architecture.R
+      - R/page_project.R
+    owner: null
+    target_phase: null
+    notes: Phase 11 added a targeted registry for dataset_profile, model_assessment_regression, and model_assessment_binary. Required fields, output contracts, supported types, and model-assessment mode/result mappings now route through descriptors. Some duplication remains in serialization, browser rendering, and QA setup.
+
+  - debt_id: TD-GENAI-005
+    title: Module-specific preflight logic is not yet abstracted
+    category: technical_debt
+    status: open
+    severity: medium
+    introduced_phase: 10
+    last_reviewed_phase: 10.5
+    affected_components:
+      - dataset_profile preflight
+      - model_assessment regression preflight
+      - module registry role metadata
+    description: >
+      Model-assessment regression preflight is implemented as a dedicated
+      handler rather than through a general role-aware preflight grammar.
+    rationale: >
+      Dedicated code was safer for the first scored-output slice, but future
+      modules will need shared role, type, sufficiency, and problem-type checks.
+    current_mitigation:
+      - module registry role metadata
+      - explicit configuration snapshot validation
+      - focused QA for the second module
+    resolution_trigger: >
+      Must be addressed before adding several modules with overlapping
+      role/type/sufficiency checks.
+    acceptance_criteria:
+      - reusable preflight check builders exist
+      - module-specific checks can compose shared checks
+      - existing model-assessment preflight output remains compatible
+    blocks:
+      - low-risk module onboarding
+    intentional_for_now: true
+    source_refs:
+      - R/genai_actions.R
+      - R/registry_modules.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-GENAI-006
+    title: Hosted worker process availability
+    category: technical_debt
+    status: open
+    severity: medium
+    introduced_phase: 12
+    last_reviewed_phase: 12
+    affected_components:
+      - GenAI isolated execution
+      - callr worker backend
+      - hosted Shiny deployments
+    description: >
+      Phase 12 uses callr child R processes for project-scoped isolated
+      analysis execution. Some hosted Shiny environments may disallow child
+      process creation or process termination.
+    rationale: >
+      callr gives the local workstation reliable Windows process handles and
+      hard cancellation. Hosted deployments need an environment-specific
+      worker policy before isolated execution can be assumed available.
+    current_mitigation:
+      - backend availability check
+      - app startup does not require callr
+      - isolated execution reports unavailable when backend packages are missing
+      - legacy no-project synchronous compatibility remains narrow
+    resolution_trigger: >
+      Must be addressed before supporting hosted deployments where child R
+      process creation is unavailable or administratively restricted.
+    acceptance_criteria:
+      - hosted worker capability detection exists
+      - unsupported hosted deployments degrade clearly
+      - an approved hosted-safe worker backend or queue is available
+      - hard cancellation semantics are preserved or explicitly downgraded
+    blocks:
+      - hosted isolated execution guarantees
+      - multi-user hosted GenAI computation
+    intentional_for_now: true
+    source_refs:
+      - R/genai_job_manager.R
+      - docs/architecture/genai_job_execution.md
+    owner: null
+    target_phase: null
+    notes: Local Windows callr execution is validated in Phase 12 QA. This item tracks deployment portability, not local correctness.
+
+  - debt_id: TD-STORAGE-001
+    title: No cross-process project locking
+    category: technical_debt
+    status: open
+    severity: high
+    introduced_phase: 6
+    last_reviewed_phase: 10.5
+    affected_components:
+      - project storage
+      - result persistence
+      - collector writes
+    description: >
+      Project writes are guarded by path validation and staged commits, but
+      there is no cross-process project lock.
+    rationale: >
+      Single-session local usage can tolerate this initially. Multi-session or
+      hosted deployments need conflict prevention.
+    current_mitigation:
+      - project-root validation
+      - staged same-project writes
+      - content hashes
+      - idempotency keys for result persistence
+    resolution_trigger: >
+      Must be addressed before supporting concurrent writers to the same
+      project or hosted multi-user project sharing.
+    acceptance_criteria:
+      - project-level write lock exists
+      - lock acquisition failures are reported clearly
+      - stale locks are recoverable
+      - lock behavior is covered by QA
+    blocks:
+      - multi-user project editing
+      - concurrent project writes
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/workspace_project_storage.md
+      - R/storage_architecture.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-STORAGE-002
+    title: No cross-process persistence locking
+    category: technical_debt
+    status: open
+    severity: medium
+    introduced_phase: 6
+    last_reviewed_phase: 10.5
+    affected_components:
+      - result.persist
+      - project/results
+    description: >
+      Result persistence uses staged writes and idempotency but not a
+      cross-process lock specific to the result root.
+    rationale: >
+      Atomic commit and idempotency reduce duplicate writes in a single process,
+      but do not fully govern concurrent app processes.
+    current_mitigation:
+      - atomic directory commit
+      - manifest health checks
+      - idempotency keys
+      - invalid bundle quarantine by discovery
+    resolution_trigger: >
+      Must be addressed before concurrent GenAI persistence can target the same
+      project from multiple sessions.
+    acceptance_criteria:
+      - result-root lock exists
+      - duplicate creation is prevented across processes
+      - lock failures produce structured errors
+    blocks:
+      - concurrent persistence
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/workspace_project_storage.md
+      - R/storage_architecture.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-AUDIT-001
+    title: No cross-process audit locking
+    category: technical_debt
+    status: open
+    severity: medium
+    introduced_phase: 8
+    last_reviewed_phase: 10.5
+    affected_components:
+      - durable GenAI action audit ledger
+      - logs/genai_actions/events.ndjson
+    description: >
+      The audit ledger appends events and chains hashes, but does not yet use a
+      cross-process append lock.
+    rationale: >
+      Single-process append is sufficient for local development. Multiple
+      writers could interleave event writes or checkpoint updates.
+    current_mitigation:
+      - append-only NDJSON
+      - hash-chain validation
+      - checkpoint regeneration
+      - reconciliation health states
+    resolution_trigger: >
+      Must be addressed before multiple app processes can write to the same
+      project audit ledger.
+    acceptance_criteria:
+      - ledger append lock exists
+      - concurrent append test passes
+      - checkpoint writes remain consistent
+      - hash-chain QA covers interleaving
+    blocks:
+      - multi-process audit writing
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_audit_ledger.md
+      - R/genai_audit_ledger.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-AUDIT-002
+    title: Audit reconciliation focuses on persisted results
+    category: technical_debt
+    status: open
+    severity: low
+    introduced_phase: 8
+    last_reviewed_phase: 10.5
+    affected_components:
+      - audit reconciliation
+      - Project page
+      - result.persist
+    description: >
+      Reconciliation is strongest for persisted-result commits and does not yet
+      fully reconcile every possible proposal lifecycle event.
+    rationale: >
+      Persisted results were the first durable mutation. UI-only lifecycle
+      reconciliation can be added later without changing safety boundaries.
+    current_mitigation:
+      - project-scoped audit events
+      - persisted-result reconciliation
+      - ledger health checks
+    resolution_trigger: >
+      Expand when UI action history becomes a user-facing governance surface.
+    acceptance_criteria:
+      - proposal, validation, approval, execution, and terminal events reconcile
+      - UI-only action discrepancies are classified
+      - Project page displays reconciliation scope
+    blocks:
+      - full governance timeline
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_audit_ledger.md
+      - R/genai_audit_ledger.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-AUDIT-003
+    title: Proposal lifecycle events are not emitted from every UI surface
+    category: technical_debt
+    status: open
+    severity: low
+    introduced_phase: 8
+    last_reviewed_phase: 10.5
+    affected_components:
+      - GenAI action proposal UI
+      - durable audit ledger
+      - session audit
+    description: >
+      Durable audit currently emphasizes approved project-scoped action
+      execution and persistence events. Some proposal lifecycle states remain
+      session-local or implicit.
+    rationale: >
+      The initial audit ledger focused on durable mutation safety. Full proposal
+      history can be added after UX flows stabilize.
+    current_mitigation:
+      - session audit
+      - durable approval and execution events for eligible actions
+      - action QA
+    resolution_trigger: >
+      Add before audit history is presented as a complete compliance ledger.
+    acceptance_criteria:
+      - all proposal lifecycle events have durable event types
+      - rejected and expired proposals can be audited
+      - documentation states the ledger coverage clearly
+    blocks:
+      - compliance-style action history
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_audit_ledger.md
+      - docs/architecture/genai_action_layer.md
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-RESULT-001
+    title: Temporary results are session-local
+    category: technical_debt
+    status: open
+    severity: medium
+    introduced_phase: 5
+    last_reviewed_phase: 10.5
+    affected_components:
+      - analysis.run_registered
+      - result.persist
+      - temporary result store
+    description: >
+      Temporary analysis results live in Shiny session memory until explicitly
+      persisted. They are not durable across restart.
+    rationale: >
+      Session-local results preserve the separation between computation and
+      persistence. They also reduce accidental durable writes.
+    current_mitigation:
+      - explicit result.persist action
+      - temporary result expiration
+      - project continuity checks
+    resolution_trigger: >
+      Revisit if long-running or expensive temporary computations should survive
+      browser refresh before approval.
+    acceptance_criteria:
+      - recoverable temporary job/result store exists
+      - recovery does not bypass approval
+      - expired and orphaned records are cleaned safely
+    blocks:
+      - restart recovery for unpersisted GenAI computations
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_layer.md
+      - R/app_server.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-RESULT-002
+    title: No durable temporary-job recovery
+    category: technical_debt
+    status: resolved
+    severity: medium
+    introduced_phase: 5
+    last_reviewed_phase: 12
+    resolved_phase: 12
+    affected_components:
+      - GenAI temporary jobs
+      - analysis.run_registered
+      - Mission Control job status
+    description: >
+      Registered-analysis job state is session-local and not reconstructed after
+      restart.
+    rationale: >
+      Initial temporary jobs are bounded and cheap enough to rerun. More
+      expensive future jobs may need durable recovery.
+    current_mitigation:
+      - bounded handlers
+      - explicit persisted-result path
+      - clear session-local documentation
+    resolution_trigger: >
+      Must be addressed before expensive computations or async execution become
+      standard registered actions.
+    acceptance_criteria:
+      - job records are persisted safely
+      - restart can classify running/completed/failed jobs
+      - no job can resume without policy validation
+    blocks:
+      - durable job history
+      - robust async recovery
+    intentional_for_now: false
+    source_refs:
+      - docs/architecture/genai_action_layer.md
+      - docs/async_processing_architecture.md
+    owner: null
+    target_phase: null
+    resolution_summary: >
+      Phase 12 added durable project-scoped job records, recovery
+      classification, validated worker handoffs, and temporary-result
+      reconstruction from completed validated jobs. Recovered results remain
+      temporary and still require separate result.persist approval.
+    notes: Running-worker reattachment is not implemented; uncertain live workers are classified safely instead of adopted.
+
+  - debt_id: TD-RESULT-003
+    title: Invalid persisted bundles are diagnosed but not repaired
+    category: technical_debt
+    status: open
+    severity: low
+    introduced_phase: 7
+    last_reviewed_phase: 10.5
+    affected_components:
+      - persisted result discovery
+      - Project page persisted results
+    description: >
+      Invalid bundles are classified and withheld from inspection, but no repair
+      workflow exists.
+    rationale: >
+      Avoiding repair is safer until bundle schemas and migration rules mature.
+    current_mitigation:
+      - health classification
+      - content hash checks
+      - invalid bundles are not opened
+    resolution_trigger: >
+      Add repair only after schema migration and user confirmation policies are
+      defined.
+    acceptance_criteria:
+      - repair preview exists
+      - repair actions are explicitly approved
+      - original invalid content is preserved or backed up
+      - repair outcomes are audited
+    blocks:
+      - user-driven persisted-result repair
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/workspace_project_storage.md
+      - R/storage_architecture.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-SCHEMA-001
+    title: Schema migration strategy is limited
+    category: technical_debt
+    status: open
+    severity: medium
+    introduced_phase: 6
+    last_reviewed_phase: 10.5
+    affected_components:
+      - persisted result manifests
+      - workspace schema
+      - project schema
+      - audit ledger schema
+      - delegation schema
+      - temporary result contracts
+    description: >
+      Current readers reject unsupported schemas or use narrow compatibility
+      paths. A general migration framework does not yet exist.
+    rationale: >
+      Strict rejection is safer while schemas are young. Migration should be
+      designed after the most important contracts stabilize.
+    current_mitigation:
+      - explicit schema versions
+      - unsupported-version diagnostics
+      - schema inventory
+      - compatibility aliases where needed
+    resolution_trigger: >
+      Required before intentionally changing persisted result, project, audit,
+      or delegation schema versions in a breaking way.
+    acceptance_criteria:
+      - migration registry exists
+      - migrations are versioned and tested
+      - unsupported versions produce actionable diagnostics
+      - backups or reversible migration plans exist for durable data
+    blocks:
+      - breaking schema evolution
+      - durable project migration
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/schema_version_inventory.md
+      - docs/architecture/workspace_project_storage.md
+      - docs/architecture/genai_action_audit_ledger.md
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-PROJECT-001
+    title: Active dataset is the only trusted dataset ID
+    category: deferred_capability
+    status: planned
+    severity: medium
+    introduced_phase: 4
+    last_reviewed_phase: 10.5
+    affected_components:
+      - analysis.preflight
+      - analysis.run_registered
+      - dataset registry
+    description: >
+      GenAI computational actions currently accept only `active_dataset` as the
+      trusted dataset identifier.
+    rationale: >
+      A single trusted dataset identity prevents model-supplied paths and avoids
+      premature dataset registry design.
+    current_mitigation:
+      - active app-state dataset resolver
+      - invented dataset IDs are rejected
+      - no model-supplied paths
+    resolution_trigger: >
+      Add when projects support multiple named datasets, train/test splits, or
+      scored datasets as first-class resources.
+    acceptance_criteria:
+      - trusted dataset registry exists
+      - each dataset has stable ID/version/provenance
+      - action validation resolves dataset IDs from trusted state only
+      - dataset selection is audited
+    blocks:
+      - multi-dataset project workflows
+      - explicit scored-dataset selection
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_layer.md
+      - R/genai_actions.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-PROJECT-002
+    title: Provider and workspace selection depends on host capability
+    category: deferred_capability
+    status: open
+    severity: low
+    introduced_phase: 6
+    last_reviewed_phase: 10.5
+    affected_components:
+      - workspace provider contract
+      - local Shiny
+      - hosted Shiny
+      - native desktop host
+    description: >
+      Directory selection and open-directory affordances depend on deployment
+      host capabilities.
+    rationale: >
+      Deployment-agnostic storage cannot assume local desktop APIs exist in all
+      environments.
+    current_mitigation:
+      - provider capability flags
+      - managed workspace support
+      - configured workspace support
+      - app starts without configured provider
+    resolution_trigger: >
+      Add host-specific integrations only when the deployment target provides a
+      trusted picker/open-folder API.
+    acceptance_criteria:
+      - host capability contract is explicit
+      - unsupported affordances are hidden or disabled
+      - storage QA covers each provider mode
+    blocks:
+      - identical UX across all deployment modes
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/workspace_project_storage.md
+      - R/storage_architecture.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: TD-LOCKING-001
+    title: No distributed locking or multi-user conflict handling
+    category: technical_debt
+    status: open
+    severity: high
+    introduced_phase: 6
+    last_reviewed_phase: 10.5
+    affected_components:
+      - project storage
+      - audit ledger
+      - collector
+      - persisted results
+    description: >
+      The storage architecture validates paths and writes safely within one
+      process, but does not govern distributed writers or multi-user conflicts.
+    rationale: >
+      Local single-user development was the first target. Hosted and shared
+      projects need explicit locking and conflict policy.
+    current_mitigation:
+      - safe path resolution
+      - project/provider binding
+      - staged writes
+      - manifest validation
+    resolution_trigger: >
+      Required before shared project editing, hosted collaborative workspaces,
+      or multiple app processes writing the same project.
+    acceptance_criteria:
+      - distributed lock policy exists
+      - conflict detection and reporting exist
+      - concurrent write QA exists
+      - user-facing conflict recovery is documented
+    blocks:
+      - hosted collaborative projects
+      - concurrent project mutation
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/workspace_project_storage.md
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: BOUNDARY-GENAI-001
+    title: No delegated persistence
+    category: intentional_boundary
+    status: accepted
+    severity: high
+    introduced_phase: 9
+    last_reviewed_phase: 10.5
+    affected_components:
+      - result.persist
+      - GenAI delegation policy
+    description: >
+      Persistent project writes cannot be delegated. `result.persist` always
+      requires explicit approval.
+    rationale: >
+      Durable project mutation is a high-risk operation and must remain visibly
+      user-approved.
+    current_mitigation:
+      - delegation allowlist excludes result.persist
+      - approval fingerprint binding
+      - durable audit
+    resolution_trigger: >
+      Reconsider only after a formal autonomous execution policy, preview
+      workflow, and rollback/audit model exist.
+    acceptance_criteria:
+      - explicit autonomy policy exists
+      - user can preview all persistent effects
+      - rollback or compensating action policy exists
+      - audit and authorization model is reviewed
+    blocks:
+      - autonomous persistence
+      - delegated result writes
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_delegation_policy.md
+      - docs/architecture/genai_action_layer.md
+    owner: null
+    target_phase: null
+    notes: This is a safety boundary, not technical debt.
+
+  - debt_id: BOUNDARY-GENAI-002
+    title: No action chaining
+    category: intentional_boundary
+    status: accepted
+    severity: high
+    introduced_phase: 1
+    last_reviewed_phase: 10.5
+    affected_components:
+      - GenAI action layer
+      - proposal execution
+    description: >
+      One GenAI proposal executes at most one registered action. Actions cannot
+      trigger other actions.
+    rationale: >
+      Chaining would obscure user intent, approval scope, resource fingerprints,
+      and audit attribution.
+    current_mitigation:
+      - action registry has single handlers
+      - proposal schema contains one action_id
+      - handlers do not invoke action execution recursively
+    resolution_trigger: >
+      Reconsider only inside a future explicit planning/execution architecture
+      with preview-before-commit and per-step approval policy.
+    acceptance_criteria:
+      - plan schema exists
+      - each step has independent validation and authorization
+      - failure/rollback semantics are defined
+      - audit records step lineage
+    blocks:
+      - multi-step autonomous workflows
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_layer.md
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: BOUNDARY-GENAI-003
+    title: No arbitrary Code Runner execution through GenAI
+    category: intentional_boundary
+    status: accepted
+    severity: high
+    introduced_phase: 1
+    last_reviewed_phase: 10.5
+    affected_components:
+      - Code Runner
+      - GenAI action layer
+    description: >
+      GenAI cannot execute arbitrary R, Python, shell, SQL, or Code Runner
+      snippets.
+    rationale: >
+      Arbitrary code execution has a different risk profile from registered
+      deterministic handlers.
+    current_mitigation:
+      - no Code Runner action id
+      - proposal schema rejects code/path/callback fields
+      - service_code_runner reports GenAI execution as not implemented
+    resolution_trigger: >
+      Reconsider only after a dedicated code execution authorization,
+      sandboxing, preview, and audit architecture exists.
+    acceptance_criteria:
+      - code policy supports GenAI-sourced code safely
+      - sandboxing is implemented
+      - outputs are previewed before persistence
+      - audit records code provenance
+    blocks:
+      - GenAI-generated code execution
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_layer.md
+      - R/service_code_runner.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: BOUNDARY-GENAI-004
+    title: Session-only delegation
+    category: intentional_boundary
+    status: accepted
+    severity: medium
+    introduced_phase: 9
+    last_reviewed_phase: 10.5
+    affected_components:
+      - GenAI delegation
+      - delegated UI actions
+    description: >
+      Delegation grants are session-local and are not restored after restart.
+    rationale: >
+      Session-only grants avoid silent long-lived authority and keep delegation
+      easy to understand.
+    current_mitigation:
+      - use limits
+      - time limits
+      - project/provider binding
+      - revocation support
+    resolution_trigger: >
+      Reconsider only after persistent authorization UX and revocation history
+      are designed.
+    acceptance_criteria:
+      - durable grant storage exists
+      - user can review and revoke persisted grants
+      - project/provider changes invalidate persisted grants safely
+      - durable audit covers grant lifecycle
+    blocks:
+      - persistent delegation preferences
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_delegation_policy.md
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: BOUNDARY-GENAI-005
+    title: Delegation invalidated on project reload
+    category: intentional_boundary
+    status: accepted
+    severity: medium
+    introduced_phase: 9
+    last_reviewed_phase: 10.5
+    affected_components:
+      - GenAI delegation
+      - project loading
+    description: >
+      Delegation is project/provider-bound and should not silently transfer
+      after project reload or project/provider identity changes.
+    rationale: >
+      Resource fingerprints and project authority are part of the user's grant.
+    current_mitigation:
+      - project root identity binding
+      - provider binding
+      - resource fingerprint checks
+    resolution_trigger: >
+      Revisit only if durable delegation is introduced.
+    acceptance_criteria:
+      - persisted grants revalidate project and provider identity
+      - stale grants require explicit user approval
+      - UI explains invalidation reason
+    blocks:
+      - seamless delegation across reload
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_delegation_policy.md
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: BOUNDARY-GENAI-006
+    title: Durable audit is project-scoped only
+    category: intentional_boundary
+    status: accepted
+    severity: low
+    introduced_phase: 8
+    last_reviewed_phase: 10.5
+    affected_components:
+      - GenAI audit ledger
+      - no-project sessions
+    description: >
+      Durable audit events are written only when a trusted active project is
+      available. No-project sessions retain session-local behavior.
+    rationale: >
+      Durable project memory needs a project owner and trusted storage
+      destination.
+    current_mitigation:
+      - app starts without project
+      - persistent writes require project readiness
+      - no-project temporary results cannot be adopted silently
+    resolution_trigger: >
+      Revisit if workspace-level audit history becomes a product requirement.
+    acceptance_criteria:
+      - workspace-level audit store exists
+      - project adoption rules are explicit
+      - privacy implications are documented
+    blocks:
+      - durable audit for no-project exploratory sessions
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_audit_ledger.md
+      - docs/architecture/workspace_project_storage.md
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: BOUNDARY-GENAI-007
+    title: Model Assessment regression-only slice superseded
+    category: intentional_boundary
+    status: superseded
+    severity: medium
+    introduced_phase: 10
+    last_reviewed_phase: 11
+    affected_components:
+      - model_assessment
+      - analysis.preflight
+      - analysis.run_registered
+    description: >
+      The first post-model Model Assessment action slice supported only
+      regression scored-output diagnostics. This boundary was superseded in
+      Phase 11 by a mode-aware Model Assessment contract supporting regression
+      and binary classification.
+    rationale: >
+      Regression metrics and residual diagnostics provide a clear bounded slice.
+      Binary classification needs separate trusted configuration, metrics, and
+      validation.
+    current_mitigation:
+      - model_assessment mode registry enables only regression and binary_classification
+      - multiclass, training, tuning, and threshold optimization remain blocked
+      - output contracts are mode-specific
+    resolution_trigger: >
+      Superseded by Phase 11 binary support. Future expansion should register a
+      new boundary for multiclass or training/tuning behavior.
+    acceptance_criteria:
+      - binary target/prediction/probability config comes from trusted state
+      - binary metrics and diagnostics have separate output contract
+      - QA covers binary preflight/run/persist/inspect/audit
+    blocks:
+      - multiclass model assessment
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_layer.md
+      - R/genai_actions.R
+    owner: null
+    target_phase: null
+    notes: Superseded by Phase 11 model_assessment modes regression and binary_classification.
+
+  - debt_id: BOUNDARY-GENAI-008
+    title: Model Assessment excludes multiclass and model mutation
+    category: intentional_boundary
+    status: accepted
+    severity: medium
+    introduced_phase: 11
+    last_reviewed_phase: 11
+    affected_components:
+      - model_assessment
+      - analysis.preflight
+      - analysis.run_registered
+      - result.persist
+    description: >
+      GenAI Model Assessment now supports bounded scored-output diagnostics for
+      regression and binary classification only. Multiclass assessment, model
+      training, tuning, model selection, threshold optimization, external
+      scoring, report generation, and artifact generation remain disabled.
+    rationale: >
+      Each additional analytical mode requires trusted configuration, output
+      contracts, validation, persistence, inspection, and audit behavior. Phase
+      11 intentionally proves multi-mode support without expanding into
+      mutation or autonomous model work.
+    current_mitigation:
+      - model_assessment mode registry exposes only regression and binary_classification
+      - GenAI can supply only module_id and dataset_id
+      - binary threshold comes from trusted app state and is not optimized
+      - temporary execution writes no files and creates no artifacts or reports
+    resolution_trigger: >
+      Review before adding multiclass diagnostics, training/tuning actions,
+      threshold optimization, or external scoring.
+    acceptance_criteria:
+      - new mode-specific trusted configuration schema exists
+      - preflight blocks unsupported task types and unsafe inputs
+      - temporary result contract excludes raw data and executable content
+      - persistence, inspection, and audit are covered by QA
+    blocks:
+      - multiclass model assessment
+      - model training through GenAI
+      - threshold optimization through GenAI
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_layer.md
+      - R/genai_result_contracts.R
+      - R/genai_actions.R
+    owner: null
+    target_phase: null
+    notes: Binary support resolved DEFERRED-GENAI-001; this boundary captures the remaining intentional exclusions.
+
+  - debt_id: DEFERRED-RESULT-001
+    title: Persisted-result export absent
+    category: deferred_capability
+    status: open
+    severity: low
+    introduced_phase: 7
+    last_reviewed_phase: 10.5
+    affected_components:
+      - Persisted Results browser
+      - Export page
+    description: >
+      Persisted results can be inspected but not exported directly from the
+      browser.
+    rationale: >
+      Inspection came first. Export should be designed as a separate delivery
+      flow with explicit format and privacy choices.
+    current_mitigation:
+      - result bundles remain in project storage
+      - safe relative paths are shown
+      - bounded content can be inspected
+    resolution_trigger: >
+      Add when persisted results become a first-class delivery artifact.
+    acceptance_criteria:
+      - export formats are explicit
+      - export excludes unsafe payloads by default
+      - export events are audited when project-scoped
+    blocks:
+      - direct persisted-result sharing
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/workspace_project_storage.md
+      - R/page_project.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: DEFERRED-RESULT-002
+    title: Persisted-result rename absent
+    category: deferred_capability
+    status: open
+    severity: low
+    introduced_phase: 7
+    last_reviewed_phase: 10.5
+    affected_components:
+      - Persisted Results browser
+      - result manifest
+    description: >
+      Persisted result display names are not editable in the current browser.
+    rationale: >
+      Rename mutates durable metadata and should have its own audit and
+      idempotency policy.
+    current_mitigation:
+      - stable generated result IDs
+      - module/dataset labels in manifest
+    resolution_trigger: >
+      Add after metadata mutation policy exists.
+    acceptance_criteria:
+      - rename is explicit and audited
+      - stable IDs do not change
+      - invalid names are rejected
+    blocks:
+      - user-curated persisted result names
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/workspace_project_storage.md
+      - R/page_project.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: DEFERRED-RESULT-003
+    title: Persisted-result delete absent
+    category: deferred_capability
+    status: open
+    severity: low
+    introduced_phase: 7
+    last_reviewed_phase: 10.5
+    affected_components:
+      - Persisted Results browser
+      - project/results
+    description: >
+      Persisted results are inspectable but cannot be deleted from the app.
+    rationale: >
+      Deletion needs explicit confirmation, audit, and possibly tombstone
+      policy.
+    current_mitigation:
+      - invalid bundles can be ignored
+      - no overwrite policy
+    resolution_trigger: >
+      Add when result lifecycle management becomes necessary.
+    acceptance_criteria:
+      - delete requires confirmation
+      - tombstone or archive policy is defined
+      - audit event records deletion
+      - accidental deletion recovery is considered
+    blocks:
+      - result lifecycle cleanup from UI
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/workspace_project_storage.md
+      - R/page_project.R
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: DEFERRED-RESULT-004
+    title: Persisted-result migration absent
+    category: deferred_capability
+    status: open
+    severity: medium
+    introduced_phase: 7
+    last_reviewed_phase: 10.5
+    affected_components:
+      - persisted result manifest
+      - schema migration
+    description: >
+      Unsupported persisted result schemas are diagnosed but not migrated.
+    rationale: >
+      Migration should not be ad hoc. It belongs to the broader schema
+      governance strategy.
+    current_mitigation:
+      - unsupported schema classification
+      - schema version inventory
+      - no auto-repair
+    resolution_trigger: >
+      Required before persisted result schema changes in a breaking way.
+    acceptance_criteria:
+      - versioned migration path exists
+      - migration is tested on fixtures
+      - user-facing backup/confirmation policy exists
+    blocks:
+      - breaking persisted-result schema evolution
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/workspace_project_storage.md
+      - docs/architecture/schema_version_inventory.md
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: DEFERRED-GENAI-001
+    title: Binary Model Assessment deferred
+    category: deferred_capability
+    status: resolved
+    severity: medium
+    introduced_phase: 10
+    last_reviewed_phase: 11
+    affected_components:
+      - model_assessment
+      - analysis.run_registered
+    description: >
+      Binary classification Model Assessment was deferred from the regression
+      slice and is now enabled in the GenAI action layer as a bounded
+      model_assessment mode.
+    rationale: >
+      Binary assessment needs separate trusted probability/class configuration,
+      threshold metrics, confusion matrices, lift/gain, calibration, and QA.
+    current_mitigation:
+      - trusted binary configuration schema
+      - binary preflight blocks invalid target/class/probability inputs
+      - model_assessment_binary output contract
+      - binary persistence/inspection/audit QA
+    resolution_trigger: >
+      Resolved in Phase 11. Future multiclass work must use a separate contract.
+    acceptance_criteria:
+      - binary config is trusted app state
+      - binary preflight blocks missing/invalid class/probability columns
+      - output contract covers binary metrics and tables
+      - persistence and inspection support the new type
+    blocks:
+      - none
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/genai_action_layer.md
+      - R/genai_actions.R
+    owner: null
+    target_phase: null
+    resolved_phase: 11
+    resolution_summary: >
+      Phase 11 added model_assessment_binary under the existing
+      model_assessment registered module, with trusted app-state configuration,
+      binary preflight, bounded metrics/tables/plot specs, persistence,
+      discovery, read-only inspection, and audit reconciliation.
+    notes: Multiclass assessment remains intentionally unsupported.
+
+  - debt_id: COMPAT-MODULE-001
+    title: Historical autoquant_model_assessment alias retained
+    category: compatibility_debt
+    status: accepted
+    severity: low
+    introduced_phase: 3
+    last_reviewed_phase: 10.5
+    affected_components:
+      - module_id_aliases
+      - Model Readiness terminology
+      - historical docs
+    description: >
+      `autoquant_model_assessment` is retained only as a compatibility alias for
+      `autoquant_model_readiness`.
+    rationale: >
+      Removing the alias could break saved references and historical smoke-test
+      records. Active UI and preferred docs use Model Readiness terminology.
+    current_mitigation:
+      - canonical id is autoquant_model_readiness
+      - alias is not registered as preferred module
+      - terminology QA classifies compatibility references
+    resolution_trigger: >
+      Remove only after saved project/report compatibility policy allows it.
+    acceptance_criteria:
+      - migration notes exist
+      - saved projects no longer require alias
+      - QA confirms no active UI references remain
+    blocks:
+      - complete removal of legacy naming
+    intentional_for_now: true
+    source_refs:
+      - R/registry_modules.R
+      - docs/model_readiness_terminology_audit.md
+      - docs/workflow_architecture.md
+    owner: null
+    target_phase: null
+    notes: Canonical active name is autoquant_model_readiness.
+
+  - debt_id: COMPAT-PROJECT-001
+    title: Legacy project path compatibility retained
+    category: compatibility_debt
+    status: accepted
+    severity: low
+    introduced_phase: 6
+    last_reviewed_phase: 10.5
+    affected_components:
+      - project loading
+      - project path normalization
+      - saved project RDS files
+    description: >
+      Project loading accepts historical path formats and saved RDS project
+      structures while normalizing them into the current storage model.
+    rationale: >
+      Existing local projects should remain loadable during the storage
+      architecture transition.
+    current_mitigation:
+      - normalize_project_load_path
+      - project-provider validation
+      - repair warnings for old state shapes
+    resolution_trigger: >
+      Revisit after a formal project migration/export/import strategy exists.
+    acceptance_criteria:
+      - migration path exists for old projects
+      - unsupported legacy formats fail clearly
+      - compatibility code is isolated
+    blocks:
+      - strict current-schema-only project loading
+    intentional_for_now: true
+    source_refs:
+      - R/project_state.R
+      - R/service_project.R
+      - docs/architecture/workspace_project_storage.md
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: COMPAT-SCHEMA-001
+    title: Deprecated object names retained in old reports
+    category: compatibility_debt
+    status: accepted
+    severity: low
+    introduced_phase: 2
+    last_reviewed_phase: 10.5
+    affected_components:
+      - report plans
+      - artifact model
+      - saved plot state
+    description: >
+      Legacy report/state object names remain supported where saved reports or
+      old artifacts may still reference them.
+    rationale: >
+      The artifact model evolved while preserving older saved plot/report state.
+    current_mitigation:
+      - compatibility readers
+      - state repair warnings
+      - canonical artifact model for new work
+    resolution_trigger: >
+      Remove only after report/artifact migration and compatibility policy are
+      implemented.
+    acceptance_criteria:
+      - migration covers old report plans
+      - old object references are converted or clearly rejected
+      - docs identify canonical current object names
+    blocks:
+      - removing legacy report-state shims
+    intentional_for_now: true
+    source_refs:
+      - R/artifact_model.R
+      - R/project_state.R
+      - docs/report_plan_architecture.md
+    owner: null
+    target_phase: null
+    notes: null
+
+  - debt_id: DEFERRED-MISSION-001
+    title: Mission Control debt counts not yet surfaced
+    category: deferred_capability
+    status: open
+    severity: low
+    introduced_phase: 10.5
+    last_reviewed_phase: 10.5
+    affected_components:
+      - Mission Control
+      - technical debt register
+    description: >
+      The debt register has a safe summary API, but Mission Control does not yet
+      display aggregate debt counts.
+    rationale: >
+      Adding UI indicators should be done without creating noisy alerts or
+      distracting from project health.
+    current_mitigation:
+      - qa_technical_debt_register
+      - genai_technical_debt_context_summary
+      - Markdown register
+    resolution_trigger: >
+      Add when Mission Control alert policy includes architecture health.
+    acceptance_criteria:
+      - Mission Control displays bounded counts
+      - only critical debt or reached triggers create alerts
+      - UI QA covers the panel
+    blocks:
+      - in-app debt visibility
+    intentional_for_now: true
+    source_refs:
+      - docs/architecture/technical_debt_register.md
+      - R/technical_debt_register.R
+    owner: null
+    target_phase: null
+    notes: Created as a tracked deferred capability during Phase 10.5.
+
+  - debt_id: TD-IMPROVEMENT-001
+    title: Improvement ledger deduplication is signature-based
+    category: technical_debt
+    status: open
+    severity: medium
+    introduced_phase: 13
+    last_reviewed_phase: 13
+    affected_components:
+      - Improvement Ledger
+      - deterministic ingestion
+      - GenAI concern ingestion
+    description: >
+      Improvement item deduplication uses deterministic issue signatures derived
+      from project id, item type, affected resource, and normalized issue
+      meaning. This prevents obvious duplicates but is not yet a richer
+      reconciliation model that can merge related findings, split ambiguous
+      issues, or track semantic drift over time.
+    rationale: >
+      Phase 13 needed safe duplicate prevention without introducing probabilistic
+      merging or autonomous issue rewriting.
+    current_mitigation:
+      - stable normalized_issue_signature
+      - affected resource binding
+      - occurrence_count updates
+      - evidence append on repeat detection
+      - user feedback and duplicate status support
+    resolution_trigger: >
+      Before high-volume automatic ingestion from many diagnostics or GenAI
+      concern proposals.
+    acceptance_criteria:
+      - duplicate detection handles related findings without over-merging
+      - resolved item regressions are classified distinctly
+      - user-marked duplicates influence future deterministic matching
+      - QA covers semantic-near duplicate cases
+    blocks:
+      - high-volume autonomous improvement loop ingestion
+      - learned issue consolidation
+    intentional_for_now: true
+    source_refs:
+      - R/improvement_ledger.R
+      - docs/architecture/improvement_ledger.md
+    owner: null
+    target_phase: null
+    notes: Created during Phase 13 as an honest limitation of the first ledger implementation.
+
+  - debt_id: TD-IMPROVEMENT-002
+    title: Improvement ledger indexes and performance policy are minimal
+    category: technical_debt
+    status: open
+    severity: medium
+    introduced_phase: 13
+    last_reviewed_phase: 13
+    affected_components:
+      - Improvement Ledger
+      - Project page
+      - Mission Control
+      - GenAI context summary
+    description: >
+      The ledger stores one current JSON item per item plus append-only event
+      history, but it does not yet maintain materialized indexes beyond the
+      checkpoint. Project and Mission Control summaries read current item files
+      directly, which is acceptable for early project volumes but not for large
+      hosted or multi-user ledgers.
+    rationale: >
+      Phase 13 prioritized correctness, restart durability, governance semantics,
+      and safe write paths before optimizing large-scale ledger reads.
+    current_mitigation:
+      - bounded UI rendering
+      - bounded GenAI context summaries
+      - checkpoint metadata
+      - project-scoped storage
+    resolution_trigger: >
+      Before hosted projects or long-running projects depend on thousands of
+      improvement items or high-frequency automatic ingestion.
+    acceptance_criteria:
+      - materialized indexes or compact summaries are updated atomically
+      - Mission Control reads bounded index state
+      - stale indexes are detected and classified
+      - QA covers large ledger volumes and restart discovery
+    blocks:
+      - hosted multi-user improvement governance
+      - high-frequency automatic issue ingestion
+    intentional_for_now: true
+    source_refs:
+      - R/improvement_ledger.R
+      - R/page_project.R
+      - R/page_mission_control.R
+      - docs/architecture/improvement_ledger.md
+    owner: null
+    target_phase: null
+    notes: Created during Phase 13 because first implementation intentionally avoids index complexity.

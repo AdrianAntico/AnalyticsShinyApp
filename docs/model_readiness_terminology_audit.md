@@ -4,7 +4,7 @@
 
 AnalyticsShinyApp now uses `autoquant_model_readiness` as the preferred pre-model adapter id, with `module_autoquant_model_readiness.R` and `qa_autoquant_model_readiness_integration()` as the preferred implementation and QA names. The old `autoquant_model_assessment` id and related helper names are retained only as lightweight compatibility aliases.
 
-The true post-model `model_assessment` registry entry remains planned until an evaluator adapter exists.
+The true post-model `model_assessment` registry entry now has an experimental GenAI-only regression scored-output slice. It remains architecturally separate from pre-model `autoquant_model_readiness`.
 
 ## Rule
 
@@ -24,7 +24,7 @@ Pre-model diagnostics should use `Model Readiness`. This includes target diagnos
   - Updated the default artifact section for the readiness adapter to `Model Readiness`.
 - `R/registry_modules.R`
   - Updated the `autoquant_model_readiness` registry label and description to describe model readiness.
-  - Left the separate planned `model_assessment` registry entry unchanged because it refers to post-model model performance diagnostics.
+  - Kept the separate `model_assessment` registry entry because it refers to post-model model performance diagnostics, not readiness.
 - `docs/autoquant_model_readiness_module.md`
   - Reframed the document as AutoQuant Model Readiness.
   - Added a compatibility note that legacy internal names are preserved.
@@ -62,7 +62,7 @@ These references use `Model Assessment` for post-model evaluation of an already-
 - `AnalyticsShinyApp/R/page_analysis_modules.R`
   - `Run Model Assessment` button in the CatBoost handoff panel.
 - `AnalyticsShinyApp/R/registry_modules.R`
-  - Planned `model_assessment` module entry for model performance, calibration, lift/gains, and diagnostics.
+  - Experimental `model_assessment` module entry for post-model regression scored-output diagnostics. Broader calibration, lift/gains, and classification assessment remain future work.
 - `AnalyticsShinyApp/docs/analysis_module_architecture.md`
   - `Model Assessment` section describing model metrics, ROC / PR, confusion matrix, calibration, lift/gains, and residual diagnostics.
 - `AnalyticsShinyApp/docs/catboost_builder_architecture.md`
@@ -98,4 +98,4 @@ These should be treated as compatibility names for the pre-model Model Readiness
 ## Remaining Ambiguous Terminology
 
 - `AutoQuant::generate_model_assessment_artifacts()` is still a misleading exported function name because it generates Model Readiness artifacts. A future API pass could introduce `generate_model_readiness_artifacts()` and keep the old name as a compatibility wrapper.
-- CatBoost Builder exposes a post-model `Run Model Assessment` handoff action. That wording is correct, and the downstream target is the planned `model_assessment` placeholder until a true post-model evaluator adapter is implemented.
+- CatBoost Builder exposes a post-model `Run Model Assessment` handoff action. That wording is correct, and the downstream target remains the post-model `model_assessment` concept. The current executable slice is limited to trusted GenAI regression scored-output diagnostics.

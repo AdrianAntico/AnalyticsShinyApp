@@ -6,3 +6,9 @@
 autoplots_project/
 autoplots_project.rds
 exports/
+artifacts/
+reports/
+results/
+runtime/
+session_data/
+temp/

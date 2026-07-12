@@ -93,8 +93,7 @@ Use names that describe lifecycle and responsibility:
 - `Model Insights` explains model behavior.
 - `SHAP Insights` explains prediction-surface behavior from SHAP columns.
 - `CatBoost Builder` trains/scores CatBoost models and returns artifacts/scored outputs.
-- `Feature Engineering` creates features.
-- `Model Prep` creates partitions, folds, and leakage-safe model data.
+- `Feature Engineering / Model Preparation` creates visible, reproducible prepared-data artifacts without mutating source data.
 
 Module IDs should be stable, lowercase, and explicit, such as `autoquant_regression_shap_analysis` or `autoquant_catboost_builder`.
 

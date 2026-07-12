@@ -173,7 +173,7 @@ validate_autoquant_model_readiness_config <- function(data, config) {
     paste0("  Theme = ", .autoquant_ma_r_string(config$theme %||% "light")),
     ")",
     "",
-    "# TODO: Add app-side artifact/report-plan conversion when exporting a complete module replay script.",
+    "# Note: app-side artifact and report-plan conversion is intentionally omitted from this replay script.",
     sep = "\n"
   )
 }

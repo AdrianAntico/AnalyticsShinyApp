@@ -206,6 +206,9 @@ validate_module_config <- function(module_id, config, data) {
   if (identical(module_id, "autoquant_model_readiness")) {
     return(validate_autoquant_model_readiness_config(data = data, config = config))
   }
+  if (identical(module_id, "feature_engineering_model_prep")) {
+    return(validate_feature_preparation_config(data = data, config = config))
+  }
   if (identical(module_id, "autoquant_regression_model_insights")) {
     return(validate_autoquant_regression_model_insights_config(data = data, config = config))
   }
@@ -243,6 +246,10 @@ qa_analysis_modules_integration <- function() {
   helpers <- list(
     autoquant_eda = qa_autoquant_eda_integration,
     autoquant_model_readiness = qa_autoquant_model_readiness_integration,
+    feature_preparation = qa_feature_preparation_integration,
+    feature_experiment_loop = qa_feature_experiment_loop,
+    analytical_improvement_campaign = qa_analytical_improvement_campaign,
+    modeling_context_lifecycle = qa_modeling_context_lifecycle,
     autoquant_regression_model_insights = qa_autoquant_regression_model_insights_integration,
     autoquant_binary_model_insights = qa_autoquant_binary_model_insights_integration,
     autoquant_regression_shap_analysis = qa_autoquant_regression_shap_analysis_integration,
@@ -251,6 +258,7 @@ qa_analysis_modules_integration <- function() {
     shap_artifact_contract = qa_shap_artifact_contract,
     module_terminology_consistency = qa_module_terminology_consistency,
     project_artifact_collector = qa_project_artifact_collector,
+    screenshot_pipeline_reliability = qa_screenshot_pipeline_reliability,
     render_targets = qa_render_targets,
     table_artifact_policy = qa_table_artifact_policy,
     artifact_producer_semantics = qa_artifact_producer_semantics,
@@ -258,6 +266,7 @@ qa_analysis_modules_integration <- function() {
     project_load_paths = qa_project_load_paths,
     artifact_studio = qa_artifact_studio,
     mission_control = qa_mission_control,
+    analytical_workflow_integration = qa_analytical_workflow_integration,
     async_job_service = qa_async_job_service,
     command_palette = qa_command_palette,
     genai_service_contract = qa_genai_service_contract,
@@ -269,6 +278,12 @@ qa_analysis_modules_integration <- function() {
     evidence_routing_observability = qa_evidence_routing_observability,
     evidence_routing_calibration = qa_evidence_routing_calibration,
     context_optimization_policy = qa_context_optimization_policy,
+    improvement_ledger = qa_improvement_ledger,
+    remediation_plans = qa_remediation_plans,
+    remediation_plan_hardening = qa_remediation_plan_hardening,
+    cross_system_invariants = qa_cross_system_invariants,
+    production_workflow_exercise = qa_production_workflow_exercise,
+    technical_debt_register = qa_technical_debt_register,
     ui_consistency = qa_ui_consistency
   )
 
@@ -330,6 +345,9 @@ run_analysis_module <- function(module_id, data, config = list()) {
   }
   if (identical(module_id, "autoquant_model_readiness")) {
     return(run_autoquant_model_readiness_module(data = data, config = config))
+  }
+  if (identical(module_id, "feature_engineering_model_prep")) {
+    return(run_feature_preparation_module(data = data, config = config))
   }
   if (identical(module_id, "autoquant_regression_model_insights")) {
     return(run_autoquant_regression_model_insights_module(data = data, config = config))

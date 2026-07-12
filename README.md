@@ -42,8 +42,8 @@ Core operating rules:
 - AutoPlots owns high-level plot functions, themes, and display helpers.
 - The Project Artifact Collector owns project-level artifact aggregation and the primary project DOCX.
 - Human reports and LLM collectors are independent render targets built from the same underlying artifacts.
-- Rodeo owns R feature engineering/model prep.
-- PolarsFE owns Python feature engineering/model prep.
+- AnalyticsShinyApp owns the conservative deterministic Feature Engineering / Model Preparation workflow that creates visible prepared-data artifacts without mutating source data.
+- Rodeo and PolarsFE remain future homes for richer R/Python feature engineering engines if they are integrated intentionally.
 - Benchmarks owns performance evidence.
 - shinyelectron owns packaging/runtime.
 - Code Runner is the only custom code execution system.
@@ -52,6 +52,7 @@ Core operating rules:
 Workflow terminology:
 
 - Model Readiness is pre-model Target Analysis: target diagnostics, leakage checks, drift, class balance, missingness, and readiness recommendations.
+- Feature Engineering / Model Preparation creates reproducible prepared-data artifacts and transformation lineage before training.
 - CatBoost Builder trains and scores models when the user runs it.
 - Model Assessment is post-model evaluation of trained/scored output: RMSE, MAE, ROC, PR, lift, gains, calibration, residual diagnostics, and holdout performance.
 - The preferred pre-model AutoQuant adapter id is `autoquant_model_readiness`; `autoquant_model_assessment` is a legacy compatibility alias only.

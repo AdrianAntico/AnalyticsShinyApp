@@ -135,7 +135,7 @@ validate_project_artifact_bundle <- function(bundle) {
 create_project_artifact_collector <- function(
   project_id,
   project_name = project_id,
-  output_dir = file.path("docs", "project_artifact_collector"),
+  output_dir = file.path(tempdir(), "project_artifact_collector"),
   collector_docx = "Project_Artifact_Collector.docx",
   artifact_directory = "artifacts",
   render_target = "llm_docx"
@@ -187,18 +187,57 @@ create_project_artifact_collector <- function(
 
 .project_collector_close_screenshot_browser <- function() {
   if (!requireNamespace("chromote", quietly = TRUE)) {
-    return(invisible(FALSE))
+    return(list(status = "not_applicable", reason = "chromote_not_installed"))
   }
   has_default <- get("has_default_chromote_object", envir = asNamespace("chromote"))
   if (!isTRUE(tryCatch(has_default(), error = function(e) FALSE))) {
-    return(invisible(FALSE))
+    return(list(status = "not_applicable", reason = "no_default_chromote_object"))
   }
   browser <- tryCatch(chromote::default_chromote_object(), error = function(e) NULL)
   if (is.null(browser)) {
-    return(invisible(FALSE))
+    return(list(status = "not_applicable", reason = "default_chromote_unavailable"))
   }
-  tryCatch(browser$close(wait = 2), error = function(e) NULL)
-  invisible(TRUE)
+  result <- tryCatch(
+    {
+      browser$close(wait_ = FALSE)
+      list(status = "success", reason = "close_requested_nonblocking")
+    },
+    error = function(e) {
+      list(status = "cleanup_warning", reason = conditionMessage(e))
+    }
+  )
+  result
+}
+
+.project_collector_validate_png <- function(file, min_width = 10L, min_height = 10L) {
+  if (!nzchar(file %||% "") || !file.exists(file)) {
+    return(service_result(status = "error", errors = "PNG file does not exist."))
+  }
+  info <- file.info(file)
+  if (is.na(info$size) || info$size <= 0) {
+    return(service_result(status = "error", errors = "PNG file is empty."))
+  }
+  if (!identical(tolower(tools::file_ext(file)), "png")) {
+    return(service_result(status = "error", errors = "Screenshot output is not a PNG file."))
+  }
+  image <- tryCatch(png::readPNG(file, native = TRUE, info = TRUE), error = function(e) e)
+  if (inherits(image, "error")) {
+    return(service_result(status = "error", errors = paste("PNG file is unreadable:", conditionMessage(image))))
+  }
+  dims <- dim(image)
+  if (length(dims) < 2L || dims[[2L]] < min_width || dims[[1L]] < min_height) {
+    return(service_result(status = "error", errors = paste("PNG dimensions are implausible:", paste(dims, collapse = "x"))))
+  }
+  service_result(
+    status = "success",
+    messages = "PNG screenshot is readable and plausible.",
+    metadata = list(
+      file = normalizePath(file, winslash = "/", mustWork = TRUE),
+      file_size = unname(info$size),
+      image_width = dims[[2L]],
+      image_height = dims[[1L]]
+    )
+  )
 }
 
 .project_collector_capture_plot <- function(artifact, output_file, width = 1400, height = 900) {
@@ -225,9 +264,16 @@ create_project_artifact_collector <- function(
   if (!file.exists(output_file) || file.info(output_file)$size <= 0) {
     stop("Production screenshot helper did not create a PNG file.", call. = FALSE)
   }
+  validation <- .project_collector_validate_png(output_file)
+  if (identical(validation$status, "error")) {
+    stop(paste(validation$errors, collapse = "; "), call. = FALSE)
+  }
   screenshot <- normalizePath(output_file, winslash = "/", mustWork = TRUE)
   attr(screenshot, "html_path") <- attr(result, "html_path") %||% NA_character_
   attr(screenshot, "selfcontained") <- attr(result, "selfcontained") %||% NA
+  attr(screenshot, "file_size") <- validation$metadata$file_size %||% NA_real_
+  attr(screenshot, "image_width") <- validation$metadata$image_width %||% NA_integer_
+  attr(screenshot, "image_height") <- validation$metadata$image_height %||% NA_integer_
   screenshot
 }
 
@@ -640,7 +686,16 @@ project_collector_write <- function(collector) {
     webshot.concurrent = 1L
   )
   on.exit(options(old_options), add = TRUE)
-  on.exit(.project_collector_close_screenshot_browser(), add = TRUE)
+  cleanup_result <- list(status = "not_run", reason = "cleanup_not_reached")
+  cleanup_done <- FALSE
+  cleanup_browser <- function() {
+    if (!isTRUE(cleanup_done)) {
+      cleanup_result <<- .project_collector_close_screenshot_browser()
+      cleanup_done <<- TRUE
+    }
+    cleanup_result
+  }
+  on.exit(cleanup_browser(), add = TRUE)
 
   screenshot_index <- list()
   warnings <- character()
@@ -678,6 +733,9 @@ project_collector_write <- function(collector) {
           render_target = collector$render_target %||% "llm_docx",
           html_path = attr(capture, "html_path") %||% NA_character_,
           selfcontained = attr(capture, "selfcontained") %||% NA,
+          file_size = attr(capture, "file_size") %||% NA_real_,
+          image_width = attr(capture, "image_width") %||% NA_integer_,
+          image_height = attr(capture, "image_height") %||% NA_integer_,
           width = width,
           height = height
         )
@@ -695,6 +753,7 @@ project_collector_write <- function(collector) {
 
   manifest <- project_collector_manifest(collector)
   data.table::fwrite(manifest, collector$manifest_file)
+  cleanup_result <- cleanup_browser()
 
   if (length(errors)) {
     return(service_result(
@@ -707,7 +766,8 @@ project_collector_write <- function(collector) {
         artifact_directory = normalizePath(collector$artifact_directory, winslash = "/", mustWork = FALSE),
         screenshot_index = screenshot_index,
         table_index = table_backing$index,
-        quality_index = quality_index
+        quality_index = quality_index,
+        screenshot_cleanup = cleanup_result
       )
     ))
   }
@@ -722,7 +782,8 @@ project_collector_write <- function(collector) {
       artifact_directory = normalizePath(collector$artifact_directory, winslash = "/", mustWork = TRUE),
       screenshot_index = screenshot_index,
       table_index = table_backing$index,
-      quality_index = quality_index
+      quality_index = quality_index,
+      screenshot_cleanup = cleanup_result
     )
   )
 }
@@ -962,6 +1023,106 @@ qa_project_artifact_collector <- function(output_dir = file.path(tempdir(), "pro
       "Invalid bundle is rejected.",
       "Module service_result objects append through the workflow-facing collector path.",
       paste("Runs:", paste(sort(unique(manifest$run_id)), collapse = ", "))
+    )
+  )
+}
+
+qa_screenshot_pipeline_reliability <- function(output_dir = file.path(tempdir(), "screenshot_pipeline_reliability_qa")) {
+  unlink(output_dir, recursive = TRUE, force = TRUE)
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  data <- data.table::data.table(category = c("A", "B", "C"), value = c(3, 6, 4))
+  widget <- AutoPlots::Bar(
+    dt = data,
+    XVar = "category",
+    YVar = "value",
+    Theme = "dark",
+    title.text = "Screenshot QA"
+  )
+  plot_artifact <- create_artifact(
+    artifact_id = "qa_screenshot_plot",
+    artifact_type = "plot",
+    label = "Screenshot QA Plot",
+    source_module = "qa_screenshot_pipeline",
+    object = widget,
+    section = "Screenshot QA",
+    order = 1L
+  )
+  failed_plot_artifact <- create_artifact(
+    artifact_id = "qa_missing_object_plot",
+    artifact_type = "plot",
+    label = "Missing Object Plot",
+    source_module = "qa_screenshot_pipeline",
+    object = NULL,
+    section = "Screenshot QA",
+    order = 2L
+  )
+
+  collector <- create_project_artifact_collector(
+    project_id = "qa_screenshot_project",
+    project_name = "QA Screenshot Project",
+    output_dir = output_dir
+  )
+  bundle <- project_artifact_bundle(
+    project_id = "qa_screenshot_project",
+    project_name = "QA Screenshot Project",
+    run_id = "run_001",
+    module_id = "qa_screenshot_pipeline",
+    module_label = "QA Screenshot Pipeline",
+    artifacts = list(qa_screenshot_plot = plot_artifact, qa_missing_object_plot = failed_plot_artifact),
+    status = "success"
+  )
+  collector <- project_collector_append_bundle(collector, bundle, write = FALSE)$value
+  write_result <- project_collector_write(collector)
+  screenshot_index <- write_result$metadata$screenshot_index %||% list()
+  success_entry <- screenshot_index$qa_screenshot_plot %||% list()
+  failure_entry <- screenshot_index$qa_missing_object_plot %||% list()
+
+  missing_check <- .project_collector_validate_png(file.path(output_dir, "missing.png"))
+  empty_file <- file.path(output_dir, "empty.png")
+  file.create(empty_file)
+  empty_check <- .project_collector_validate_png(empty_file)
+  corrupt_file <- file.path(output_dir, "corrupt.png")
+  writeLines("not a png", corrupt_file)
+  corrupt_check <- .project_collector_validate_png(corrupt_file)
+
+  cleanup <- write_result$metadata$screenshot_cleanup %||% list(status = "missing")
+  cleanup_status_ok <- cleanup$status %in% c("success", "not_applicable", "cleanup_warning")
+  cleanup_isolated <- !identical(write_result$status, "error") || !identical(cleanup$status, "cleanup_warning")
+
+  data.table::data.table(
+    check = c(
+      "successful_screenshot_is_readable_png",
+      "successful_screenshot_records_dimensions",
+      "missing_screenshot_detected",
+      "empty_screenshot_detected",
+      "corrupt_screenshot_detected",
+      "failed_screenshot_records_artifact_error",
+      "collector_degrades_after_screenshot_failure",
+      "cleanup_status_classified",
+      "cleanup_warning_does_not_override_primary_status"
+    ),
+    status = c(
+      if (identical(success_entry$status, "success") && file.exists(success_entry$file %||% "") && identical(.project_collector_validate_png(success_entry$file)$status, "success")) "success" else "error",
+      if (is.numeric(success_entry$file_size %||% NA_real_) && (success_entry$image_width %||% 0L) >= 10L && (success_entry$image_height %||% 0L) >= 10L) "success" else "error",
+      if (identical(missing_check$status, "error")) "success" else "error",
+      if (identical(empty_check$status, "error")) "success" else "error",
+      if (identical(corrupt_check$status, "error")) "success" else "error",
+      if (identical(failure_entry$status, "error") && grepl("no object", failure_entry$error %||% "", ignore.case = TRUE)) "success" else "error",
+      if (identical(write_result$status, "success") && length(write_result$warnings %||% character()) >= 1L) "success" else "error",
+      if (cleanup_status_ok) "success" else "error",
+      if (cleanup_isolated) "success" else "error"
+    ),
+    message = c(
+      paste("File:", success_entry$file %||% NA_character_),
+      paste("Dimensions:", success_entry$image_width %||% NA_integer_, "x", success_entry$image_height %||% NA_integer_, "size:", success_entry$file_size %||% NA_real_),
+      paste(missing_check$errors, collapse = "; "),
+      paste(empty_check$errors, collapse = "; "),
+      paste(corrupt_check$errors, collapse = "; "),
+      failure_entry$error %||% "missing failure entry",
+      paste("Collector status:", write_result$status, "| warnings:", length(write_result$warnings %||% character())),
+      paste("Cleanup:", cleanup$status %||% NA_character_, cleanup$reason %||% ""),
+      "Primary write status remains separate from cleanup classification."
     )
   )
 }

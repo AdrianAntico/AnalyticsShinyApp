@@ -38,7 +38,7 @@ Do not preserve an API solely because it already exists. Preserve legacy paths o
 
 The product lifecycle is:
 
-EDA -> Feature Engineering -> Model Prep -> Model Readiness -> CatBoost Builder -> Model Assessment -> Model Insights -> SHAP Insights -> Report / Export
+EDA -> Model Readiness -> Feature Engineering / Model Preparation -> CatBoost Builder -> Model Assessment -> Model Insights -> SHAP Insights -> Report / Export
 
 The Workflow page is a launchpad across that lifecycle. It is not a wizard and not an automation engine.
 
@@ -47,9 +47,8 @@ Stage ownership:
 | lifecycle stage | primary owner | app responsibility |
 | --- | --- | --- |
 | EDA | AutoQuant | configure, run adapter, normalize artifacts, create plans |
-| Feature Engineering | Rodeo / PolarsFE | future app adapter, artifact normalization, handoff metadata |
-| Model Prep | Rodeo / PolarsFE | future app adapter, partition manifests, handoff metadata |
 | Model Readiness | AutoQuant | target/readiness adapter, artifacts, plans |
+| Feature Engineering / Model Preparation | AnalyticsShinyApp | deterministic preparation controls, prepared-data artifacts, transformation lineage, report plan |
 | CatBoost Builder | AutoQuant | config UI, service_result wrapping, artifacts, scored data handoff |
 | Model Assessment | AutoQuant | post-model evaluation adapter |
 | Model Insights | AutoQuant | regression/binary insight adapters |

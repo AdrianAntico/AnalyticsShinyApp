@@ -21,6 +21,7 @@ ui_global_ai_assistant <- function(id = "global_ai_assistant") {
           )
         ),
         uiOutput(ns("status")),
+        uiOutput(ns("delegation_manager")),
         tags$div(
           class = "aq-global-ai-actions",
           actionButton(ns("explain_alerts"), "Explain Alerts", class = "btn-primary btn-sm"),
@@ -28,6 +29,7 @@ ui_global_ai_assistant <- function(id = "global_ai_assistant") {
           actionButton(ns("open_guide"), "Open Guide", class = "btn-secondary btn-sm")
         ),
         uiOutput(ns("proposal")),
+        uiOutput(ns("delegation_notice")),
         uiOutput(ns("result"))
       )
     )
@@ -107,10 +109,70 @@ ui_global_ai_result <- function(result) {
 
 global_ai_assistant_server <- function(id = "global_ai_assistant", ctx) {
   moduleServer(id, function(input, output, session) {
+    append_session_audit <- function(execution) {
+      if (data.table::is.data.table(execution$metadata$audit_event)) {
+        ctx$genai_action_state$audit_log <- data.table::rbindlist(
+          list(ctx$genai_action_state$audit_log, execution$metadata$audit_event),
+          fill = TRUE
+        )
+      }
+    }
+
+    execute_delegated_if_authorized <- function(proposal, validation) {
+      if (is.null(proposal) || !identical(validation$status %||% "", "success")) {
+        return(FALSE)
+      }
+      match <- genai_delegation_find_matching_grant(proposal, validation, ctx)
+      if (!identical(match$status, "success")) {
+        if (proposal$action_id %in% genai_delegation_eligible_actions()) {
+          grant_stub <- list(
+            delegation_id = NA_character_,
+            action_id = proposal$action_id,
+            action_version = proposal$action_version,
+            scope_type = genai_delegation_scope_from_proposal(proposal)$scope_type,
+            scope_value = genai_delegation_scope_from_proposal(proposal)$scope_value,
+            project_id = (tryCatch(ctx$current_project(), error = function(e) list()))$project_id %||% NA_character_,
+            workspace_provider_id = (tryCatch(ctx$current_workspace(), error = function(e) list()))$provider_id %||% NA_character_,
+            workspace_provider_type = (tryCatch(ctx$current_workspace(), error = function(e) list()))$provider_type %||% NA_character_,
+            status = "denied"
+          )
+          genai_delegation_record_event("delegation_denied", grant_stub, proposal = proposal, ctx = ctx, denial_reason = paste(match$errors %||% "delegation_missing", collapse = "; "))
+        }
+        return(FALSE)
+      }
+      approval <- genai_delegation_approve_proposal(proposal, validation, match$value)
+      if (!identical(approval$status, "success")) return(FALSE)
+      ctx$genai_action_state$approved_proposal <- approval$value
+      execution <- genai_execute_action_proposal(
+        approval$value,
+        ctx = ctx,
+        policy = ctx$genai_action_policy(),
+        approval_hash = approval$value$approval_hash
+      )
+      if (!identical(execution$status, "error")) {
+        genai_delegation_consume_use(ctx, match$value$delegation_id, approval$value, execution$value)
+      }
+      ctx$genai_action_state$execution_result <- execution
+      if (!is.null(ctx$genai_action_state$proposal)) {
+        ctx$genai_action_state$proposal$status <- execution$value$status %||% execution$status
+      }
+      append_session_audit(execution)
+      ctx$genai_last_result(service_result(
+        status = execution$status,
+        value = list(text = paste("Delegated execution authorized.", service_result_message(execution))),
+        messages = execution$messages,
+        warnings = execution$warnings,
+        errors = execution$errors,
+        metadata = list(action_execution = execution$value, audit_event = execution$metadata$audit_event, delegation_id = match$value$delegation_id)
+      ))
+      TRUE
+    }
+
     store_proposal_from_result <- function(result) {
       proposal <- result$metadata$action_proposal %||% NULL
       if (!is.null(proposal) && is.function(ctx$set_genai_action_proposal)) {
-        ctx$set_genai_action_proposal(proposal)
+        validation <- ctx$set_genai_action_proposal(proposal)
+        execute_delegated_if_authorized(proposal, validation)
       }
       invisible(proposal)
     }
@@ -132,12 +194,71 @@ global_ai_assistant_server <- function(id = "global_ai_assistant", ctx) {
       ui_global_ai_result(ctx$genai_last_result())
     })
 
-    output$proposal <- renderUI({
-      ui_genai_action_proposal_review(
-        ctx$genai_action_state$proposal,
-        validation = ctx$genai_action_state$validation,
-        ns = session$ns
+    output$delegation_manager <- renderUI({
+      rows <- tryCatch(ctx$genai_delegations(active_only = FALSE), error = function(e) data.table::data.table())
+      active <- if (nrow(rows)) rows[rows$status == "active"] else data.table::data.table()
+      ui_disclosure(
+        "Delegated Safe Actions",
+        tagList(
+          tags$p(class = "aw-muted", "Session-only authority for specific low-risk UI actions. Computation and persistence remain approval-required."),
+          if (nrow(active)) {
+            tagList(
+              selectInput(session$ns("delegation_id"), "Active Delegation", choices = stats::setNames(active$delegation_id, paste(active$action_id, active$scope_value, paste0("uses:", active$uses_remaining))), selected = active$delegation_id[[1]]),
+              ui_action_row(
+                actionButton(session$ns("revoke_delegation"), "Revoke", class = "btn-secondary btn-sm"),
+                actionButton(session$ns("revoke_all_delegations"), "Revoke All", class = "btn-secondary btn-sm")
+              ),
+              render_table(active[, intersect(c("action_id", "scope_type", "scope_value", "expires_at", "uses_remaining", "status"), names(active)), with = FALSE], engine = "html", searchable = FALSE, sortable = FALSE)
+            )
+          } else {
+            ui_empty_state("No active delegations.", "Approve normally, or grant delegation from a valid low-risk proposal.")
+          }
+        ),
+        level = "advanced",
+        open = FALSE
       )
+    })
+
+    output$proposal <- renderUI({
+      proposal <- ctx$genai_action_state$proposal
+      validation <- ctx$genai_action_state$validation
+      tagList(
+        ui_genai_action_proposal_review(
+          proposal,
+          validation = validation,
+          ns = session$ns
+        ),
+        if (!is.null(proposal) && proposal$action_id %in% genai_delegation_eligible_actions() && identical(validation$status %||% "", "success")) {
+          ui_callout(
+            "Delegation available",
+            "You can grant temporary session authority for this exact low-risk UI action. Validation, project binding, provider binding, resource fingerprinting, and audit still run every time.",
+            status = "info"
+          )
+        },
+        if (!is.null(proposal) && proposal$action_id %in% genai_delegation_eligible_actions() && identical(validation$status %||% "", "success")) {
+          ui_action_row(
+            actionButton(session$ns("grant_delegation_once"), "Grant Once", class = "btn-secondary btn-sm"),
+            actionButton(session$ns("grant_delegation_session"), "Grant 5 Uses", class = "btn-secondary btn-sm")
+          )
+        }
+      )
+    })
+
+    output$delegation_notice <- renderUI({
+      proposal <- ctx$genai_action_state$proposal
+      validation <- ctx$genai_action_state$validation
+      if (is.null(proposal) || !proposal$action_id %in% genai_delegation_eligible_actions() || !identical(validation$status %||% "", "success")) {
+        return(NULL)
+      }
+      match <- genai_delegation_find_matching_grant(proposal, validation, ctx)
+      if (identical(match$status, "success")) {
+        return(ui_callout(
+          "Delegated execution authorized",
+          paste("Matching delegation:", match$value$delegation_id, "| Uses remaining:", match$value$uses_remaining, "| Expires:", format(as.POSIXct(match$value$expires_at), "%Y-%m-%d %H:%M:%S")),
+          status = "success"
+        ))
+      }
+      ui_callout("Explicit approval required", paste("No valid delegation covers this proposal:", paste(match$errors %||% "delegation_missing", collapse = ", ")), status = "warning")
     })
 
     observeEvent(input$explain_alerts, {
@@ -177,12 +298,7 @@ global_ai_assistant_server <- function(id = "global_ai_assistant", ctx) {
       if (!is.null(ctx$genai_action_state$proposal)) {
         ctx$genai_action_state$proposal$status <- execution$value$status %||% execution$status
       }
-      if (data.table::is.data.table(execution$metadata$audit_event)) {
-        ctx$genai_action_state$audit_log <- data.table::rbindlist(
-          list(ctx$genai_action_state$audit_log, execution$metadata$audit_event),
-          fill = TRUE
-        )
-      }
+      append_session_audit(execution)
       ctx$genai_last_result(service_result(
         status = execution$status,
         value = list(text = service_result_message(execution)),
@@ -190,6 +306,63 @@ global_ai_assistant_server <- function(id = "global_ai_assistant", ctx) {
         warnings = execution$warnings,
         errors = execution$errors,
         metadata = list(action_execution = execution$value, audit_event = execution$metadata$audit_event)
+      ))
+    }, ignoreInit = TRUE)
+
+    grant_delegation <- function(max_uses) {
+      proposal <- ctx$genai_action_state$proposal
+      validation <- genai_validate_action_proposal(proposal, policy = ctx$genai_action_policy(), ctx = ctx)
+      ctx$genai_action_state$validation <- validation
+      grant <- genai_delegation_create_grant(
+        proposal,
+        validation,
+        ctx,
+        max_uses = max_uses,
+        duration_minutes = genai_delegation_default_duration_minutes(),
+        granted_by = "active_user",
+        explicit_user_interaction = TRUE
+      )
+      if (!identical(grant$status, "success")) {
+        ctx$genai_last_result(service_result(status = "warning", value = list(text = paste(grant$errors, collapse = ", ")), warnings = grant$errors))
+        return()
+      }
+      ctx$genai_delegation_state$grants[[grant$value$delegation_id]] <- grant$value
+      genai_delegation_record_event("delegation_granted", grant$value, proposal = proposal, ctx = ctx)
+      ctx$genai_last_result(service_result(
+        status = "success",
+        value = list(text = paste("Delegation granted:", grant$value$action_id, grant$value$scope_value, "uses:", grant$value$uses_remaining)),
+        messages = grant$messages,
+        metadata = list(delegation_id = grant$value$delegation_id)
+      ))
+    }
+
+    observeEvent(input$grant_delegation_once, {
+      grant_delegation(1L)
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$grant_delegation_session, {
+      grant_delegation(genai_delegation_default_max_uses())
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$revoke_delegation, {
+      result <- ctx$revoke_genai_delegation(input$delegation_id %||% "")
+      ctx$genai_last_result(service_result(
+        status = result$status,
+        value = list(text = service_result_message(result)),
+        messages = result$messages,
+        warnings = result$warnings,
+        errors = result$errors
+      ))
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$revoke_all_delegations, {
+      result <- ctx$revoke_all_genai_delegations()
+      ctx$genai_last_result(service_result(
+        status = result$status,
+        value = list(text = service_result_message(result)),
+        messages = result$messages,
+        warnings = result$warnings,
+        errors = result$errors
       ))
     }, ignoreInit = TRUE)
 
@@ -232,6 +405,9 @@ qa_global_ai_assistant <- function() {
       "proposal_review_ui",
       "approval_executes_only_registered_action",
       "audit_log_recorded",
+      "delegation_manager_ui",
+      "delegation_grant_controls",
+      "delegated_execution_path",
       "fixed_following_dock",
       "themed_response_scrollbar",
       "compact_default"
@@ -247,6 +423,9 @@ qa_global_ai_assistant <- function() {
       if (has(helper, c("ui_genai_action_proposal_review", "approve_proposal", "reject_proposal", "cancel_proposal"))) "success" else "error",
       if (has(helper, c("genai_approve_action_proposal", "genai_execute_action_proposal", "approval_hash"))) "success" else "error",
       if (has(helper, c("audit_log", "audit_event", "data.table::rbindlist"))) "success" else "error",
+      if (has(helper, c("Delegated Safe Actions", "revoke_delegation", "revoke_all_delegations"))) "success" else "error",
+      if (has(helper, c("grant_delegation_once", "grant_delegation_session", "Grant 5 Uses"))) "success" else "error",
+      if (has(helper, c("execute_delegated_if_authorized", "genai_delegation_find_matching_grant", "active_delegation"))) "success" else "error",
       if (has(css, c(".aq-global-ai-assistant", "position: fixed", "bottom:", "right:"))) "success" else "error",
       if (has(css, c(".aq-global-ai-panel .aq-genai-output::-webkit-scrollbar-thumb", "scrollbar-color", ".aq-global-ai-panel::-webkit-scrollbar"))) "success" else "error",
       if (has(css, c(".aq-global-ai-trigger", ".aq-global-ai-panel", ".aq-global-ai-details[open]"))) "success" else "error"
@@ -262,6 +441,9 @@ qa_global_ai_assistant <- function() {
       "The floating assistant can render a validated GenAI action proposal review.",
       "Approval is explicit and execution flows through the registered action handler.",
       "Successful action execution appends an audit event.",
+      "The floating Guide includes a session delegation manager.",
+      "Valid low-risk proposals expose explicit delegation grant controls.",
+      "Delegated proposals execute through the same deterministic action path.",
       "The assistant is fixed-position so it follows the user around the workstation.",
       "The assistant panel and GenAI response output use workstation-themed scrollbars.",
       "The assistant is collapsed by default and expands only when requested."

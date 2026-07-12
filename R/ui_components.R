@@ -137,6 +137,52 @@ ui_status_badge <- function(
   )
 }
 
+ui_display_label <- function(value) {
+  value <- as.character(value %||% "")
+  if (!length(value) || is.na(value[[1]]) || !nzchar(value[[1]])) {
+    return("Not Available")
+  }
+  value <- value[[1]]
+  labels <- c(
+    not_created = "Not Created",
+    not_written = "Not Written",
+    no_project = "No Project",
+    project_ready = "Ready",
+    project_closing = "Closing",
+    workspace_ready = "Ready",
+    workspace_unconfigured = "Not Configured",
+    configured_workspace = "Configured Workspace",
+    local_server_directory = "Local Directory",
+    managed_workspace = "Managed Workspace",
+    native_host_directory = "Native Host Directory",
+    llm_docx = "LLM DOCX",
+    human_report = "Human Report",
+    artifact_studio = "Artifact Studio",
+    success = "Completed",
+    created = "Created",
+    ready = "Ready",
+    pending = "Pending",
+    unavailable = "Unavailable",
+    not_checked = "Not Checked",
+    missing = "Missing",
+    healthy = "Healthy",
+    implemented = "Available",
+    experimental = "Experimental",
+    planned = "Planned",
+    external_or_future = "External / Future",
+    partial_tail = "Partial History"
+  )
+  label <- unname(labels[value])
+  if (length(label) && !is.na(label) && nzchar(label)) {
+    return(label)
+  }
+  tools::toTitleCase(gsub("_", " ", value))
+}
+
+ui_status_label <- function(value) {
+  ui_display_label(value)
+}
+
 ui_action_row <- function(...) {
   tags$div(class = "aq-action-row", ...)
 }
@@ -395,8 +441,8 @@ ui_quality_summary <- function(
     tags$div(
       class = "aq-quality-summary-facts",
       tags$span(tags$strong("Completeness"), completeness %||% score_label),
-      tags$span(tags$strong("Collector"), collector_status %||% "not_created"),
-      tags$span(tags$strong("AI readiness"), ai_readiness %||% "pending")
+      tags$span(tags$strong("Collector"), ui_status_label(collector_status %||% "not_created")),
+      tags$span(tags$strong("AI readiness"), ui_status_label(ai_readiness %||% "pending"))
     ),
     if (length(warning_text)) {
       tags$ul(class = "aq-quality-summary-warnings", lapply(warning_text, tags$li))
@@ -442,9 +488,9 @@ ui_ai_readiness_panel <- function(status = "pending", details = NULL, artifacts 
     subtitle = "LLM-oriented evidence availability.",
     class = "aq-ai-readiness-panel",
     ui_stat_grid(
-      ui_stat_tile("Status", status, status = badge_status),
+      ui_stat_tile("Status", ui_status_label(status), status = badge_status),
       ui_stat_tile("Evidence", artifacts %||% 0L, detail = "collector artifacts"),
-      ui_stat_tile("Target", render_target %||% "llm_docx", detail = "render target")
+      ui_stat_tile("Target", ui_display_label(render_target %||% "llm_docx"), detail = "render target")
     ),
     if (!is.null(details)) tags$p(class = "aq-ai-readiness-details", details)
   )
@@ -701,11 +747,11 @@ ui_collector_status_panel <- function(summary) {
     title = "Project Artifact Collector",
     subtitle = "AI-ready project evidence bundle.",
     ui_stat_grid(
-      ui_stat_tile("Status", status, status = if (status %in% c("success", "created")) "success" else "neutral"),
+      ui_stat_tile("Status", ui_status_label(status), status = if (status %in% c("success", "created")) "success" else "neutral"),
       ui_stat_tile("Run", summary_value("current_run_id", "-"), detail = "current run"),
       ui_stat_tile("Artifacts", summary_value("artifact_count", 0L), detail = paste(summary_value("bundle_count", 0L), "bundles")),
-      ui_stat_tile("Render Target", summary_value("render_target", "llm_docx")),
-      ui_stat_tile("Manifest", summary_value("manifest_status", "not_written"))
+      ui_stat_tile("Render Target", ui_display_label(summary_value("render_target", "llm_docx"))),
+      ui_stat_tile("Manifest", ui_status_label(summary_value("manifest_status", "not_written")))
     ),
     ui_disclosure(
       "Collector Paths",
@@ -862,7 +908,8 @@ qa_ui_consistency <- function() {
       "dark_auto_table_theme",
       "user_friendly_module_labels",
       "user_friendly_plot_control_labels",
-      "control_spacing_contract"
+      "control_spacing_contract",
+      "user_friendly_status_labels"
     ),
     status = c(
       if (all(vapply(component_names, function(name) exists(name, envir = environment(), mode = "function"), logical(1)))) "success" else "error",
@@ -918,7 +965,10 @@ qa_ui_consistency <- function() {
         ".aq-action-row + .shiny-html-output",
         ".aq-card-body > .form-group + .aq-control-group",
         ".aq-card-body > .aq-control-group + .aq-plot-builder-primary-actions"
-      ), css)) "success" else "error"
+      ), css)) "success" else "error",
+      if (identical(ui_status_label("not_created"), "Not Created") &&
+          identical(ui_status_label("workspace_ready"), "Ready") &&
+          identical(ui_display_label("llm_docx"), "LLM DOCX")) "success" else "error"
     ),
     message = c(
       "Shared page/card/stat/disclosure/activity components exist.",
@@ -957,7 +1007,8 @@ qa_ui_consistency <- function() {
       "The automatic table theme resolves to dark unless explicitly overridden.",
       "Module registry labels are user-facing names, not implementation package ids.",
       "Plot Builder controls use user-facing labels instead of raw AutoPlots argument names.",
-      "Control groups and action rows reserve spacing before adjacent labels and outputs."
+      "Control groups and action rows reserve spacing before adjacent labels and outputs.",
+      "Internal status ids have user-friendly display labels."
     )
   )
 }

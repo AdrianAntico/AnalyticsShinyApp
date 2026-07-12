@@ -8,15 +8,31 @@ Workflow UX v1 organizes implemented and external/future work into the analytica
 
 - Model Readiness is pre-model and maps to the existing Target Analysis / readiness adapter, `autoquant_model_readiness`.
 - Model Assessment is post-model evaluation only. It must not be used as the user-facing name for pre-model target/readiness diagnostics.
-- Feature Engineering and Model Prep are shown as external/future stages until Rodeo/PolarsFE and model-prep integration are intentionally added. Code Runner hook artifacts tagged with those workflow stages are counted in Workflow, but they are not native modules.
+- Feature Engineering / Model Preparation is a native deterministic app module, `feature_engineering_model_prep`. It creates prepared-data and lineage artifacts without mutating the active dataset. The prepared dataset can then be explicitly activated for downstream modeling. See `docs/rodeo_feature_engineering_integration_plan.md` for the boundary between this conservative app workflow and future Rodeo-backed advanced transformations.
 - Workflow actions open existing modules or draft Code Runner hooks; they do not run modules or custom code automatically.
+
+## Analyst Workflow Continuity
+
+Analysis Modules preserves context visibly rather than silently. When a dataset is loaded, the module page summarizes detected target, prediction, date, group, feature, and SHAP-column context before module-specific controls. Those values pre-populate compatible controls across Explore Data, Model Readiness, CatBoost Builder, Model Insights, and SHAP Insights.
+
+After a module run, the run-status area provides a deterministic next analytical action. For example:
+
+- Explore Data leads to Model Readiness.
+- Model Readiness leads to Feature Engineering / Model Preparation.
+- Feature Engineering / Model Preparation exposes a prepared-dataset activation action and then leads to CatBoost Builder.
+- CatBoost Builder exposes explicit downstream handoff actions for Model Assessment, Model Insights, and SHAP when scored output validates.
+- Model Insights leads to problem-specific SHAP when SHAP columns are available.
+- SHAP leads to artifact inspection and report curation.
+
+The app does not auto-run downstream modules. The intent is to reduce repeated setup and make the analytical path obvious while preserving user control.
 
 ## Current Modules
 
 | module_id | AutoQuant source function | status | supported problem types | expected artifact types | report plans created | QA helper | known limitations |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| autoquant_eda | `generate_eda_artifacts()` | Experimental adapter | General tabular EDA | plot, table, text | Recommended, Full, Diagnostics Only | `qa_autoquant_eda_integration()` | Depends on available EDA inputs selected by the user; exported replay code still marks app-side conversion as TODO. |
-| autoquant_model_readiness | `generate_model_assessment_artifacts()` | Experimental adapter | Model readiness / target diagnostics | plot, table, text | Recommended Model Readiness, Full Model Readiness, Diagnostics Only | `qa_autoquant_model_readiness_integration()` | Uses the current legacy-named AutoQuant model readiness artifact generator contract; exported replay code still marks app-side conversion as TODO. |
+| autoquant_eda | `generate_eda_artifacts()` | Experimental adapter | General tabular EDA | plot, table, text | Recommended, Full, Diagnostics Only | `qa_autoquant_eda_integration()` | Depends on available EDA inputs selected by the user; exported replay code intentionally omits app-side artifact/report-plan conversion. |
+| autoquant_model_readiness | `generate_model_assessment_artifacts()` | Experimental adapter | Model readiness / target diagnostics | plot, table, text | Recommended Model Readiness, Full Model Readiness, Diagnostics Only | `qa_autoquant_model_readiness_integration()` | Uses the current legacy-named AutoQuant model readiness artifact generator contract; exported replay code intentionally omits app-side artifact/report-plan conversion. |
+| feature_engineering_model_prep | App-native deterministic preparation pipeline | Implemented | General tabular model preparation | table, text, diagnostic | Feature Preparation Summary | `qa_feature_preparation_integration()` | Supports conservative, visible transformations only: column selection/exclusion, missing-value handling, constant/NZV/duplicate-column removal, basic date features, categorical factor conversion, and optional train/validation split. Prepared datasets are artifacts and replace the active modeling dataset only through an explicit user-triggered handoff. |
 | autoquant_regression_model_insights | `generate_regression_model_insights_artifacts()` | Experimental adapter | Regression model diagnostics from model outputs/predictions | plot, table, text | Recommended, Full, Feature Effects Only, Diagnostics Only | `qa_autoquant_regression_model_insights_integration()` | Requires regression target/prediction columns and available AutoQuant support; richer model-object integration is deferred. |
 | autoquant_binary_model_insights | `generate_binary_classification_model_insights_artifacts()` | Experimental adapter | Binary classification model diagnostics from target and prediction scores | plot, table, text | Recommended, Full, Threshold Diagnostics, Feature Effects Only | `qa_autoquant_binary_model_insights_integration()` | Uses structured AutoQuant artifacts as the source of truth; `BinaryClassificationModelInsightsReport()` remains the optional AutoQuant-native standalone renderer, not the primary app integration path. |
 | autoquant_regression_shap_analysis | `generate_regression_shap_analysis_artifacts()` | Experimental adapter | Regression SHAP analysis from precomputed `Shap_` columns | plot, table, text | Recommended, Full, Interaction Diagnostics, Segment And Time Effects, Local Explanations, Diagnostics Only when artifacts exist | `qa_autoquant_regression_shap_analysis_integration()` | AutoQuant owns SHAP artifact generation. The app validates precomputed SHAP inputs, normalizes AutoQuant artifacts, and creates report plans. `RegressionShapAnalysisReport()` remains an optional AutoQuant-native standalone renderer, not the app ingestion path. |
@@ -67,6 +83,7 @@ Module artifacts use run-scoped prefixes to avoid collisions across repeated run
 
 - AutoQuant EDA: `aq_eda_`
 - Model Readiness: `aq_mr_`
+- Feature Engineering / Model Preparation: `aq_prep_`
 - Regression Model Insights: `aq_rmi_`
 - Binary Classification Model Insights: `aq_bmi_`
 - Regression SHAP Analysis: `aq_rshap_`

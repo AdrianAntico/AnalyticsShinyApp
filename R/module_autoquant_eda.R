@@ -183,7 +183,7 @@ validate_autoquant_eda_config <- function(data, config) {
     paste0("  Theme = ", .autoquant_eda_r_string(config$Theme %||% "light")),
     ")",
     "",
-    "# TODO: Add app-side artifact/report-plan conversion when exporting a complete module replay script.",
+    "# Note: app-side artifact and report-plan conversion is intentionally omitted from this replay script.",
     sep = "\n"
   )
 }
