@@ -438,6 +438,19 @@ cross_repo_source_namespace_exports <- function(path) {
   trimws(exports)
 }
 
+cross_repo_source_namespace_s3_methods <- function(path) {
+  namespace_path <- file.path(path, "NAMESPACE")
+  if (!file.exists(namespace_path)) {
+    return(character())
+  }
+  lines <- readLines(namespace_path, warn = FALSE)
+  matches <- regmatches(lines, regexec("^S3method\\(([^,]+),([^,)]+)", lines))
+  methods <- unlist(lapply(matches, function(match) {
+    if (length(match) >= 3L) paste0(trimws(match[[2]]), ".", trimws(match[[3]])) else character()
+  }), use.names = FALSE)
+  trimws(methods)
+}
+
 cross_repo_package_files <- function(path) {
   roots <- c("DESCRIPTION", "NAMESPACE", "R", "man", "inst")
   files <- unlist(lapply(roots, function(root) {
@@ -608,10 +621,32 @@ cross_repo_build_install_packages <- function(discovery, output_dir, mode = "fas
   order <- cross_repo_local_package_order(discovery)
   rows <- list()
   snapshots <- list()
+  metadata_reviews <- list()
 
   for (repo_name in order) {
     repo <- discovery[[repo_name]]
     fingerprint <- cross_repo_source_fingerprint(repo)
+    force_regen <- identical(mode, "full")
+    metadata_review <- if (identical(mode, "fast")) {
+      before <- cross_repo_metadata_drift(repo)
+      list(
+        status = if (isTRUE(before$regeneration_required) || isTRUE(before$documentation_gap)) "warning" else "success",
+        package = repo$package,
+        reason = if (isTRUE(before$regeneration_required)) "Generated metadata drift detected; fast mode did not regenerate." else if (isTRUE(before$documentation_gap)) "Public documentation gaps were detected." else "Generated metadata appears current.",
+        required = isTRUE(before$regeneration_required),
+        command = before$policy$regeneration_command,
+        before = before,
+        after = before,
+        changed_files = character(),
+        output = character(),
+        api_drift = cross_repo_api_drift_summary(before, before)
+      )
+    } else {
+      regen <- cross_repo_regenerate_metadata(repo, output_dir = output_dir, force = force_regen)
+      regen$api_drift <- cross_repo_api_drift_summary(regen$before, regen$after)
+      regen
+    }
+    metadata_reviews[[repo$name]] <- metadata_review
     build <- cross_repo_build_package(repo, build_dir = build_dir)
     install <- if (identical(build$status, "success")) {
       cross_repo_install_built_package(repo, build$archive, temp_lib = temp_lib)
@@ -652,6 +687,10 @@ cross_repo_build_install_packages <- function(discovery, output_dir, mode = "fas
       install_status = install$status,
       status = status,
       classification = classification,
+      metadata_status = metadata_review$status %||% NA_character_,
+      metadata_required = isTRUE(metadata_review$required),
+      api_drift_classification = metadata_review$api_drift$classification %||% NA_character_,
+      human_review_required = isTRUE(metadata_review$api_drift$human_review_required),
       archive = build$archive %||% NA_character_,
       temp_library = cross_repo_normalize_path(temp_lib),
       loaded_path = loaded_path,
@@ -671,7 +710,224 @@ cross_repo_build_install_packages <- function(discovery, output_dir, mode = "fas
     build_dir = cross_repo_normalize_path(build_dir),
     install_order = order,
     results = if (length(rows)) do.call(rbind, rows) else data.frame(),
-    snapshots = snapshots
+    snapshots = snapshots,
+    metadata_reviews = metadata_reviews
+  )
+}
+
+cross_repo_git_status_paths <- function(path, paths = character()) {
+  git <- Sys.which("git")
+  if (!nzchar(git) || is.na(path) || !dir.exists(path)) {
+    return(character())
+  }
+  args <- c("-C", path, "status", "--porcelain")
+  if (length(paths)) {
+    args <- c(args, "--", paths)
+  }
+  out <- tryCatch(system2(git, args, stdout = TRUE, stderr = TRUE), error = function(e) character())
+  as.character(out)
+}
+
+cross_repo_metadata_policy <- function(repo) {
+  desc <- repo$package_metadata %||% list()
+  roxygen_note <- NA_character_
+  desc_path <- file.path(repo$path, "DESCRIPTION")
+  if (file.exists(desc_path)) {
+    dcf <- read.dcf(desc_path)
+    roxygen_note <- if ("RoxygenNote" %in% colnames(dcf)) unname(dcf[1, "RoxygenNote"]) else NA_character_
+  }
+  r_files <- if (dir.exists(file.path(repo$path, "R"))) list.files(file.path(repo$path, "R"), full.names = TRUE, pattern = "[.]R$", recursive = TRUE) else character()
+  r_text <- unlist(lapply(r_files, readLines, warn = FALSE), use.names = FALSE)
+  has_roxygen_blocks <- length(r_text) > 0L && any(grepl("^#'\\s*@", r_text, useBytes = TRUE))
+  list(
+    package = repo$package,
+    roxygen_used = !is.na(roxygen_note) || isTRUE(has_roxygen_blocks),
+    roxygen_note = roxygen_note,
+    namespace_generated = file.exists(file.path(repo$path, "NAMESPACE")) && (!is.na(roxygen_note) || isTRUE(has_roxygen_blocks)),
+    rd_generated = dir.exists(file.path(repo$path, "man")) && (!is.na(roxygen_note) || isTRUE(has_roxygen_blocks)),
+    regeneration_command = if (!is.na(roxygen_note) || isTRUE(has_roxygen_blocks)) "roxygen2::roxygenize('.', roclets = c('namespace', 'rd'))" else NA_character_,
+    generated_paths = c("NAMESPACE", "man"),
+    manual_exceptions = character(),
+    vignettes_in_scope = FALSE,
+    required_package = "roxygen2",
+    required_package_available = requireNamespace("roxygen2", quietly = TRUE),
+    required_package_version = if (requireNamespace("roxygen2", quietly = TRUE)) as.character(utils::packageVersion("roxygen2")) else NA_character_
+  )
+}
+
+cross_repo_read_r_lines <- function(path) {
+  r_dir <- file.path(path, "R")
+  files <- if (dir.exists(r_dir)) list.files(r_dir, pattern = "[.]R$", recursive = TRUE, full.names = TRUE) else character()
+  lines <- lapply(files, function(file) {
+    text <- readLines(file, warn = FALSE)
+    if (!length(text)) {
+      return(data.frame(file = character(), line = integer(), text = character()))
+    }
+    data.frame(file = rep(cross_repo_normalize_path(file), length(text)), line = seq_along(text), text = text, stringsAsFactors = FALSE)
+  })
+  if (length(lines)) do.call(rbind, lines) else data.frame(file = character(), line = integer(), text = character())
+}
+
+cross_repo_source_functions <- function(path) {
+  r_lines <- cross_repo_read_r_lines(path)
+  if (!nrow(r_lines)) {
+    return(character())
+  }
+  matches <- regmatches(r_lines$text, regexec("^\\s*([A-Za-z.][A-Za-z0-9._]*)\\s*<-\\s*function\\s*\\(", r_lines$text))
+  funs <- unlist(lapply(matches, function(match) if (length(match) >= 2L) match[[2]] else character()), use.names = FALSE)
+  unique(funs)
+}
+
+cross_repo_roxygen_exports <- function(path) {
+  r_lines <- cross_repo_read_r_lines(path)
+  if (!nrow(r_lines)) {
+    return(character())
+  }
+  exports <- character()
+  for (i in which(grepl("^#'\\s*@export\\b", r_lines$text))) {
+    j <- i + 1L
+    while (j <= nrow(r_lines) && identical(r_lines$file[[j]], r_lines$file[[i]]) && (grepl("^#'", r_lines$text[[j]]) || !nzchar(trimws(r_lines$text[[j]])))) {
+      j <- j + 1L
+    }
+    if (j <= nrow(r_lines) && identical(r_lines$file[[j]], r_lines$file[[i]])) {
+      match <- regmatches(r_lines$text[[j]], regexec("^\\s*([A-Za-z.][A-Za-z0-9._]*)\\s*<-", r_lines$text[[j]]))[[1]]
+      if (length(match) >= 2L) {
+        exports <- c(exports, match[[2]])
+      }
+    }
+  }
+  unique(exports)
+}
+
+cross_repo_rd_aliases <- function(path) {
+  man_dir <- file.path(path, "man")
+  files <- if (dir.exists(man_dir)) list.files(man_dir, pattern = "[.]Rd$", recursive = TRUE, full.names = TRUE) else character()
+  aliases <- unlist(lapply(files, function(file) {
+    lines <- readLines(file, warn = FALSE)
+    matches <- regmatches(lines, gregexpr("\\\\alias\\{[^}]+\\}", lines))
+    gsub("^\\\\alias\\{|\\}$", "", unlist(matches, use.names = FALSE))
+  }), use.names = FALSE)
+  unique(aliases)
+}
+
+cross_repo_public_formals <- function(repo, exports, temp_lib = NULL) {
+  if (!length(exports)) {
+    return(list())
+  }
+  expr <- sprintf(
+    ".libPaths(c(%s, .libPaths())); pkg <- %s; suppressPackageStartupMessages(library(pkg, character.only = TRUE)); exports <- intersect(c(%s), getNamespaceExports(pkg)); forms <- lapply(exports, function(name) { obj <- getExportedValue(pkg, name); if (is.function(obj)) names(formals(obj)) else character() }); names(forms) <- exports; cat(jsonlite::toJSON(forms, auto_unbox = TRUE))",
+    cross_repo_r_quote(temp_lib %||% tempdir()),
+    deparse(repo$package),
+    paste(vapply(exports, deparse, character(1)), collapse = ", ")
+  )
+  result <- cross_repo_run_r(repo, expr, timeout = 180, temp_lib = temp_lib)
+  tryCatch(jsonlite::fromJSON(paste(result$output, collapse = "\n")), error = function(e) list())
+}
+
+cross_repo_metadata_drift <- function(repo) {
+  policy <- cross_repo_metadata_policy(repo)
+  source_exports <- cross_repo_roxygen_exports(repo$path)
+  source_functions <- cross_repo_source_functions(repo$path)
+  namespace_exports <- cross_repo_source_namespace_exports(repo$path)
+  namespace_s3_methods <- cross_repo_source_namespace_s3_methods(repo$path)
+  aliases <- cross_repo_rd_aliases(repo$path)
+  missing_namespace_exports <- setdiff(source_exports, c(namespace_exports, namespace_s3_methods))
+  stale_namespace_exports <- setdiff(namespace_exports, source_functions)
+  missing_rd_aliases <- setdiff(namespace_exports, aliases)
+  accidental_qa_exports <- namespace_exports[grepl("^qa_", namespace_exports) & !namespace_exports %in% source_exports]
+  regen_required <- length(missing_namespace_exports) > 0L || length(stale_namespace_exports) > 0L
+  documentation_gap <- length(missing_rd_aliases) > 0L
+  list(
+    package = repo$package,
+    policy = policy,
+    regeneration_required = regen_required,
+    source_exports = sort(source_exports),
+    source_functions = sort(source_functions),
+    namespace_exports = sort(namespace_exports),
+    namespace_s3_methods = sort(namespace_s3_methods),
+    rd_aliases = sort(aliases),
+    missing_namespace_exports = sort(missing_namespace_exports),
+    stale_namespace_exports = sort(stale_namespace_exports),
+    missing_rd_aliases = sort(missing_rd_aliases),
+    accidental_qa_exports = sort(accidental_qa_exports),
+    documentation_gap = documentation_gap,
+    classification = if (regen_required) "generated_metadata_drift" else if (documentation_gap) "documentation_gap" else "metadata_current"
+  )
+}
+
+cross_repo_regenerate_metadata <- function(repo, output_dir, force = FALSE) {
+  drift_before <- cross_repo_metadata_drift(repo)
+  policy <- drift_before$policy
+  required <- isTRUE(drift_before$regeneration_required) || isTRUE(force)
+  before_status <- cross_repo_git_status_paths(repo$path, paths = c("NAMESPACE", "man"))
+  if (!isTRUE(policy$roxygen_used)) {
+    return(list(
+      status = "skipped",
+      package = repo$package,
+      reason = "Package does not appear to use roxygen2.",
+      required = required,
+      before = drift_before,
+      after = drift_before,
+      changed_files = character(),
+      output = character()
+    ))
+  }
+  if (!isTRUE(required)) {
+    return(list(
+      status = "skipped",
+      package = repo$package,
+      reason = "Generated metadata appears current and force regeneration was not requested.",
+      required = FALSE,
+      before = drift_before,
+      after = drift_before,
+      changed_files = character(),
+      output = character()
+    ))
+  }
+  expr <- "if (!requireNamespace('roxygen2', quietly = TRUE)) stop('roxygen2 is not installed'); roxygen2::roxygenize('.', roclets = c('namespace', 'rd')); TRUE"
+  result <- cross_repo_run_r(repo, expr, timeout = 600)
+  after_status <- cross_repo_git_status_paths(repo$path, paths = c("NAMESPACE", "man"))
+  changed_files <- unique(trimws(sub("^..\\s+", "", after_status)))
+  drift_after <- cross_repo_metadata_drift(repo)
+  list(
+    status = if (identical(result$status, "success") && isTRUE(drift_after$documentation_gap)) "warning" else result$status,
+    package = repo$package,
+    reason = if (isTRUE(force)) "Full mode requested metadata regeneration." else "Generated metadata drift was detected.",
+    required = TRUE,
+    command = policy$regeneration_command,
+    before = drift_before,
+    after = drift_after,
+    before_status = before_status,
+    after_status = after_status,
+    changed_files = changed_files,
+    output = result$output,
+    elapsed_seconds = result$elapsed
+  )
+}
+
+cross_repo_api_drift_summary <- function(before, after) {
+  exports_added <- setdiff(after$namespace_exports, before$namespace_exports)
+  exports_removed <- setdiff(before$namespace_exports, after$namespace_exports)
+  docs_added <- setdiff(after$rd_aliases, before$rd_aliases)
+  docs_removed <- setdiff(before$rd_aliases, after$rd_aliases)
+  classification <- if (length(exports_removed)) {
+    "export_removal"
+  } else if (length(exports_added)) {
+    "additive_backward_compatible_change"
+  } else if (length(docs_added) || length(docs_removed)) {
+    "documentation_only_change"
+  } else if (!isTRUE(after$regeneration_required)) {
+    "no_public_api_change"
+  } else {
+    "unexplained_drift"
+  }
+  list(
+    classification = classification,
+    exports_added = sort(exports_added),
+    exports_removed = sort(exports_removed),
+    aliases_added = sort(docs_added),
+    aliases_removed = sort(docs_removed),
+    human_review_required = classification %in% c("export_removal", "unexplained_drift")
   )
 }
 
@@ -730,6 +986,7 @@ cross_repo_markdown_summary <- function(result) {
   status_counts <- if (length(rows)) table(vapply(rows, `[[`, character(1), "status")) else integer()
   contract_counts <- if (length(contract_rows)) table(vapply(contract_rows, `[[`, character(1), "status")) else integer()
   package_counts <- if (length(package_rows)) table(vapply(package_rows, `[[`, character(1), "status")) else integer()
+  metadata_counts <- if (length(package_rows)) table(vapply(package_rows, function(row) row$metadata_status %||% "unknown", character(1))) else integer()
   repo_lines <- vapply(result$repositories, function(repo) {
     sprintf("- `%s`: %s (`%s`, branch `%s`, commit `%s`, dirty: `%s`)", repo$name, if (isTRUE(repo$exists)) repo$path else "not found", repo$path_source, repo$git$branch %||% NA_character_, repo$git$commit %||% NA_character_, repo$git$dirty %||% NA)
   }, character(1))
@@ -751,6 +1008,9 @@ cross_repo_markdown_summary <- function(result) {
     "",
     "## Source-to-Install Counts",
     if (length(package_counts)) paste(sprintf("- %s: %s", names(package_counts), as.integer(package_counts)), collapse = "\n") else "- Fresh package build/install was not run.",
+    "",
+    "## Metadata Review Counts",
+    if (length(metadata_counts)) paste(sprintf("- %s: %s", names(metadata_counts), as.integer(metadata_counts)), collapse = "\n") else "- Metadata review was not run.",
     "",
     "## Package Install Order",
     if (length(result$package_install_order %||% character())) paste(sprintf("- `%s`", result$package_install_order), collapse = "\n") else "- No package install order was resolved.",
@@ -842,7 +1102,7 @@ cross_repo_validate <- function(
   validation_df <- if (length(validation_frames)) do.call(rbind, validation_frames) else data.frame()
   contract_df <- cross_repo_validate_contracts(discovery, manifest, validation_lib = validation_lib)
   package_df <- package_refresh$results
-  terminal_statuses <- c(validation_df$status, contract_df$status, package_df$status)
+  terminal_statuses <- c(validation_df$status, contract_df$status, package_df$status, package_df$metadata_status)
   status <- if (any(terminal_statuses == "error")) {
     "error"
   } else if (any(terminal_statuses %in% c("warning", "skipped"))) {
@@ -869,7 +1129,8 @@ cross_repo_validate <- function(
       build_dir = package_refresh$build_dir,
       install_order = package_refresh$install_order,
       results = lapply(seq_len(nrow(package_df)), function(i) as.list(package_df[i, , drop = FALSE])),
-      snapshots = package_refresh$snapshots
+      snapshots = package_refresh$snapshots,
+      metadata_reviews = package_refresh$metadata_reviews
     ),
     validation_results = lapply(seq_len(nrow(validation_df)), function(i) as.list(validation_df[i, , drop = FALSE])),
     contract_results = lapply(seq_len(nrow(contract_df)), function(i) as.list(contract_df[i, , drop = FALSE])),
@@ -892,6 +1153,16 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
   app_fingerprint <- cross_repo_source_fingerprint(discovery$AnalyticsShinyApp)
   autoquant_full_suites <- cross_repo_suites_for_mode(discovery$AutoQuant, mode = "full")
   internal_qa_declared <- any(vapply(autoquant_full_suites, function(suite) identical(suite$qa_scope %||% "public", "internal"), logical(1)))
+  rodeo_policy <- cross_repo_metadata_policy(discovery$Rodeo)
+  autoplots_drift <- cross_repo_metadata_drift(discovery$AutoPlots)
+  additive_class <- cross_repo_api_drift_summary(
+    list(namespace_exports = c("a"), rd_aliases = c("a"), regeneration_required = FALSE),
+    list(namespace_exports = c("a", "b"), rd_aliases = c("a", "b"), regeneration_required = FALSE)
+  )
+  breaking_class <- cross_repo_api_drift_summary(
+    list(namespace_exports = c("a", "b"), rd_aliases = c("a", "b"), regeneration_required = FALSE),
+    list(namespace_exports = c("a"), rd_aliases = c("a"), regeneration_required = FALSE)
+  )
 
   fixture_manifest <- manifest
   fixture_manifest$repositories <- list(list(
@@ -939,6 +1210,10 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       "source_fingerprint_captured",
       "package_dependency_order_resolved",
       "internal_qa_scope_declared",
+      "metadata_policy_detected",
+      "metadata_drift_snapshot_created",
+      "additive_api_drift_classified",
+      "breaking_api_drift_review_gate",
       "unified_result_fields_exist"
     ),
     status = c(
@@ -959,6 +1234,10 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       if (nzchar(app_fingerprint$fingerprint %||% "")) "success" else "error",
       if (all(c("Rodeo", "AutoPlots", "AutoQuant") %in% package_order)) "success" else "error",
       if (isTRUE(internal_qa_declared)) "success" else "error",
+      if (isTRUE(rodeo_policy$roxygen_used) && nzchar(rodeo_policy$regeneration_command %||% "")) "success" else "error",
+      if (all(c("namespace_exports", "rd_aliases", "classification") %in% names(autoplots_drift))) "success" else "error",
+      if (identical(additive_class$classification, "additive_backward_compatible_change")) "success" else "error",
+      if (identical(breaking_class$classification, "export_removal") && isTRUE(breaking_class$human_review_required)) "success" else "error",
       if (all(c("run_id", "mode", "status", "repositories", "validation_results", "contract_results", "output_dir") %in% names(result))) "success" else "error"
     ),
     message = c(
@@ -979,6 +1258,10 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       app_fingerprint$fingerprint %||% "missing fingerprint",
       paste(package_order, collapse = " -> "),
       "Internal installed QA functions are declared explicitly in the manifest.",
+      rodeo_policy$regeneration_command %||% "no regeneration command",
+      autoplots_drift$classification %||% "no drift classification",
+      additive_class$classification,
+      breaking_class$classification,
       result$output_dir
     ),
     stringsAsFactors = FALSE
