@@ -138,3 +138,9 @@ Promoted knowledge remains campaign evidence, not a global knowledge graph. `ana
 Phase 33 added governed cross-campaign knowledge validation within the existing campaign contracts. Promoted knowledge now carries `analytical_campaign_knowledge_lifecycle_v1` fields for deterministic identity, origin campaign, supporting campaigns, experiments, artifacts, promotion reason, validation history, current status, supersession, retirement, and reopening conditions.
 
 The lifecycle registry is embedded in campaign synthesis and summaries. It is not a global knowledge graph, probabilistic memory system, or new persistence layer. Future campaigns validate promoted knowledge through deterministic relationships such as supports, contradicts, extends, narrows, supersedes, and unrelated. Duplicate promoted knowledge is merged by deterministic fingerprint. Superseded and retired knowledge remains historically inspectable.
+
+## Phase 34 Update
+
+Phase 34 added deterministic knowledge applicability inside the existing campaign knowledge lifecycle. Promoted knowledge now embeds `analytical_campaign_applicability_v1` fields describing bounded applicability context: dataset characteristics, target, model family, feature scale, data scale, operator support, required evidence, known exclusions, known limitations, evidence references, and transfer guidance.
+
+Applicability matching is deterministic and returns fully applicable, partially applicable, weakly applicable, not applicable, or insufficient information. Matching is advisory and affects campaign prioritization only when active knowledge is applicable. No global knowledge graph, ontology engine, probabilistic confidence layer, or new persistence system was introduced.

@@ -219,6 +219,18 @@ Phase 33 makes promoted campaign knowledge accountable to future evidence:
 
 The campaign lifecycle now continues beyond closure: evidence -> learning -> promoted knowledge -> future validation -> strengthened, weakened, superseded, or retired knowledge -> continued organizational learning.
 
+Phase 34 adds applicability-aware reuse:
+
+- promoted knowledge records where it is expected to apply
+- future campaigns deterministically match their context against prior knowledge
+- knowledge can be fully, partially, weakly, or not applicable
+- insufficient context prevents silent reuse
+- comparable repeated support can broaden applicability
+- contradictory evidence in a different context can narrow applicability instead of invalidating the original lesson
+- Mission Control surfaces applicability and uncertainty through the existing campaign status tile
+
+The campaign lifecycle becomes: evidence -> learning -> knowledge -> applicability -> future campaign reuse -> validation -> refinement.
+
 ## Non-Goals
 
 - no rigid wizard

@@ -308,6 +308,69 @@ Future campaigns consume only active knowledge statuses:
 
 Weakened, superseded, retired, and blocked knowledge remains visible but is not used for prioritization guidance.
 
+## Knowledge Applicability
+
+Phase 34 adds deterministic applicability to promoted knowledge. Knowledge should explain not only what was learned, but where that learning is expected to hold.
+
+Applicability is recorded from bounded campaign evidence only. The implementation does not infer broad semantic meaning, inspect full raw datasets, or create a global ontology engine.
+
+Promoted knowledge now includes:
+
+- `applicability_schema_version`
+- `applicability_scope`
+- `dataset_characteristics`
+- `problem_type`
+- `target_type`
+- `target_col`
+- `model_family`
+- `feature_types`
+- `feature_count`
+- `data_scale`
+- `time_dependence`
+- `group_structure`
+- `supported_operators`
+- `operator_support`
+- `required_evidence`
+- `known_exclusions`
+- `known_limitations`
+- `applicability_evidence_refs`
+- `transfer_guidance`
+- `applicability_history`
+- `applicability_status`
+
+The fields are intentionally compact. They summarize evidence context such as target availability, feature count, evidence readiness, artifact count, prior outcomes, baseline availability, data scale, and the deterministic transformation operator being tested.
+
+## Applicability Matching
+
+`analytical_campaign_applicability_match()` compares promoted knowledge against a future campaign context. Matching is deterministic and returns:
+
+- `fully_applicable`
+- `partially_applicable`
+- `weakly_applicable`
+- `not_applicable`
+- `insufficient_information`
+
+The match explains why through deterministic reasons such as:
+
+- target matches or differs
+- model family compatibility
+- operator availability
+- evidence sufficiency
+- feature-scale similarity
+
+Transfer guidance is advisory. Future campaigns still rank opportunities independently.
+
+## Applicability Evolution
+
+Applicability evolves through later campaign evidence:
+
+- repeated support in comparable contexts can broaden applicability
+- contradictory evidence in a different or weaker context narrows applicability
+- direct contradictory evidence in a comparable context weakens or supersedes knowledge
+- retired or superseded knowledge remains inspectable but is not used for prioritization
+
+This lets the repository distinguish contradictory knowledge from context-specific knowledge. For example, a transformation may remain supported for one evidence context while being narrowed away from another.
+
 ## Knowledge Review
 
 `analytical_campaign_knowledge_review()` summarizes lifecycle counts by status. Campaign synthesis exposes the lifecycle registry, validation history, conflicts, and review summary. Mission Control surfaces campaign knowledge health through existing campaign visibility, including validated knowledge and conflict counts. No new dashboard is introduced.
@@ -361,6 +424,13 @@ Timeline entries reference existing ids instead of duplicating artifacts.
 - knowledge validation history
 - knowledge conflicts
 - knowledge review summary
+- knowledge reused
+- knowledge rejected as not applicable
+- knowledge considered not applicable
+- knowledge narrowed
+- knowledge broadened
+- remaining applicability uncertainty
+- future validation opportunities
 - reopening guidance
 - blocked/skipped items
 - superseded items
@@ -395,6 +465,10 @@ Mission Control now summarizes:
 - validated or strengthened knowledge
 - weakened or superseded knowledge
 - knowledge conflicts
+- applicable knowledge
+- uncertain applicability
+- narrowed knowledge
+- broadened knowledge
 
 Campaigns also contribute alerts when waiting for approval, blocked, or awaiting adoption.
 
@@ -444,6 +518,15 @@ Campaigns stop or pause when:
 - duplicate prevention
 - governed status transitions
 - knowledge review summary
+- applicability creation
+- applicability matching
+- partial and non-applicability
+- insufficient applicability information
+- transfer guidance
+- applicability-aware campaign reuse
+- conflict specialization through narrowing
+- applicability broadening
+- applicability evidence traceability
 - reopening guidance
 - future campaign reuse
 - evidence traceability

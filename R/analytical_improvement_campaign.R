@@ -4,6 +4,7 @@ analytical_campaign_synthesis_schema_version <- function() "analytical_campaign_
 analytical_campaign_learning_schema_version <- function() "analytical_campaign_learning_assessment_v1"
 analytical_campaign_closure_schema_version <- function() "analytical_campaign_closure_assessment_v1"
 analytical_campaign_knowledge_lifecycle_schema_version <- function() "analytical_campaign_knowledge_lifecycle_v1"
+analytical_campaign_applicability_schema_version <- function() "analytical_campaign_applicability_v1"
 
 analytical_campaign_knowledge_statuses <- function() {
   c("candidate", "promoted", "validated", "strengthened", "weakened", "superseded", "retired", "blocked")
@@ -32,6 +33,12 @@ analytical_campaign_now <- function() {
 analytical_campaign_knowledge_fingerprint <- function(knowledge_type, conclusion, proposal_id = "") {
   text <- tolower(trimws(paste(knowledge_type %||% "", conclusion %||% "", proposal_id %||% "", sep = "::")))
   paste0("kf_", substr(storage_hash_value(text), 1L, 16L))
+}
+
+analytical_campaign_text_tokens <- function(x) {
+  x <- x %||% ""
+  tokens <- trimws(unlist(strsplit(as.character(x), ",")))
+  tokens[nzchar(tokens)]
 }
 
 analytical_campaign_id <- function(project_id = "active_project", objective = "analytical_improvement") {
@@ -250,6 +257,141 @@ analytical_campaign_learning_row <- function(assessment) {
   )
 }
 
+analytical_campaign_applicability_profile <- function(campaign, proposal = list()) {
+  summary <- campaign$evidence_context_summary %||% list()
+  assessment <- campaign$evidence_assessment %||% list()
+  feature_count <- summary$feature_count %||% assessment$evidence_counts$feature_count %||% NA_integer_
+  raw_rows <- summary$raw_rows_included %||% assessment$evidence_counts$raw_rows_included %||% NA_integer_
+  data_scale <- if (is.na(raw_rows)) {
+    "unknown"
+  } else if (raw_rows < 1000L) {
+    "small"
+  } else if (raw_rows < 100000L) {
+    "medium"
+  } else {
+    "large"
+  }
+  operator <- proposal$transformation_type %||% "unknown_operator"
+  supported <- proposal$rodeo_support_status %||% "unknown"
+  target_value <- summary$target_col %||% assessment$target_col %||% ""
+  target_value <- if (is.na(target_value)) "" else target_value
+  data.table::data.table(
+    applicability_schema_version = analytical_campaign_applicability_schema_version(),
+    applicability_scope = "campaign_context",
+    dataset_characteristics = paste(
+      "readiness", assessment$readiness %||% "unknown",
+      "features", feature_count %||% "unknown",
+      "artifacts", summary$artifact_ref_count %||% assessment$evidence_counts$artifact_ref_count %||% "unknown",
+      "prior_outcomes", summary$prior_outcome_count %||% assessment$evidence_counts$prior_outcome_count %||% "unknown"
+    ),
+    problem_type = summary$problem_type %||% "unknown",
+    target_type = if (nzchar(target_value)) "target_available" else "unknown",
+    target_col = if (nzchar(target_value)) target_value else NA_character_,
+    model_family = if (isTRUE(assessment$baseline_available)) "catboost" else "unknown",
+    feature_types = proposal$feature_type %||% "mixed_or_unknown",
+    feature_count = as.integer(feature_count %||% NA_integer_),
+    data_scale = data_scale,
+    time_dependence = if (identical(operator, "date_features")) "date_features_tested" else "unknown",
+    group_structure = summary$group_col %||% "unknown",
+    supported_operators = operator,
+    operator_support = supported,
+    required_evidence = paste(c("dataset_schema", "target", "feature_manifest", "artifact_evidence", "frozen_baseline"), collapse = ", "),
+    known_exclusions = if (identical(supported, "blocked")) "operator_not_supported" else "",
+    known_limitations = paste(assessment$gaps %||% character(), collapse = ", "),
+    applicability_evidence_refs = paste(unique(c(campaign$campaign_id, campaign$memory$evidence_collected %||% character())), collapse = ", "),
+    transfer_guidance = "Compare target, evidence readiness, feature scale, model family, and operator support before reuse.",
+    applicability_history = "",
+    applicability_status = "local"
+  )
+}
+
+analytical_campaign_applicability_match <- function(knowledge = data.table::data.table(), campaign) {
+  dt <- analytical_campaign_normalize_knowledge(knowledge)
+  if (!nrow(dt)) return(data.table::data.table())
+  profile <- analytical_campaign_applicability_profile(campaign)
+  available_ops <- unique(vapply(campaign$opportunities %||% list(), function(opp) opp$proposal$transformation_type %||% "", character(1)))
+  rows <- lapply(seq_len(nrow(dt)), function(i) {
+    row <- dt[i]
+    old_target <- row$target_col[[1]] %||% ""
+    new_target <- profile$target_col[[1]] %||% ""
+    old_target <- if (is.na(old_target)) "" else old_target
+    new_target <- if (is.na(new_target)) "" else new_target
+    old_model <- row$model_family[[1]] %||% "unknown"
+    old_model <- if (is.na(old_model) || !nzchar(old_model)) "unknown" else old_model
+    old_operator <- row$supported_operators[[1]] %||% ""
+    old_operator <- if (is.na(old_operator)) "" else old_operator
+    reasons <- character()
+    score <- 0L
+    if (!nzchar(old_target) || !nzchar(new_target)) {
+      reasons <- c(reasons, "target_information_missing")
+    } else if (identical(old_target, new_target)) {
+      score <- score + 35L
+      reasons <- c(reasons, "target_matches")
+    } else {
+      reasons <- c(reasons, "target_differs")
+      score <- score - 35L
+    }
+    if (old_model == "unknown" || profile$model_family[[1]] == "unknown" || identical(old_model, profile$model_family[[1]])) {
+      score <- score + 15L
+      reasons <- c(reasons, "model_family_compatible")
+    } else {
+      reasons <- c(reasons, "model_family_differs")
+    }
+    if (old_operator %in% available_ops || !nzchar(old_operator)) {
+      score <- score + 25L
+      reasons <- c(reasons, "operator_available")
+    } else {
+      reasons <- c(reasons, "operator_not_in_current_campaign")
+    }
+    if ((campaign$evidence_assessment$readiness %||% "") %in% c("reasonable", "strong")) {
+      score <- score + 15L
+      reasons <- c(reasons, "evidence_sufficient")
+    } else {
+      reasons <- c(reasons, "evidence_insufficient_for_transfer")
+    }
+    old_count <- row$feature_count %||% NA_integer_
+    new_count <- profile$feature_count[[1]] %||% NA_integer_
+    if (!is.na(old_count) && !is.na(new_count) && abs(old_count - new_count) <= max(2L, ceiling(old_count * 0.5))) {
+      score <- score + 10L
+      reasons <- c(reasons, "feature_scale_similar")
+    } else if (is.na(old_count) || is.na(new_count)) {
+      reasons <- c(reasons, "feature_scale_unknown")
+    } else {
+      reasons <- c(reasons, "feature_scale_differs")
+    }
+    status <- if ("target_differs" %in% reasons) {
+      "not_applicable"
+    } else if ("target_information_missing" %in% reasons || "evidence_insufficient_for_transfer" %in% reasons) {
+      "insufficient_information"
+    } else if (score >= 80L) {
+      "fully_applicable"
+    } else if (score >= 55L) {
+      "partially_applicable"
+    } else if (score >= 35L) {
+      "weakly_applicable"
+    } else {
+      "not_applicable"
+    }
+    data.table::data.table(
+      knowledge_id = row$knowledge_id,
+      knowledge_fingerprint = row$knowledge_fingerprint,
+      match_status = status,
+      applicability_score = as.integer(max(0L, min(100L, score))),
+      reasons = paste(unique(reasons), collapse = ", "),
+      transfer_guidance = switch(
+        status,
+        fully_applicable = "Historical knowledge appears applicable; reuse as prioritization guidance.",
+        partially_applicable = "Historical knowledge may apply, but confirm differences before reuse.",
+        weakly_applicable = "Treat as weak signal only; gather more evidence before reuse.",
+        not_applicable = "Do not reuse this knowledge in the current campaign context.",
+        insufficient_information = "Collect more context before applying this knowledge.",
+        "Review applicability before reuse."
+      )
+    )
+  })
+  data.table::rbindlist(rows, use.names = TRUE, fill = TRUE)
+}
+
 analytical_campaign_knowledge_promotion <- function(campaign) {
   memory <- campaign$memory %||% list()
   learning <- memory$learning_assessments %||% data.table::data.table()
@@ -261,6 +403,8 @@ analytical_campaign_knowledge_promotion <- function(campaign) {
   }
   evidence_readiness <- campaign$evidence_assessment$readiness %||% "unknown"
   sufficient_evidence <- evidence_readiness %in% c("reasonable", "strong") || length(memory$experiment_ids %||% character()) > 0L
+  opportunity_lookup <- campaign$opportunities %||% list()
+  names(opportunity_lookup) <- vapply(opportunity_lookup, function(opp) opp$opportunity_id %||% "", character(1))
   promoted_rows <- list()
   not_rows <- list()
   for (i in seq_len(nrow(learning))) {
@@ -269,6 +413,8 @@ analytical_campaign_knowledge_promotion <- function(campaign) {
     if (can_promote) {
       knowledge_type <- if (identical(row$learning_outcome, "resolved")) "supported_hypothesis" else "repeat_avoidance_guidance"
       fingerprint <- analytical_campaign_knowledge_fingerprint(knowledge_type, row$hypothesis, row$proposal_id)
+      proposal <- (opportunity_lookup[[row$opportunity_id]] %||% list())$proposal %||% list()
+      applicability <- analytical_campaign_applicability_profile(campaign, proposal)
       promoted_rows[[length(promoted_rows) + 1L]] <- data.table::data.table(
         knowledge_id = paste0("ck_", substr(storage_hash_value(fingerprint), 1L, 12L)),
         knowledge_fingerprint = fingerprint,
@@ -293,7 +439,28 @@ analytical_campaign_knowledge_promotion <- function(campaign) {
         current_status = "promoted",
         superseded_by = NA_character_,
         retired_reason = NA_character_,
-        reopening_conditions = paste(analytical_campaign_reopening_guidance(campaign)$condition, collapse = ", ")
+        reopening_conditions = paste(analytical_campaign_reopening_guidance(campaign)$condition, collapse = ", "),
+        applicability_schema_version = applicability$applicability_schema_version[[1]],
+        applicability_scope = applicability$applicability_scope[[1]],
+        dataset_characteristics = applicability$dataset_characteristics[[1]],
+        problem_type = applicability$problem_type[[1]],
+        target_type = applicability$target_type[[1]],
+        target_col = applicability$target_col[[1]],
+        model_family = applicability$model_family[[1]],
+        feature_types = applicability$feature_types[[1]],
+        feature_count = applicability$feature_count[[1]],
+        data_scale = applicability$data_scale[[1]],
+        time_dependence = applicability$time_dependence[[1]],
+        group_structure = applicability$group_structure[[1]],
+        supported_operators = applicability$supported_operators[[1]],
+        operator_support = applicability$operator_support[[1]],
+        required_evidence = applicability$required_evidence[[1]],
+        known_exclusions = applicability$known_exclusions[[1]],
+        known_limitations = applicability$known_limitations[[1]],
+        applicability_evidence_refs = applicability$applicability_evidence_refs[[1]],
+        transfer_guidance = applicability$transfer_guidance[[1]],
+        applicability_history = applicability$applicability_history[[1]],
+        applicability_status = applicability$applicability_status[[1]]
       )
     } else {
       not_rows[[length(not_rows) + 1L]] <- data.table::data.table(
@@ -336,7 +503,28 @@ analytical_campaign_normalize_knowledge <- function(knowledge = data.table::data
     current_status = character(),
     superseded_by = character(),
     retired_reason = character(),
-    reopening_conditions = character()
+    reopening_conditions = character(),
+    applicability_schema_version = character(),
+    applicability_scope = character(),
+    dataset_characteristics = character(),
+    problem_type = character(),
+    target_type = character(),
+    target_col = character(),
+    model_family = character(),
+    feature_types = character(),
+    feature_count = integer(),
+    data_scale = character(),
+    time_dependence = character(),
+    group_structure = character(),
+    supported_operators = character(),
+    operator_support = character(),
+    required_evidence = character(),
+    known_exclusions = character(),
+    known_limitations = character(),
+    applicability_evidence_refs = character(),
+    transfer_guidance = character(),
+    applicability_history = character(),
+    applicability_status = character()
   )
   for (nm in names(cols)) {
     if (!nm %in% names(dt)) dt[, (nm) := cols[[nm]][NA_integer_]]
@@ -349,6 +537,10 @@ analytical_campaign_normalize_knowledge <- function(knowledge = data.table::data
     dt[is.na(supporting_campaigns) | !nzchar(supporting_campaigns), supporting_campaigns := campaign_origin]
     dt[is.na(current_status) | !nzchar(current_status), current_status := "promoted"]
     dt[is.na(promotion_date) | !nzchar(promotion_date), promotion_date := promoted_at]
+    dt[is.na(applicability_schema_version) | !nzchar(applicability_schema_version), applicability_schema_version := analytical_campaign_applicability_schema_version()]
+    dt[is.na(applicability_scope) | !nzchar(applicability_scope), applicability_scope := "unknown"]
+    dt[is.na(applicability_status) | !nzchar(applicability_status), applicability_status := "local"]
+    dt[is.na(transfer_guidance) | !nzchar(transfer_guidance), transfer_guidance := future_guidance]
   }
   dt
 }
@@ -383,6 +575,7 @@ analytical_campaign_validate_promoted_knowledge <- function(existing_knowledge =
   learning <- campaign$memory$learning_assessments %||% data.table::data.table()
   history <- list()
   conflicts <- list()
+  applicability_changes <- list()
   add_history <- function(knowledge_id, relationship, before, after, evidence_refs, reason) {
     history[[length(history) + 1L]] <<- data.table::data.table(
       validation_id = paste0("kv_", substr(storage_hash_value(list(knowledge_id, campaign$campaign_id, relationship, length(history) + 1L)), 1L, 12L)),
@@ -402,6 +595,18 @@ analytical_campaign_validate_promoted_knowledge <- function(existing_knowledge =
       for (j in seq_len(nrow(learning))) {
         relationship <- analytical_campaign_knowledge_validation_relationship(registry[i], learning[j])
         if (identical(relationship, "unrelated")) next
+        match <- analytical_campaign_applicability_match(registry[i], campaign)
+        match_status <- if (nrow(match)) match$match_status[[1]] else "insufficient_information"
+        if (relationship %in% c("contradicts", "supersedes") && match_status %in% c("partially_applicable", "weakly_applicable", "not_applicable")) {
+          relationship <- "narrows"
+          applicability_changes[[length(applicability_changes) + 1L]] <- data.table::data.table(
+            knowledge_id = registry$knowledge_id[[i]],
+            campaign_id = campaign$campaign_id,
+            change_type = "narrowed",
+            reason = paste("Contradictory evidence occurred under", match_status, "context rather than fully applicable context."),
+            evidence_refs = learning$opportunity_id[[j]] %||% ""
+          )
+        }
         before <- registry$current_status[[i]] %||% "promoted"
         after <- switch(
           relationship,
@@ -445,6 +650,13 @@ analytical_campaign_validate_promoted_knowledge <- function(existing_knowledge =
         registry$supporting_experiments[[idx]] <- paste(unique(c(trimws(unlist(strsplit(registry$supporting_experiments[[idx]] %||% "", ","))), campaign$memory$experiment_ids %||% character())), collapse = ", ")
         registry$supporting_artifacts[[idx]] <- paste(unique(c(trimws(unlist(strsplit(registry$supporting_artifacts[[idx]] %||% "", ","))), campaign$memory$evidence_collected %||% character())), collapse = ", ")
         add_history(registry$knowledge_id[[idx]], "supports", before, after, new_knowledge$evidence_refs[[i]] %||% "", "Duplicate promoted knowledge merged by deterministic fingerprint.")
+        applicability_changes[[length(applicability_changes) + 1L]] <- data.table::data.table(
+          knowledge_id = registry$knowledge_id[[idx]],
+          campaign_id = campaign$campaign_id,
+          change_type = "broadened",
+          reason = "Same knowledge survived another comparable campaign context.",
+          evidence_refs = new_knowledge$evidence_refs[[i]] %||% ""
+        )
       } else {
         registry <- data.table::rbindlist(list(registry, new_knowledge[i]), use.names = TRUE, fill = TRUE)
         add_history(new_knowledge$knowledge_id[[i]], "promotion", "candidate", new_knowledge$current_status[[i]] %||% "promoted", new_knowledge$evidence_refs[[i]] %||% "", "New knowledge promoted by campaign closure.")
@@ -454,6 +666,7 @@ analytical_campaign_validate_promoted_knowledge <- function(existing_knowledge =
   registry <- analytical_campaign_normalize_knowledge(registry)
   history_dt <- if (length(history)) data.table::rbindlist(history, use.names = TRUE, fill = TRUE) else data.table::data.table()
   conflicts_dt <- if (length(conflicts)) data.table::rbindlist(conflicts, use.names = TRUE, fill = TRUE) else data.table::data.table()
+  applicability_changes_dt <- if (length(applicability_changes)) data.table::rbindlist(applicability_changes, use.names = TRUE, fill = TRUE) else data.table::data.table()
   if (nrow(history_dt)) {
     registry[, validation_history := paste(unique(c(validation_history, paste(history_dt$validation_id, collapse = ", "))), collapse = ", ")]
   }
@@ -461,6 +674,7 @@ analytical_campaign_validate_promoted_knowledge <- function(existing_knowledge =
     registry = registry,
     validation_history = history_dt,
     conflicts = conflicts_dt,
+    applicability_changes = applicability_changes_dt,
     summary = data.table::data.table(
       total_knowledge = nrow(registry),
       promoted = sum(registry$current_status == "promoted"),
@@ -469,7 +683,9 @@ analytical_campaign_validate_promoted_knowledge <- function(existing_knowledge =
       weakened = sum(registry$current_status == "weakened"),
       superseded = sum(registry$current_status == "superseded"),
       retired = sum(registry$current_status == "retired"),
-      conflicts = nrow(conflicts_dt)
+      conflicts = nrow(conflicts_dt),
+      narrowed = sum((applicability_changes_dt$change_type %||% character()) == "narrowed"),
+      broadened = sum((applicability_changes_dt$change_type %||% character()) == "broadened")
     )
   )
 }
@@ -601,22 +817,34 @@ analytical_campaign_apply_promoted_knowledge <- function(campaign, promoted_know
   knowledge <- analytical_campaign_normalize_knowledge(promoted_knowledge %||% data.table::data.table())
   knowledge <- knowledge[current_status %in% c("promoted", "validated", "strengthened")]
   if (!nrow(knowledge)) return(campaign)
-  avoid <- knowledge[knowledge_type == "repeat_avoidance_guidance", unique(proposal_id)]
-  supported <- knowledge[knowledge_type == "supported_hypothesis", unique(proposal_id)]
+  matches <- analytical_campaign_applicability_match(knowledge, campaign)
+  reusable_ids <- matches[match_status %in% c("fully_applicable", "partially_applicable"), knowledge_id]
+  weak_ids <- matches[match_status == "weakly_applicable", knowledge_id]
+  not_applicable_ids <- matches[match_status == "not_applicable", knowledge_id]
+  uncertain_ids <- matches[match_status == "insufficient_information", knowledge_id]
+  reusable <- knowledge[knowledge_id %in% reusable_ids]
+  avoid <- reusable[knowledge_type == "repeat_avoidance_guidance", unique(proposal_id)]
+  supported <- reusable[knowledge_type == "supported_hypothesis", unique(proposal_id)]
   campaign$opportunities <- lapply(campaign$opportunities %||% list(), function(opp) {
-    proposal_id <- opp$proposal$proposal_id %||% ""
-    if (proposal_id %in% avoid) {
+    current_proposal_id <- opp$proposal$proposal_id %||% ""
+    if (current_proposal_id %in% avoid) {
       opp$status <- "low_learning_value"
-      opp$status_reason <- "Promoted campaign knowledge recommends avoiding this repeated hypothesis without new evidence."
+      opp$status_reason <- "Applicable promoted campaign knowledge recommends avoiding this repeated hypothesis without new evidence."
       opp$score <- 0
-    } else if (proposal_id %in% supported && identical(opp$status %||% "", "candidate")) {
-      opp$score <- round(min(1, (opp$score %||% 0) + 0.05), 3)
-      opp$status_reason <- "Promoted campaign knowledge supports a related bounded hypothesis."
+    } else if (current_proposal_id %in% supported && identical(opp$status %||% "", "candidate")) {
+      match <- matches[knowledge_id %in% reusable[proposal_id == current_proposal_id, knowledge_id]]
+      boost <- if (nrow(match) && any(match$match_status == "fully_applicable")) 0.05 else 0.02
+      opp$score <- round(min(1, (opp$score %||% 0) + boost), 3)
+      opp$status_reason <- "Applicable promoted campaign knowledge supports a related bounded hypothesis."
     }
     opp
   })
   campaign$memory$promoted_knowledge <- knowledge
-  analytical_campaign_record_event(campaign, "promoted_knowledge_applied", campaign$campaign_id, paste(nrow(knowledge), "promoted knowledge record(s) considered."))
+  campaign$memory$knowledge_reuse_matches <- data.table::rbindlist(list(campaign$memory$knowledge_reuse_matches %||% data.table::data.table(), matches), use.names = TRUE, fill = TRUE)
+  campaign$memory$knowledge_reused <- unique(c(campaign$memory$knowledge_reused %||% character(), reusable_ids))
+  campaign$memory$knowledge_not_applicable <- unique(c(campaign$memory$knowledge_not_applicable %||% character(), not_applicable_ids))
+  campaign$memory$knowledge_reuse_uncertain <- unique(c(campaign$memory$knowledge_reuse_uncertain %||% character(), uncertain_ids, weak_ids))
+  analytical_campaign_record_event(campaign, "promoted_knowledge_applicability_checked", campaign$campaign_id, paste(nrow(matches), "promoted knowledge record(s) matched;", length(reusable_ids), "applicable."))
 }
 
 analytical_campaign_score_opportunity <- function(proposal, prior_outcomes = data.table::data.table()) {
@@ -802,6 +1030,12 @@ create_analytical_campaign <- function(
       non_promoted_knowledge = data.table::data.table(),
       knowledge_validation_history = data.table::data.table(),
       knowledge_conflicts = data.table::data.table(),
+      knowledge_reuse_matches = data.table::data.table(),
+      knowledge_reused = character(),
+      knowledge_not_applicable = character(),
+      knowledge_reuse_uncertain = character(),
+      knowledge_narrowed = character(),
+      knowledge_broadened = character(),
       supporting_evidence_refs = character(),
       learning_assessments = data.table::data.table(opportunity_id = character(), proposal_id = character(), hypothesis = character(), model_outcome = character(), learning_outcome = character(), confidence_change = character(), uncertainty_before = character(), uncertainty_after = character(), informative = logical(), repeat_likely_adds_value = logical(), recommendation = character()),
       proposal_lineage = data.table::data.table(opportunity_id = character(), proposal_id = character(), evidence_refs = character()),
@@ -1024,6 +1258,9 @@ analytical_campaign_synthesis <- function(campaign) {
   memory <- campaign$memory %||% list()
   closure <- analytical_campaign_closure_assessment(campaign)
   knowledge_validation <- analytical_campaign_validate_promoted_knowledge(memory$promoted_knowledge %||% data.table::data.table(), campaign)
+  applicability_changes <- knowledge_validation$applicability_changes %||% data.table::data.table()
+  narrowed_ids <- if (nrow(applicability_changes) && "change_type" %in% names(applicability_changes)) applicability_changes[change_type == "narrowed", knowledge_id] else character()
+  broadened_ids <- if (nrow(applicability_changes) && "change_type" %in% names(applicability_changes)) applicability_changes[change_type == "broadened", knowledge_id] else character()
   list(
     synthesis_version = analytical_campaign_synthesis_schema_version(),
     campaign_id = campaign$campaign_id,
@@ -1059,6 +1296,14 @@ analytical_campaign_synthesis <- function(campaign) {
     knowledge_validation_history = knowledge_validation$validation_history,
     knowledge_conflicts = knowledge_validation$conflicts,
     knowledge_review = knowledge_validation$summary,
+    knowledge_applicability_changes = applicability_changes,
+    knowledge_reused = memory$knowledge_reused %||% character(),
+    knowledge_rejected = memory$knowledge_not_applicable %||% character(),
+    knowledge_considered_not_applicable = memory$knowledge_not_applicable %||% character(),
+    knowledge_narrowed = unique(c(memory$knowledge_narrowed %||% character(), narrowed_ids)),
+    knowledge_broadened = unique(c(memory$knowledge_broadened %||% character(), broadened_ids)),
+    remaining_applicability_uncertainty = memory$knowledge_reuse_uncertain %||% character(),
+    future_validation_opportunities = unique(c(memory$unresolved_questions %||% character(), "Validate promoted knowledge when new comparable campaign evidence exists.")),
     reopening_guidance = closure$reopening_guidance,
     blocked_items = memory$blocked %||% character(),
     skipped_items = memory$skipped %||% character(),
@@ -1126,12 +1371,14 @@ analytical_campaign_state_summary <- function(campaigns = list()) {
   latest_closure <- if (length(campaigns)) tryCatch(analytical_campaign_closure_assessment(latest), error = function(e) list(recommendation = "unknown", campaign_confidence = NA_integer_, knowledge_promoted = data.table::data.table())) else list(recommendation = "none", campaign_confidence = NA_integer_, knowledge_promoted = data.table::data.table())
   knowledge_registry <- data.table::data.table()
   knowledge_conflicts <- data.table::data.table()
+  knowledge_applicability_changes <- data.table::data.table()
   if (length(campaigns)) {
     for (campaign in campaigns) {
       validation <- tryCatch(analytical_campaign_validate_promoted_knowledge(knowledge_registry, campaign), error = function(e) NULL)
       if (!is.null(validation)) {
         knowledge_registry <- validation$registry
         knowledge_conflicts <- data.table::rbindlist(list(knowledge_conflicts, validation$conflicts), use.names = TRUE, fill = TRUE)
+        knowledge_applicability_changes <- data.table::rbindlist(list(knowledge_applicability_changes, validation$applicability_changes), use.names = TRUE, fill = TRUE)
       }
     }
   }
@@ -1160,7 +1407,11 @@ analytical_campaign_state_summary <- function(campaigns = list()) {
     knowledge_validated = sum((knowledge_registry$current_status %||% character()) %in% c("validated", "strengthened")),
     knowledge_weakened = sum((knowledge_registry$current_status %||% character()) == "weakened"),
     knowledge_superseded = sum((knowledge_registry$current_status %||% character()) == "superseded"),
-    knowledge_conflicts = nrow(knowledge_conflicts)
+    knowledge_conflicts = nrow(knowledge_conflicts),
+    knowledge_applicable = sum((latest$memory$knowledge_reuse_matches$match_status %||% character()) %in% c("fully_applicable", "partially_applicable")),
+    knowledge_uncertain = sum((latest$memory$knowledge_reuse_matches$match_status %||% character()) %in% c("weakly_applicable", "insufficient_information")),
+    knowledge_narrowed = sum((knowledge_applicability_changes$change_type %||% character()) == "narrowed"),
+    knowledge_broadened = sum((knowledge_applicability_changes$change_type %||% character()) == "broadened")
   )
 }
 
@@ -1223,7 +1474,19 @@ qa_analytical_improvement_campaign <- function(output_dir = file.path(tempdir(),
   campaign_summary <- analytical_campaign_state_summary(list(second$value))
   learning_table <- second$value$memory$learning_assessments %||% data.table::data.table()
   closure <- analytical_campaign_closure_assessment(second$value)
-  reuse_campaign <- analytical_campaign_apply_promoted_knowledge(campaign, closure$knowledge_promoted)
+  comparable_campaign <- campaign
+  comparable_campaign$evidence_assessment$readiness <- "reasonable"
+  comparable_campaign$evidence_assessment$baseline_available <- TRUE
+  reuse_campaign <- analytical_campaign_apply_promoted_knowledge(comparable_campaign, closure$knowledge_promoted)
+  applicability_full <- analytical_campaign_applicability_match(closure$knowledge_promoted, comparable_campaign)
+  partial_campaign <- comparable_campaign
+  partial_campaign$opportunities <- list()
+  applicability_partial <- analytical_campaign_applicability_match(closure$knowledge_promoted, partial_campaign)
+  not_applicable_campaign <- comparable_campaign
+  not_applicable_campaign$evidence_context_summary$target_col <- "different_target"
+  not_applicable_campaign$evidence_assessment$target_col <- "different_target"
+  applicability_not <- analytical_campaign_applicability_match(closure$knowledge_promoted, not_applicable_campaign)
+  applicability_insufficient <- analytical_campaign_applicability_match(closure$knowledge_promoted, campaign)
   validation_one <- analytical_campaign_validate_promoted_knowledge(data.table::data.table(), second$value)
   validation_two <- analytical_campaign_validate_promoted_knowledge(validation_one$registry, second$value)
   conflict_campaign <- second$value
@@ -1248,6 +1511,10 @@ qa_analytical_improvement_campaign <- function(output_dir = file.path(tempdir(),
     conflict_campaign$memory$evidence_collected <- "qa_conflict_evidence"
   }
   conflict_validation <- analytical_campaign_validate_promoted_knowledge(validation_one$registry, conflict_campaign)
+  specialized_campaign <- conflict_campaign
+  specialized_campaign$evidence_context_summary$target_col <- "different_target"
+  specialized_campaign$evidence_assessment$target_col <- "different_target"
+  specialized_validation <- analytical_campaign_validate_promoted_knowledge(validation_one$registry, specialized_campaign)
   supersession_registry <- validation_one$registry
   if (nrow(supersession_registry)) {
     supersession_registry$knowledge_type[[1]] <- "repeat_avoidance_guidance"
@@ -1308,6 +1575,16 @@ qa_analytical_improvement_campaign <- function(output_dir = file.path(tempdir(),
       "knowledge_duplicate_prevention",
       "knowledge_status_transitions",
       "knowledge_review_summary",
+      "applicability_creation",
+      "applicability_full_match",
+      "applicability_partial_match",
+      "applicability_non_match",
+      "applicability_insufficient_information",
+      "applicability_transfer_guidance",
+      "applicability_campaign_reuse",
+      "applicability_conflict_specialization",
+      "applicability_broadening",
+      "applicability_traceability",
       "campaign_synthesis",
       "campaign_reconciliation"
     ),
@@ -1351,6 +1628,16 @@ qa_analytical_improvement_campaign <- function(output_dir = file.path(tempdir(),
       if (nrow(validation_two$registry %||% data.table::data.table()) <= max(1L, nrow(validation_one$registry %||% data.table::data.table()))) "success" else "error",
       if (analytical_campaign_knowledge_status_transition_allowed("promoted", "validated") && !analytical_campaign_knowledge_status_transition_allowed("retired", "promoted")) "success" else "error",
       if (nrow(knowledge_review %||% data.table::data.table()) == length(analytical_campaign_knowledge_statuses())) "success" else "error",
+      if (nrow(closure$knowledge_promoted %||% data.table::data.table()) == 0L || all(c("applicability_schema_version", "dataset_characteristics", "target_col", "supported_operators", "transfer_guidance") %in% names(closure$knowledge_promoted))) "success" else "error",
+      if (nrow(applicability_full %||% data.table::data.table()) == 0L || all((applicability_full$match_status %||% character()) %in% c("fully_applicable", "partially_applicable"))) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(applicability_partial %||% data.table::data.table()) == 0L || any((applicability_partial$match_status %||% character()) %in% c("partially_applicable", "weakly_applicable"))) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(applicability_not %||% data.table::data.table()) == 0L || all((applicability_not$match_status %||% character()) == "not_applicable")) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(applicability_insufficient %||% data.table::data.table()) == 0L || any((applicability_insufficient$match_status %||% character()) == "insufficient_information")) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(applicability_full %||% data.table::data.table()) == 0L || all(nzchar(applicability_full$transfer_guidance %||% character()))) "success" else "error",
+      if (nrow(reuse_campaign$memory$knowledge_reuse_matches %||% data.table::data.table()) >= nrow(closure$knowledge_promoted %||% data.table::data.table()) && length(reuse_campaign$memory$knowledge_reused %||% character()) >= min(1L, nrow(closure$knowledge_promoted %||% data.table::data.table()))) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(specialized_validation$applicability_changes %||% data.table::data.table()) == 0L || any((specialized_validation$applicability_changes$change_type %||% character()) == "narrowed")) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(validation_two$applicability_changes %||% data.table::data.table()) == 0L || any((validation_two$applicability_changes$change_type %||% character()) == "broadened")) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(closure$knowledge_promoted %||% data.table::data.table()) == 0L || all(nzchar(closure$knowledge_promoted$applicability_evidence_refs %||% character()))) "success" else "error",
       if (identical(synthesis$synthesis_version, analytical_campaign_synthesis_schema_version()) && nzchar(synthesis$recommendation)) "success" else "error",
       if (identical(reconciliation$status, "success")) "success" else "error"
     ),
@@ -1394,6 +1681,16 @@ qa_analytical_improvement_campaign <- function(output_dir = file.path(tempdir(),
       paste("Registry rows before/after duplicate merge:", nrow(validation_one$registry %||% data.table::data.table()), nrow(validation_two$registry %||% data.table::data.table())),
       "Knowledge status transitions are governed.",
       paste("Review statuses:", nrow(knowledge_review)),
+      paste("Applicability records:", nrow(closure$knowledge_promoted %||% data.table::data.table())),
+      paste("Full/partial matches:", paste(unique(applicability_full$match_status %||% character()), collapse = ", ")),
+      paste("Partial matches:", paste(unique(applicability_partial$match_status %||% character()), collapse = ", ")),
+      paste("Not applicable:", paste(unique(applicability_not$match_status %||% character()), collapse = ", ")),
+      paste("Insufficient applicability:", paste(unique(applicability_insufficient$match_status %||% character()), collapse = ", ")),
+      "Transfer guidance is populated for applicability matches.",
+      paste("Reused knowledge:", length(reuse_campaign$memory$knowledge_reused %||% character())),
+      paste("Narrowed applicability:", sum((specialized_validation$applicability_changes$change_type %||% character()) == "narrowed")),
+      paste("Broadened applicability:", sum((validation_two$applicability_changes$change_type %||% character()) == "broadened")),
+      "Applicability records keep evidence references.",
       synthesis$recommendation,
       service_result_message(reconciliation)
     )
