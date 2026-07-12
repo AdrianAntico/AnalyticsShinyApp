@@ -207,6 +207,18 @@ Phase 32 adds governed campaign closure and knowledge promotion:
 
 This completes the campaign lifecycle: evidence -> investigation -> learning -> knowledge -> closure.
 
+Phase 33 makes promoted campaign knowledge accountable to future evidence:
+
+- promoted knowledge receives deterministic lifecycle identity
+- future campaigns validate, strengthen, weaken, supersede, or retire prior knowledge
+- duplicate knowledge is merged by fingerprint rather than copied
+- conflicts are surfaced instead of silently overwriting older conclusions
+- superseded and retired knowledge remains inspectable for historical learning
+- future campaigns consume only active knowledge: promoted, validated, or strengthened
+- Mission Control surfaces validation and conflict signals through the existing campaign tile
+
+The campaign lifecycle now continues beyond closure: evidence -> learning -> promoted knowledge -> future validation -> strengthened, weakened, superseded, or retired knowledge -> continued organizational learning.
+
 ## Non-Goals
 
 - no rigid wizard

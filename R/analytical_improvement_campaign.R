@@ -3,9 +3,35 @@ analytical_campaign_plan_schema_version <- function() "analytical_campaign_plan_
 analytical_campaign_synthesis_schema_version <- function() "analytical_campaign_synthesis_v1"
 analytical_campaign_learning_schema_version <- function() "analytical_campaign_learning_assessment_v1"
 analytical_campaign_closure_schema_version <- function() "analytical_campaign_closure_assessment_v1"
+analytical_campaign_knowledge_lifecycle_schema_version <- function() "analytical_campaign_knowledge_lifecycle_v1"
+
+analytical_campaign_knowledge_statuses <- function() {
+  c("candidate", "promoted", "validated", "strengthened", "weakened", "superseded", "retired", "blocked")
+}
+
+analytical_campaign_knowledge_status_transition_allowed <- function(from, to) {
+  from <- tolower(from %||% "candidate")
+  to <- tolower(to %||% "candidate")
+  allowed <- list(
+    candidate = c("promoted", "blocked", "retired"),
+    promoted = c("validated", "strengthened", "weakened", "superseded", "retired", "blocked"),
+    validated = c("strengthened", "weakened", "superseded", "retired"),
+    strengthened = c("validated", "weakened", "superseded", "retired"),
+    weakened = c("validated", "strengthened", "superseded", "retired"),
+    superseded = c("retired"),
+    retired = character(),
+    blocked = c("promoted", "retired")
+  )
+  identical(from, to) || to %in% (allowed[[from]] %||% character())
+}
 
 analytical_campaign_now <- function() {
   if (exists("storage_now", mode = "function")) storage_now() else as.character(Sys.time())
+}
+
+analytical_campaign_knowledge_fingerprint <- function(knowledge_type, conclusion, proposal_id = "") {
+  text <- tolower(trimws(paste(knowledge_type %||% "", conclusion %||% "", proposal_id %||% "", sep = "::")))
+  paste0("kf_", substr(storage_hash_value(text), 1L, 16L))
 }
 
 analytical_campaign_id <- function(project_id = "active_project", objective = "analytical_improvement") {
@@ -242,9 +268,16 @@ analytical_campaign_knowledge_promotion <- function(campaign) {
     can_promote <- isTRUE(sufficient_evidence) && row$learning_outcome %in% c("resolved", "reduced_uncertainty") && isTRUE(row$informative)
     if (can_promote) {
       knowledge_type <- if (identical(row$learning_outcome, "resolved")) "supported_hypothesis" else "repeat_avoidance_guidance"
+      fingerprint <- analytical_campaign_knowledge_fingerprint(knowledge_type, row$hypothesis, row$proposal_id)
       promoted_rows[[length(promoted_rows) + 1L]] <- data.table::data.table(
-        knowledge_id = paste0("ck_", substr(storage_hash_value(list(campaign$campaign_id, row$opportunity_id, row$learning_outcome)), 1L, 12L)),
+        knowledge_id = paste0("ck_", substr(storage_hash_value(fingerprint), 1L, 12L)),
+        knowledge_fingerprint = fingerprint,
+        lifecycle_schema_version = analytical_campaign_knowledge_lifecycle_schema_version(),
         campaign_id = campaign$campaign_id,
+        campaign_origin = campaign$campaign_id,
+        supporting_campaigns = campaign$campaign_id,
+        supporting_experiments = paste(memory$experiment_ids %||% character(), collapse = ", "),
+        supporting_artifacts = paste(memory$evidence_collected %||% character(), collapse = ", "),
         opportunity_id = row$opportunity_id,
         proposal_id = row$proposal_id,
         knowledge_type = knowledge_type,
@@ -252,7 +285,15 @@ analytical_campaign_knowledge_promotion <- function(campaign) {
         support_level = if (identical(row$learning_outcome, "resolved")) "strong" else "moderate",
         evidence_refs = paste(unique(c(row$opportunity_id, row$proposal_id)), collapse = ", "),
         future_guidance = if (identical(knowledge_type, "repeat_avoidance_guidance")) "Avoid repeating this bounded hypothesis without new evidence." else "Prioritize related bounded opportunities when the same evidence context appears.",
-        promoted_at = analytical_campaign_now()
+        promotion_date = analytical_campaign_now(),
+        promoted_at = analytical_campaign_now(),
+        promotion_reason = row$recommendation %||% "Promoted from governed campaign learning.",
+        promotion_confidence = campaign$evidence_assessment$confidence_score %||% NA_integer_,
+        validation_history = "",
+        current_status = "promoted",
+        superseded_by = NA_character_,
+        retired_reason = NA_character_,
+        reopening_conditions = paste(analytical_campaign_reopening_guidance(campaign)$condition, collapse = ", ")
       )
     } else {
       not_rows[[length(not_rows) + 1L]] <- data.table::data.table(
@@ -266,6 +307,193 @@ analytical_campaign_knowledge_promotion <- function(campaign) {
   list(
     promoted = if (length(promoted_rows)) data.table::rbindlist(promoted_rows, use.names = TRUE, fill = TRUE) else data.table::data.table(),
     not_promoted = if (length(not_rows)) data.table::rbindlist(not_rows, use.names = TRUE, fill = TRUE) else data.table::data.table()
+  )
+}
+
+analytical_campaign_normalize_knowledge <- function(knowledge = data.table::data.table()) {
+  dt <- data.table::as.data.table(knowledge %||% data.table::data.table())
+  cols <- list(
+    knowledge_id = character(),
+    knowledge_fingerprint = character(),
+    lifecycle_schema_version = character(),
+    campaign_id = character(),
+    campaign_origin = character(),
+    supporting_campaigns = character(),
+    supporting_experiments = character(),
+    supporting_artifacts = character(),
+    opportunity_id = character(),
+    proposal_id = character(),
+    knowledge_type = character(),
+    conclusion = character(),
+    support_level = character(),
+    evidence_refs = character(),
+    future_guidance = character(),
+    promotion_date = character(),
+    promoted_at = character(),
+    promotion_reason = character(),
+    promotion_confidence = integer(),
+    validation_history = character(),
+    current_status = character(),
+    superseded_by = character(),
+    retired_reason = character(),
+    reopening_conditions = character()
+  )
+  for (nm in names(cols)) {
+    if (!nm %in% names(dt)) dt[, (nm) := cols[[nm]][NA_integer_]]
+  }
+  if (nrow(dt)) {
+    dt[is.na(knowledge_fingerprint) | !nzchar(knowledge_fingerprint), knowledge_fingerprint := analytical_campaign_knowledge_fingerprint(knowledge_type, conclusion, proposal_id)]
+    dt[is.na(knowledge_id) | !nzchar(knowledge_id), knowledge_id := paste0("ck_", substr(storage_hash_value(knowledge_fingerprint), 1L, 12L))]
+    dt[is.na(lifecycle_schema_version) | !nzchar(lifecycle_schema_version), lifecycle_schema_version := analytical_campaign_knowledge_lifecycle_schema_version()]
+    dt[is.na(campaign_origin) | !nzchar(campaign_origin), campaign_origin := campaign_id]
+    dt[is.na(supporting_campaigns) | !nzchar(supporting_campaigns), supporting_campaigns := campaign_origin]
+    dt[is.na(current_status) | !nzchar(current_status), current_status := "promoted"]
+    dt[is.na(promotion_date) | !nzchar(promotion_date), promotion_date := promoted_at]
+  }
+  dt
+}
+
+analytical_campaign_knowledge_validation_relationship <- function(knowledge_row, learning_row) {
+  if (!identical(knowledge_row$proposal_id %||% "", learning_row$proposal_id %||% "") &&
+      !identical(tolower(knowledge_row$conclusion %||% ""), tolower(learning_row$hypothesis %||% ""))) {
+    return("unrelated")
+  }
+  knowledge_type <- knowledge_row$knowledge_type %||% ""
+  outcome <- learning_row$learning_outcome %||% ""
+  if (identical(knowledge_type, "supported_hypothesis") && identical(outcome, "resolved")) "supports"
+  else if (identical(knowledge_type, "supported_hypothesis") && identical(outcome, "reduced_uncertainty")) "contradicts"
+  else if (identical(knowledge_type, "repeat_avoidance_guidance") && identical(outcome, "reduced_uncertainty")) "supports"
+  else if (identical(knowledge_type, "repeat_avoidance_guidance") && identical(outcome, "resolved")) "supersedes"
+  else if (outcome %in% c("maintained_uncertainty", "shifted_uncertainty")) "narrows"
+  else "extends"
+}
+
+analytical_campaign_validation_strength <- function(registry_row, relationship) {
+  campaign_count <- length(unique(trimws(unlist(strsplit(registry_row$supporting_campaigns %||% "", ",")))))
+  experiment_count <- length(unique(trimws(unlist(strsplit(registry_row$supporting_experiments %||% "", ",")))))
+  score <- min(100L, 30L + campaign_count * 20L + experiment_count * 10L)
+  if (relationship %in% c("contradicts", "supersedes")) score <- max(0L, score - 40L)
+  as.integer(score)
+}
+
+analytical_campaign_validate_promoted_knowledge <- function(existing_knowledge = data.table::data.table(), campaign) {
+  registry <- analytical_campaign_normalize_knowledge(existing_knowledge)
+  closure <- analytical_campaign_closure_assessment(campaign)
+  new_knowledge <- analytical_campaign_normalize_knowledge(closure$knowledge_promoted %||% data.table::data.table())
+  learning <- campaign$memory$learning_assessments %||% data.table::data.table()
+  history <- list()
+  conflicts <- list()
+  add_history <- function(knowledge_id, relationship, before, after, evidence_refs, reason) {
+    history[[length(history) + 1L]] <<- data.table::data.table(
+      validation_id = paste0("kv_", substr(storage_hash_value(list(knowledge_id, campaign$campaign_id, relationship, length(history) + 1L)), 1L, 12L)),
+      knowledge_id = knowledge_id,
+      validating_campaign_id = campaign$campaign_id,
+      relationship = relationship,
+      status_before = before,
+      status_after = after,
+      validation_strength = NA_integer_,
+      evidence_refs = evidence_refs %||% "",
+      validated_at = analytical_campaign_now(),
+      reason = reason %||% ""
+    )
+  }
+  if (nrow(registry) && nrow(learning)) {
+    for (i in seq_len(nrow(registry))) {
+      for (j in seq_len(nrow(learning))) {
+        relationship <- analytical_campaign_knowledge_validation_relationship(registry[i], learning[j])
+        if (identical(relationship, "unrelated")) next
+        before <- registry$current_status[[i]] %||% "promoted"
+        after <- switch(
+          relationship,
+          supports = if (before %in% c("validated", "strengthened")) "strengthened" else "validated",
+          contradicts = "weakened",
+          supersedes = "superseded",
+          narrows = if (before %in% c("superseded", "retired")) before else "weakened",
+          extends = before,
+          before
+        )
+        if (!analytical_campaign_knowledge_status_transition_allowed(before, after)) after <- before
+        registry$current_status[[i]] <- after
+        registry$supporting_campaigns[[i]] <- paste(unique(c(trimws(unlist(strsplit(registry$supporting_campaigns[[i]] %||% "", ","))), campaign$campaign_id)), collapse = ", ")
+        registry$supporting_experiments[[i]] <- paste(unique(c(trimws(unlist(strsplit(registry$supporting_experiments[[i]] %||% "", ","))), campaign$memory$experiment_ids %||% character())), collapse = ", ")
+        registry$supporting_artifacts[[i]] <- paste(unique(c(trimws(unlist(strsplit(registry$supporting_artifacts[[i]] %||% "", ","))), campaign$memory$evidence_collected %||% character())), collapse = ", ")
+        registry$support_level[[i]] <- if (relationship == "supports" && after == "strengthened") "strong" else if (relationship %in% c("contradicts", "narrows")) "weakening" else registry$support_level[[i]]
+        add_history(registry$knowledge_id[[i]], relationship, before, after, learning$opportunity_id[[j]] %||% "", paste("Validated against", learning$learning_outcome[[j]], "from", campaign$campaign_id))
+        history[[length(history)]]$validation_strength <- analytical_campaign_validation_strength(registry[i], relationship)
+        if (relationship %in% c("contradicts", "supersedes")) {
+          conflicts[[length(conflicts) + 1L]] <- data.table::data.table(
+            knowledge_id = registry$knowledge_id[[i]],
+            campaign_id = campaign$campaign_id,
+            relationship = relationship,
+            current_status = after,
+            evidence_refs = learning$opportunity_id[[j]] %||% "",
+            recommendation = "Review the historical knowledge and the new campaign evidence before reuse."
+          )
+        }
+      }
+    }
+  }
+  if (nrow(new_knowledge)) {
+    for (i in seq_len(nrow(new_knowledge))) {
+      match_idx <- which(registry$knowledge_fingerprint %||% character() == new_knowledge$knowledge_fingerprint[[i]])
+      if (length(match_idx)) {
+        idx <- match_idx[[1L]]
+        before <- registry$current_status[[idx]] %||% "promoted"
+        after <- if (before %in% c("validated", "strengthened")) "strengthened" else "validated"
+        registry$current_status[[idx]] <- after
+        registry$supporting_campaigns[[idx]] <- paste(unique(c(trimws(unlist(strsplit(registry$supporting_campaigns[[idx]] %||% "", ","))), campaign$campaign_id)), collapse = ", ")
+        registry$supporting_experiments[[idx]] <- paste(unique(c(trimws(unlist(strsplit(registry$supporting_experiments[[idx]] %||% "", ","))), campaign$memory$experiment_ids %||% character())), collapse = ", ")
+        registry$supporting_artifacts[[idx]] <- paste(unique(c(trimws(unlist(strsplit(registry$supporting_artifacts[[idx]] %||% "", ","))), campaign$memory$evidence_collected %||% character())), collapse = ", ")
+        add_history(registry$knowledge_id[[idx]], "supports", before, after, new_knowledge$evidence_refs[[i]] %||% "", "Duplicate promoted knowledge merged by deterministic fingerprint.")
+      } else {
+        registry <- data.table::rbindlist(list(registry, new_knowledge[i]), use.names = TRUE, fill = TRUE)
+        add_history(new_knowledge$knowledge_id[[i]], "promotion", "candidate", new_knowledge$current_status[[i]] %||% "promoted", new_knowledge$evidence_refs[[i]] %||% "", "New knowledge promoted by campaign closure.")
+      }
+    }
+  }
+  registry <- analytical_campaign_normalize_knowledge(registry)
+  history_dt <- if (length(history)) data.table::rbindlist(history, use.names = TRUE, fill = TRUE) else data.table::data.table()
+  conflicts_dt <- if (length(conflicts)) data.table::rbindlist(conflicts, use.names = TRUE, fill = TRUE) else data.table::data.table()
+  if (nrow(history_dt)) {
+    registry[, validation_history := paste(unique(c(validation_history, paste(history_dt$validation_id, collapse = ", "))), collapse = ", ")]
+  }
+  list(
+    registry = registry,
+    validation_history = history_dt,
+    conflicts = conflicts_dt,
+    summary = data.table::data.table(
+      total_knowledge = nrow(registry),
+      promoted = sum(registry$current_status == "promoted"),
+      validated = sum(registry$current_status == "validated"),
+      strengthened = sum(registry$current_status == "strengthened"),
+      weakened = sum(registry$current_status == "weakened"),
+      superseded = sum(registry$current_status == "superseded"),
+      retired = sum(registry$current_status == "retired"),
+      conflicts = nrow(conflicts_dt)
+    )
+  )
+}
+
+analytical_campaign_retire_knowledge <- function(knowledge, knowledge_ids, reason = "Retired by governed review.") {
+  registry <- analytical_campaign_normalize_knowledge(knowledge)
+  idx <- which(registry$knowledge_id %in% knowledge_ids)
+  if (length(idx)) {
+    for (i in idx) {
+      before <- registry$current_status[[i]] %||% "promoted"
+      if (analytical_campaign_knowledge_status_transition_allowed(before, "retired")) {
+        registry$current_status[[i]] <- "retired"
+        registry$retired_reason[[i]] <- reason
+      }
+    }
+  }
+  registry
+}
+
+analytical_campaign_knowledge_review <- function(knowledge) {
+  registry <- analytical_campaign_normalize_knowledge(knowledge)
+  data.table::data.table(
+    status = analytical_campaign_knowledge_statuses(),
+    count = vapply(analytical_campaign_knowledge_statuses(), function(x) sum((registry$current_status %||% character()) == x), integer(1))
   )
 }
 
@@ -370,7 +598,8 @@ analytical_campaign_closure_assessment <- function(campaign) {
 }
 
 analytical_campaign_apply_promoted_knowledge <- function(campaign, promoted_knowledge = data.table::data.table()) {
-  knowledge <- data.table::as.data.table(promoted_knowledge %||% data.table::data.table())
+  knowledge <- analytical_campaign_normalize_knowledge(promoted_knowledge %||% data.table::data.table())
+  knowledge <- knowledge[current_status %in% c("promoted", "validated", "strengthened")]
   if (!nrow(knowledge)) return(campaign)
   avoid <- knowledge[knowledge_type == "repeat_avoidance_guidance", unique(proposal_id)]
   supported <- knowledge[knowledge_type == "supported_hypothesis", unique(proposal_id)]
@@ -571,6 +800,8 @@ create_analytical_campaign <- function(
       low_learning_opportunity_ids = character(),
       promoted_knowledge = data.table::data.table(),
       non_promoted_knowledge = data.table::data.table(),
+      knowledge_validation_history = data.table::data.table(),
+      knowledge_conflicts = data.table::data.table(),
       supporting_evidence_refs = character(),
       learning_assessments = data.table::data.table(opportunity_id = character(), proposal_id = character(), hypothesis = character(), model_outcome = character(), learning_outcome = character(), confidence_change = character(), uncertainty_before = character(), uncertainty_after = character(), informative = logical(), repeat_likely_adds_value = logical(), recommendation = character()),
       proposal_lineage = data.table::data.table(opportunity_id = character(), proposal_id = character(), evidence_refs = character()),
@@ -792,6 +1023,7 @@ analytical_campaign_synthesis <- function(campaign) {
   }), use.names = TRUE, fill = TRUE) else data.table::data.table()
   memory <- campaign$memory %||% list()
   closure <- analytical_campaign_closure_assessment(campaign)
+  knowledge_validation <- analytical_campaign_validate_promoted_knowledge(memory$promoted_knowledge %||% data.table::data.table(), campaign)
   list(
     synthesis_version = analytical_campaign_synthesis_schema_version(),
     campaign_id = campaign$campaign_id,
@@ -823,6 +1055,10 @@ analytical_campaign_synthesis <- function(campaign) {
     closure_assessment = closure,
     knowledge_promoted = closure$knowledge_promoted,
     knowledge_not_promoted = closure$knowledge_not_promoted,
+    knowledge_lifecycle = knowledge_validation$registry,
+    knowledge_validation_history = knowledge_validation$validation_history,
+    knowledge_conflicts = knowledge_validation$conflicts,
+    knowledge_review = knowledge_validation$summary,
     reopening_guidance = closure$reopening_guidance,
     blocked_items = memory$blocked %||% character(),
     skipped_items = memory$skipped %||% character(),
@@ -888,6 +1124,17 @@ analytical_campaign_state_summary <- function(campaigns = list()) {
   current_opportunity <- if (length(current)) current[[1]]$title %||% current[[1]]$opportunity_id %||% "" else ""
   latest_learning <- latest$memory$learning_assessments %||% data.table::data.table()
   latest_closure <- if (length(campaigns)) tryCatch(analytical_campaign_closure_assessment(latest), error = function(e) list(recommendation = "unknown", campaign_confidence = NA_integer_, knowledge_promoted = data.table::data.table())) else list(recommendation = "none", campaign_confidence = NA_integer_, knowledge_promoted = data.table::data.table())
+  knowledge_registry <- data.table::data.table()
+  knowledge_conflicts <- data.table::data.table()
+  if (length(campaigns)) {
+    for (campaign in campaigns) {
+      validation <- tryCatch(analytical_campaign_validate_promoted_knowledge(knowledge_registry, campaign), error = function(e) NULL)
+      if (!is.null(validation)) {
+        knowledge_registry <- validation$registry
+        knowledge_conflicts <- data.table::rbindlist(list(knowledge_conflicts, validation$conflicts), use.names = TRUE, fill = TRUE)
+      }
+    }
+  }
   data.table::data.table(
     total_campaigns = length(campaigns),
     active_campaigns = sum(statuses %in% c("planned", "running")),
@@ -908,7 +1155,12 @@ analytical_campaign_state_summary <- function(campaigns = list()) {
     unresolved_questions = length(latest$memory$unresolved_questions %||% character()),
     closure_recommendation = latest_closure$recommendation %||% "unknown",
     campaign_confidence = latest_closure$campaign_confidence %||% NA_integer_,
-    promoted_knowledge = nrow(latest_closure$knowledge_promoted %||% data.table::data.table())
+    promoted_knowledge = nrow(latest_closure$knowledge_promoted %||% data.table::data.table()),
+    knowledge_awaiting_validation = sum((knowledge_registry$current_status %||% character()) == "promoted"),
+    knowledge_validated = sum((knowledge_registry$current_status %||% character()) %in% c("validated", "strengthened")),
+    knowledge_weakened = sum((knowledge_registry$current_status %||% character()) == "weakened"),
+    knowledge_superseded = sum((knowledge_registry$current_status %||% character()) == "superseded"),
+    knowledge_conflicts = nrow(knowledge_conflicts)
   )
 }
 
@@ -972,6 +1224,39 @@ qa_analytical_improvement_campaign <- function(output_dir = file.path(tempdir(),
   learning_table <- second$value$memory$learning_assessments %||% data.table::data.table()
   closure <- analytical_campaign_closure_assessment(second$value)
   reuse_campaign <- analytical_campaign_apply_promoted_knowledge(campaign, closure$knowledge_promoted)
+  validation_one <- analytical_campaign_validate_promoted_knowledge(data.table::data.table(), second$value)
+  validation_two <- analytical_campaign_validate_promoted_knowledge(validation_one$registry, second$value)
+  conflict_campaign <- second$value
+  conflict_campaign$campaign_id <- paste0(second$value$campaign_id, "_conflict")
+  if (nrow(closure$knowledge_promoted %||% data.table::data.table())) {
+    first_knowledge <- closure$knowledge_promoted[1]
+    conflict_outcome <- if (identical(first_knowledge$knowledge_type[[1]], "supported_hypothesis")) "reduced_uncertainty" else "resolved"
+    conflict_campaign$memory$learning_assessments <- data.table::data.table(
+      opportunity_id = first_knowledge$opportunity_id[[1]],
+      proposal_id = first_knowledge$proposal_id[[1]],
+      hypothesis = first_knowledge$conclusion[[1]],
+      model_outcome = if (identical(conflict_outcome, "resolved")) "accept" else "reject",
+      learning_outcome = conflict_outcome,
+      confidence_change = "increased",
+      uncertainty_before = "moderate",
+      uncertainty_after = "lower",
+      informative = TRUE,
+      repeat_likely_adds_value = FALSE,
+      recommendation = "Synthetic conflicting campaign evidence for lifecycle QA."
+    )
+    conflict_campaign$memory$experiment_ids <- "qa_conflict_experiment"
+    conflict_campaign$memory$evidence_collected <- "qa_conflict_evidence"
+  }
+  conflict_validation <- analytical_campaign_validate_promoted_knowledge(validation_one$registry, conflict_campaign)
+  supersession_registry <- validation_one$registry
+  if (nrow(supersession_registry)) {
+    supersession_registry$knowledge_type[[1]] <- "repeat_avoidance_guidance"
+    supersession_registry$current_status[[1]] <- "promoted"
+    supersession_registry$knowledge_fingerprint[[1]] <- analytical_campaign_knowledge_fingerprint(supersession_registry$knowledge_type[[1]], supersession_registry$conclusion[[1]], supersession_registry$proposal_id[[1]])
+  }
+  supersession_validation <- analytical_campaign_validate_promoted_knowledge(supersession_registry, conflict_campaign)
+  retired_registry <- if (nrow(validation_one$registry)) analytical_campaign_retire_knowledge(validation_one$registry, validation_one$registry$knowledge_id[[1]], "QA retirement after supersession review.") else validation_one$registry
+  knowledge_review <- analytical_campaign_knowledge_review(validation_two$registry)
   weak_campaign <- second$value
   weak_campaign$evidence_assessment$readiness <- "preliminary"
   weak_campaign$memory$experiment_ids <- character()
@@ -1013,6 +1298,16 @@ qa_analytical_improvement_campaign <- function(output_dir = file.path(tempdir(),
       "reopening_guidance",
       "future_campaign_reuse",
       "closure_traceability",
+      "knowledge_identity",
+      "knowledge_validation",
+      "knowledge_strengthening",
+      "knowledge_weakening",
+      "knowledge_supersession",
+      "knowledge_retirement",
+      "knowledge_conflict_detection",
+      "knowledge_duplicate_prevention",
+      "knowledge_status_transitions",
+      "knowledge_review_summary",
       "campaign_synthesis",
       "campaign_reconciliation"
     ),
@@ -1046,6 +1341,16 @@ qa_analytical_improvement_campaign <- function(output_dir = file.path(tempdir(),
       if (nrow(closure$reopening_guidance %||% data.table::data.table()) >= 1L && "new_data" %in% closure$reopening_guidance$condition) "success" else "error",
       if (nrow(closure$knowledge_promoted %||% data.table::data.table()) == 0L || any(vapply(reuse_campaign$opportunities %||% list(), function(x) identical(x$status %||% "", "low_learning_value") || nzchar(x$status_reason %||% ""), logical(1)))) "success" else "error",
       if (nrow(closure$knowledge_promoted %||% data.table::data.table()) == 0L || all(c("campaign_id", "opportunity_id", "proposal_id", "evidence_refs") %in% names(closure$knowledge_promoted))) "success" else "error",
+      if (nrow(closure$knowledge_promoted %||% data.table::data.table()) == 0L || all(c("knowledge_id", "knowledge_fingerprint", "campaign_origin", "current_status", "validation_history", "reopening_conditions") %in% names(closure$knowledge_promoted))) "success" else "error",
+      if (nrow(validation_one$registry %||% data.table::data.table()) >= nrow(closure$knowledge_promoted %||% data.table::data.table()) && nrow(validation_one$validation_history %||% data.table::data.table()) >= nrow(closure$knowledge_promoted %||% data.table::data.table())) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(validation_two$registry %||% data.table::data.table()) && any((validation_two$registry$current_status %||% character()) %in% c("validated", "strengthened"))) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(conflict_validation$registry %||% data.table::data.table()) == 0L || any((conflict_validation$registry$current_status %||% character()) %in% c("weakened", "superseded"))) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(supersession_validation$registry %||% data.table::data.table()) == 0L || any((supersession_validation$registry$current_status %||% character()) == "superseded")) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(retired_registry %||% data.table::data.table()) == 0L || any((retired_registry$current_status %||% character()) == "retired")) "success" else if (!identical(catboost_status, "success")) "warning" else "error",
+      if (nrow(conflict_validation$conflicts %||% data.table::data.table()) >= 1L || !identical(catboost_status, "success")) "success" else "error",
+      if (nrow(validation_two$registry %||% data.table::data.table()) <= max(1L, nrow(validation_one$registry %||% data.table::data.table()))) "success" else "error",
+      if (analytical_campaign_knowledge_status_transition_allowed("promoted", "validated") && !analytical_campaign_knowledge_status_transition_allowed("retired", "promoted")) "success" else "error",
+      if (nrow(knowledge_review %||% data.table::data.table()) == length(analytical_campaign_knowledge_statuses())) "success" else "error",
       if (identical(synthesis$synthesis_version, analytical_campaign_synthesis_schema_version()) && nzchar(synthesis$recommendation)) "success" else "error",
       if (identical(reconciliation$status, "success")) "success" else "error"
     ),
@@ -1079,6 +1384,16 @@ qa_analytical_improvement_campaign <- function(output_dir = file.path(tempdir(),
       paste("Reopen conditions:", nrow(closure$reopening_guidance %||% data.table::data.table())),
       "Promoted knowledge can be applied to a future campaign.",
       "Promoted knowledge keeps traceable campaign/opportunity/proposal references.",
+      paste("Knowledge fingerprints:", if (nrow(closure$knowledge_promoted %||% data.table::data.table()) && "knowledge_fingerprint" %in% names(closure$knowledge_promoted)) length(unique(closure$knowledge_promoted$knowledge_fingerprint)) else 0L),
+      paste("Validation history rows:", nrow(validation_one$validation_history %||% data.table::data.table())),
+      paste("Validated/strengthened:", sum((validation_two$registry$current_status %||% character()) %in% c("validated", "strengthened"))),
+      paste("Weakened/superseded:", sum((conflict_validation$registry$current_status %||% character()) %in% c("weakened", "superseded"))),
+      paste("Superseded:", sum((supersession_validation$registry$current_status %||% character()) == "superseded")),
+      paste("Retired:", sum((retired_registry$current_status %||% character()) == "retired")),
+      paste("Conflicts:", nrow(conflict_validation$conflicts %||% data.table::data.table())),
+      paste("Registry rows before/after duplicate merge:", nrow(validation_one$registry %||% data.table::data.table()), nrow(validation_two$registry %||% data.table::data.table())),
+      "Knowledge status transitions are governed.",
+      paste("Review statuses:", nrow(knowledge_review)),
       synthesis$recommendation,
       service_result_message(reconciliation)
     )

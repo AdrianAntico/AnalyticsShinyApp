@@ -132,3 +132,9 @@ No new persistence or governance layer was introduced. Campaign memory now track
 Phase 32 added deterministic campaign closure assessment and knowledge promotion within the existing campaign contracts. Campaigns now embed `analytical_campaign_closure_assessment_v1` in synthesis with closure recommendation, campaign confidence, confidence factors, completeness, expected next-opportunity value, governance status, remaining uncertainty, evidence gaps, promoted knowledge, intentionally non-promoted knowledge, reopening guidance, and summary.
 
 Promoted knowledge remains campaign evidence, not a global knowledge graph. `analytical_campaign_apply_promoted_knowledge()` can apply promoted guidance to a future campaign by deprioritizing repeat-avoidance records or lightly prioritizing supported bounded hypotheses. Weak evidence and unsupported learning are retained as historical evidence but not promoted.
+
+## Phase 33 Update
+
+Phase 33 added governed cross-campaign knowledge validation within the existing campaign contracts. Promoted knowledge now carries `analytical_campaign_knowledge_lifecycle_v1` fields for deterministic identity, origin campaign, supporting campaigns, experiments, artifacts, promotion reason, validation history, current status, supersession, retirement, and reopening conditions.
+
+The lifecycle registry is embedded in campaign synthesis and summaries. It is not a global knowledge graph, probabilistic memory system, or new persistence layer. Future campaigns validate promoted knowledge through deterministic relationships such as supports, contradicts, extends, narrows, supersedes, and unrelated. Duplicate promoted knowledge is merged by deterministic fingerprint. Superseded and retired knowledge remains historically inspectable.

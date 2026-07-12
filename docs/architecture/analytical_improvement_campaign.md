@@ -247,6 +247,71 @@ Promotion examples:
 
 Promoted knowledge records include campaign, opportunity, proposal, support level, evidence references, and future guidance. Future campaigns may consume these records through `analytical_campaign_apply_promoted_knowledge()` to deprioritize repeated low-learning ideas or lightly prioritize supported bounded hypotheses. They are guidance, not mandatory rules.
 
+## Cross-Campaign Knowledge Validation
+
+Phase 33 adds governed validation for promoted knowledge across campaigns. Promotion no longer implies permanence.
+
+Promoted knowledge records carry deterministic lifecycle identity:
+
+- `knowledge_id`
+- `knowledge_fingerprint`
+- `campaign_origin`
+- `supporting_campaigns`
+- `supporting_experiments`
+- `supporting_artifacts`
+- `promotion_date`
+- `promotion_reason`
+- `promotion_confidence`
+- `validation_history`
+- `current_status`
+- `superseded_by`
+- `retired_reason`
+- `reopening_conditions`
+
+The deterministic fingerprint prevents duplicate promoted knowledge for the same analytical conclusion and proposal context. If a later campaign promotes the same knowledge again, the lifecycle registry merges support rather than creating a duplicate item.
+
+`analytical_campaign_validate_promoted_knowledge()` compares a campaign's learning evidence against existing promoted knowledge. Relationships are deterministic:
+
+- `supports`
+- `contradicts`
+- `extends`
+- `narrows`
+- `supersedes`
+- `unrelated`
+
+The function returns an updated lifecycle registry, validation history, conflict records, and a status summary.
+
+Knowledge statuses are governed:
+
+- `candidate`
+- `promoted`
+- `validated`
+- `strengthened`
+- `weakened`
+- `superseded`
+- `retired`
+- `blocked`
+
+Historical records are preserved. Superseded or retired knowledge remains inspectable and traceable to the evidence that originally promoted it. Validation strength is deterministic and explainable. It uses supporting campaigns, supporting experiments, contradictory evidence, and current campaign evidence. It is not Bayesian confidence and does not claim probabilistic truth.
+
+## Supersession and Retirement
+
+Supersession is explicit. When new campaign evidence contradicts or replaces older promoted knowledge, the older record is marked as `superseded` rather than deleted.
+
+Retirement is explicit through `analytical_campaign_retire_knowledge()`. Retirement records a reason and preserves the historical knowledge item for audit and learning.
+
+Future campaigns consume only active knowledge statuses:
+
+- `promoted`
+- `validated`
+- `strengthened`
+
+Weakened, superseded, retired, and blocked knowledge remains visible but is not used for prioritization guidance.
+
+## Knowledge Review
+
+`analytical_campaign_knowledge_review()` summarizes lifecycle counts by status. Campaign synthesis exposes the lifecycle registry, validation history, conflicts, and review summary. Mission Control surfaces campaign knowledge health through existing campaign visibility, including validated knowledge and conflict counts. No new dashboard is introduced.
+
 ## Reopening Guidance
 
 Campaigns record deterministic reopening conditions. A campaign should not reopen merely because time passed.
@@ -292,6 +357,10 @@ Timeline entries reference existing ids instead of duplicating artifacts.
 - closure assessment
 - knowledge promoted
 - knowledge intentionally not promoted
+- knowledge lifecycle registry
+- knowledge validation history
+- knowledge conflicts
+- knowledge review summary
 - reopening guidance
 - blocked/skipped items
 - superseded items
@@ -322,6 +391,10 @@ Mission Control now summarizes:
 - closure recommendation
 - campaign confidence
 - promoted knowledge count
+- knowledge awaiting validation
+- validated or strengthened knowledge
+- weakened or superseded knowledge
+- knowledge conflicts
 
 Campaigns also contribute alerts when waiting for approval, blocked, or awaiting adoption.
 
@@ -362,6 +435,15 @@ Campaigns stop or pause when:
 - campaign confidence
 - knowledge promotion
 - promotion thresholds
+- cross-campaign knowledge validation
+- knowledge strengthening
+- knowledge weakening
+- supersession
+- retirement
+- conflict detection
+- duplicate prevention
+- governed status transitions
+- knowledge review summary
 - reopening guidance
 - future campaign reuse
 - evidence traceability
