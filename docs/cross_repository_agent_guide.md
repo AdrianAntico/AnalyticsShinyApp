@@ -75,6 +75,69 @@ When package installation is requested, the orchestrator uses a temporary librar
 
 Package install failures are environment failures unless the package installed successfully and its QA then fails.
 
+## Source-to-Install Validation
+
+Package source validation is not sufficient after changes to `Rodeo`, `AutoQuant`, or `AutoPlots`.
+
+The required package workflow is:
+
+```text
+Inspect package ownership
+-> modify source
+-> update docs/NAMESPACE if required
+-> build package from current source
+-> install to an isolated temporary library
+-> load installed package from that library
+-> run installed-package QA
+-> validate consumers with the temporary library first
+-> run cross-repository validation
+-> report source identity and installed package path
+```
+
+The orchestrator records:
+
+- source path
+- branch and commit
+- dirty status
+- source fingerprint
+- package build archive
+- temporary library path
+- installed package path
+- installed package version
+- installed exports
+- QA scope classification
+
+Do not treat source-only QA as proof that AnalyticsShinyApp is using current package code. A stale globally installed package must not masquerade as current source.
+
+The normal command path performs fresh package validation:
+
+```powershell
+Rscript scripts/cross_repo_validate.R fast
+Rscript scripts/cross_repo_validate.R standard
+Rscript scripts/cross_repo_validate.R full
+```
+
+Source-only diagnostics are allowed only when explicitly requested:
+
+```powershell
+Rscript scripts/cross_repo_validate.R fast --source-only
+```
+
+Use source-only mode for orchestrator debugging, not for package completion claims.
+
+## Developer Package Refresh
+
+To refresh a selected package into an explicit development library, use:
+
+```powershell
+Rscript scripts/refresh_ecosystem_package.R Rodeo C:/path/to/dev-library
+Rscript scripts/refresh_ecosystem_package.R AutoQuant C:/path/to/dev-library
+Rscript scripts/refresh_ecosystem_package.R AutoPlots C:/path/to/dev-library
+Rscript scripts/refresh_ecosystem_package.R all C:/path/to/dev-library
+```
+
+This command builds from the current source tree and installs into the provided destination library. It does not silently mutate the user's primary R library.
+
 ## Failure Classification
 
 | Classification | Meaning |
@@ -83,6 +146,9 @@ Package install failures are environment failures unless the package installed s
 | `contract` | Missing expected export, unavailable declared QA function, or contract mismatch. |
 | `product` | Required validation code executed and failed. |
 | `not_applicable` | Intentional skip or no suite declared. |
+| `package_build_failure` | Current package source could not produce an installable archive. |
+| `package_installation_failure` | Built archive could not be installed into the isolated validation library. |
+| `export_mismatch` | Freshly installed package did not expose the required contract exports. |
 
 Agents should preserve this distinction in final reports.
 
@@ -113,6 +179,7 @@ These outputs are partial-result friendly. A missing optional repository or unav
 - The orchestrator is not a monorepo build tool.
 - It does not infer hidden QA entry points.
 - It does not install packages unless requested.
+- It does not mutate the user's primary library during validation.
 - It does not resolve remote repositories.
 - It does not replace package-specific QA suites.
-- It validates package exports through installed namespaces, so source-only changes in sibling repos require an explicit isolated install or local package install before export checks can pass against those changes.
+- It validates package exports through installed namespaces. Source-only changes in sibling repos require fresh isolated validation before export checks are considered proven.

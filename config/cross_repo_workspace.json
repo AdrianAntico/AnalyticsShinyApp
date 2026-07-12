@@ -107,6 +107,7 @@
             "id": "rodeo_vnext",
             "type": "package_qa",
             "function": "qa_rodeo_vnext",
+            "qa_scope": "public",
             "required": false,
             "timeout_seconds": 180
           },
@@ -114,6 +115,7 @@
             "id": "rodeo_transformation_contract",
             "type": "package_qa",
             "function": "qa_rodeo_transformation_contract",
+            "qa_scope": "public",
             "required": false,
             "timeout_seconds": 180
           },
@@ -121,6 +123,7 @@
             "id": "rodeo_model_prep",
             "type": "package_qa",
             "function": "qa_rodeo_vnext_model_prep",
+            "qa_scope": "public",
             "required": false,
             "timeout_seconds": 180
           }
@@ -160,6 +163,7 @@
             "id": "artifact_schema_framework",
             "type": "package_qa",
             "function": "qa_artifact_schema_framework",
+            "qa_scope": "public",
             "required": false,
             "timeout_seconds": 180
           },
@@ -167,6 +171,7 @@
             "id": "shap_interaction_guards",
             "type": "package_qa",
             "function": "qa_shap_interaction_guards",
+            "qa_scope": "public",
             "required": false,
             "timeout_seconds": 180
           },
@@ -174,6 +179,7 @@
             "id": "shap_autonls_backend",
             "type": "package_qa",
             "function": "qa_shap_autonls_backend",
+            "qa_scope": "public",
             "required": false,
             "timeout_seconds": 180
           }
@@ -183,6 +189,7 @@
             "id": "regression_shap_analysis_artifacts",
             "type": "package_qa",
             "function": "qa_generate_regression_shap_analysis_artifacts",
+            "qa_scope": "internal",
             "required": false,
             "timeout_seconds": 600
           },
@@ -190,6 +197,7 @@
             "id": "binary_model_insights_artifacts",
             "type": "package_qa",
             "function": "qa_generate_binary_classification_model_insights_artifacts",
+            "qa_scope": "public",
             "required": false,
             "timeout_seconds": 600
           },
@@ -197,6 +205,7 @@
             "id": "catboost_builder_artifacts",
             "type": "package_qa",
             "function": "qa_generate_catboost_builder_artifacts",
+            "qa_scope": "public",
             "required": false,
             "timeout_seconds": 900
           }
@@ -237,6 +246,7 @@
             "id": "importance_pareto",
             "type": "package_qa",
             "function": "qa_importance_pareto",
+            "qa_scope": "internal",
             "required": false,
             "timeout_seconds": 180
           },
@@ -244,6 +254,7 @@
             "id": "resizable_display_plots",
             "type": "package_qa",
             "function": "qa_resizable_display_plots",
+            "qa_scope": "internal",
             "required": false,
             "timeout_seconds": 180
           }

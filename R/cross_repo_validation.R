@@ -50,10 +50,14 @@ cross_repo_validate_manifest <- function(manifest) {
 }
 
 cross_repo_normalize_path <- function(path) {
-  if (is.null(path) || !nzchar(path)) {
+  if (is.null(path) || !length(path)) {
     return(NA_character_)
   }
-  normalizePath(path, winslash = "/", mustWork = FALSE)
+  out <- as.character(path)
+  empty <- !nzchar(out)
+  out[!empty] <- normalizePath(out[!empty], winslash = "/", mustWork = FALSE)
+  out[empty] <- NA_character_
+  out
 }
 
 cross_repo_resolve_path <- function(repo, workspace_root = getwd()) {
@@ -126,7 +130,8 @@ cross_repo_package_metadata <- function(path) {
     package = desc_value("Package"),
     version = desc_value("Version"),
     needs_compilation = desc_value("NeedsCompilation"),
-    imports = desc_value("Imports")
+    imports = desc_value("Imports"),
+    depends = desc_value("Depends")
   )
 }
 
@@ -232,13 +237,13 @@ cross_repo_run_r <- function(repo, expression, timeout = 180, temp_lib = NULL) {
 cross_repo_package_expression <- function(repo, body) {
   pkg <- repo$package %||% repo$name
   sprintf(
-    "pkg <- %s; if (!requireNamespace(pkg, quietly = TRUE)) stop('package not installed: ', pkg); library(pkg, character.only = TRUE); %s",
+    "pkg <- %s; if (!requireNamespace(pkg, quietly = TRUE)) stop('package not installed: ', pkg); suppressPackageStartupMessages(library(pkg, character.only = TRUE)); %s",
     deparse(pkg),
     body
   )
 }
 
-cross_repo_run_suite <- function(repo, suite, mode, temp_lib_root = NULL, install_packages = FALSE) {
+cross_repo_run_suite <- function(repo, suite, mode, temp_lib_root = NULL, install_packages = FALSE, validation_lib = NULL) {
   required <- isTRUE(suite$required)
   timeout <- as.integer(suite$timeout_seconds %||% 180L)
   suite_type <- suite$type %||% "r_expression"
@@ -285,6 +290,9 @@ cross_repo_run_suite <- function(repo, suite, mode, temp_lib_root = NULL, instal
   if (isTRUE(suite$temp_library) || identical(suite_type, "package_install")) {
     temp_lib <- file.path(temp_lib_root %||% tempdir(), paste0("lib_", repo$name, "_", gsub("[^A-Za-z0-9]", "_", suite$id %||% suite_type)))
   }
+  if (!is.null(validation_lib) && !identical(suite_type, "package_install")) {
+    temp_lib <- validation_lib
+  }
 
   if (identical(suite_type, "r_expression")) {
     expression <- suite$expression %||% "TRUE"
@@ -304,9 +312,15 @@ cross_repo_run_suite <- function(repo, suite, mode, temp_lib_root = NULL, instal
     expression <- sprintf("install.packages(%s, repos = NULL, type = 'source', lib = .libPaths()[[1]]); library(%s, character.only = TRUE); TRUE", cross_repo_r_quote(repo$path), deparse(repo$package))
   } else if (identical(suite_type, "package_qa")) {
     fn <- suite[["function"]]
+    qa_scope <- suite$qa_scope %||% "public"
+    qa_lookup <- if (identical(qa_scope, "internal")) {
+      sprintf("get(%s, envir = asNamespace(pkg), inherits = FALSE)", deparse(fn))
+    } else {
+      sprintf("get(%s, mode = 'function')", deparse(fn))
+    }
     expression <- cross_repo_package_expression(
       repo,
-      sprintf("if (!exists(%s, mode = 'function')) stop('QA function unavailable: %s'); result <- %s(); if (is.data.frame(result) && 'status' %%in%% names(result) && any(result$status == 'error')) stop('QA returned error rows'); TRUE", deparse(fn), fn, fn)
+      sprintf("if (%s == 'internal' && !exists(%s, envir = asNamespace(pkg), inherits = FALSE)) stop('Internal QA function unavailable: %s'); if (%s == 'public' && !exists(%s, mode = 'function')) stop('Public QA function unavailable: %s'); qa_fn <- %s; result <- qa_fn(); if (is.data.frame(result) && 'status' %%in%% names(result) && any(result$status == 'error')) stop('QA returned error rows'); TRUE", deparse(qa_scope), deparse(fn), fn, deparse(qa_scope), deparse(fn), fn, qa_lookup)
     )
   } else {
     message <- paste("Unknown suite type:", suite_type)
@@ -359,7 +373,7 @@ cross_repo_suites_for_mode <- function(repo, mode = c("fast", "standard", "full"
   if (is.null(suites)) list() else suites
 }
 
-cross_repo_check_exports <- function(repo, required_exports, temp_lib_root = NULL) {
+cross_repo_check_exports <- function(repo, required_exports, validation_lib = NULL) {
   required_exports <- unlist(required_exports, use.names = FALSE)
   if (!length(required_exports)) {
     return(data.frame(
@@ -380,7 +394,7 @@ cross_repo_check_exports <- function(repo, required_exports, temp_lib_root = NUL
       paste(vapply(required_exports, deparse, character(1)), collapse = ", ")
     )
   )
-  result <- cross_repo_run_r(repo, expr, timeout = 180)
+  result <- cross_repo_run_r(repo, expr, timeout = 180, temp_lib = validation_lib)
   output_text <- paste(result$output %||% character(), collapse = "\n")
   missing <- if (grepl("missing exports:", output_text, fixed = TRUE)) {
     gsub("\nExecution halted.*", "", sub(".*missing exports: ", "", output_text))
@@ -424,7 +438,244 @@ cross_repo_source_namespace_exports <- function(path) {
   trimws(exports)
 }
 
-cross_repo_validate_contracts <- function(discovery, manifest) {
+cross_repo_package_files <- function(path) {
+  roots <- c("DESCRIPTION", "NAMESPACE", "R", "man", "inst")
+  files <- unlist(lapply(roots, function(root) {
+    full <- file.path(path, root)
+    if (file.exists(full) && !dir.exists(full)) {
+      full
+    } else if (dir.exists(full)) {
+      list.files(full, recursive = TRUE, full.names = TRUE, all.files = FALSE, no.. = TRUE)
+    } else {
+      character()
+    }
+  }), use.names = FALSE)
+  files[file.exists(files)]
+}
+
+cross_repo_source_fingerprint <- function(repo) {
+  if (!isTRUE(repo$exists)) {
+    return(list(fingerprint = NA_character_, file_count = 0L))
+  }
+  files <- cross_repo_package_files(repo$path)
+  hashes <- if (length(files)) tools::md5sum(files) else character()
+  payload <- paste(
+    repo$git$commit %||% "",
+    repo$git$status_excerpt %||% "",
+    paste(sort(paste(cross_repo_normalize_path(names(hashes)), hashes, sep = "=")), collapse = "|"),
+    sep = "\n"
+  )
+  fingerprint_file <- tempfile("cross_repo_fingerprint_", fileext = ".txt")
+  writeLines(payload, fingerprint_file, useBytes = TRUE)
+  list(
+    fingerprint = unname(tools::md5sum(fingerprint_file) %||% NA_character_),
+    file_count = length(files),
+    files = cross_repo_normalize_path(files)
+  )
+}
+
+cross_repo_local_package_order <- function(discovery) {
+  package_repos <- Filter(function(repo) isTRUE(repo$is_package) && !identical(repo$name, "AnalyticsShinyApp"), discovery)
+  local_packages <- vapply(package_repos, function(repo) repo$package, character(1))
+  deps <- lapply(package_repos, function(repo) {
+    imports <- repo$package_metadata$imports %||% ""
+    depends <- repo$package_metadata$depends %||% ""
+    text <- paste(imports, depends)
+    intersect(local_packages, unique(unlist(regmatches(text, gregexpr("[A-Za-z][A-Za-z0-9.]*", text)))))
+  })
+  names(deps) <- names(package_repos)
+
+  ordered <- character()
+  remaining <- names(package_repos)
+  while (length(remaining)) {
+    ready <- remaining[vapply(remaining, function(name) {
+      repo_deps <- deps[[name]]
+      length(repo_deps) == 0L || all(repo_deps %in% vapply(package_repos[ordered], function(repo) repo$package, character(1)))
+    }, logical(1))]
+    if (!length(ready)) {
+      ordered <- c(ordered, remaining)
+      break
+    }
+    ordered <- c(ordered, ready)
+    remaining <- setdiff(remaining, ready)
+  }
+  ordered
+}
+
+cross_repo_r_binary <- function() {
+  cross_repo_normalize_path(file.path(R.home("bin"), if (.Platform$OS.type == "windows") "R.exe" else "R"))
+}
+
+cross_repo_build_package <- function(repo, build_dir) {
+  dir.create(build_dir, recursive = TRUE, showWarnings = FALSE)
+  rbin <- cross_repo_r_binary()
+  started <- Sys.time()
+  output <- tryCatch(
+    system2(
+      rbin,
+      c("CMD", "build", "--no-manual", "--no-build-vignettes", repo$path),
+      stdout = TRUE,
+      stderr = TRUE,
+      timeout = 600,
+      env = character(),
+      wait = TRUE
+    ),
+    error = function(e) structure(conditionMessage(e), class = "cross_repo_build_error")
+  )
+  elapsed <- as.numeric(difftime(Sys.time(), started, units = "secs"))
+  if (inherits(output, "cross_repo_build_error")) {
+    return(list(status = "error", message = as.character(output), output = as.character(output), elapsed = elapsed, archive = NA_character_))
+  }
+  archive_candidates <- list.files(getwd(), pattern = paste0("^", repo$package, "_.*[.]tar[.]gz$"), full.names = TRUE)
+  archive_candidates <- archive_candidates[order(file.info(archive_candidates)$mtime, decreasing = TRUE)]
+  archive <- if (length(archive_candidates)) archive_candidates[[1]] else NA_character_
+  if (!is.na(archive)) {
+    target <- file.path(build_dir, basename(archive))
+    file.copy(archive, target, overwrite = TRUE)
+    unlink(archive)
+    archive <- target
+  }
+  exit_status <- attr(output, "status") %||% 0L
+  list(
+    status = if (identical(as.integer(exit_status), 0L) && !is.na(archive) && file.exists(archive)) "success" else "error",
+    message = if (!is.na(archive) && file.exists(archive)) "Package archive built." else "Package archive was not produced.",
+    output = as.character(output),
+    elapsed = elapsed,
+    archive = cross_repo_normalize_path(archive)
+  )
+}
+
+cross_repo_install_built_package <- function(repo, archive, temp_lib, timeout = 600) {
+  expr <- sprintf(
+    "dir.create(%s, recursive = TRUE, showWarnings = FALSE); .libPaths(c(%s, .libPaths())); install.packages(%s, repos = NULL, type = 'source', lib = %s); pkg <- %s; library(pkg, character.only = TRUE); loaded <- normalizePath(find.package(pkg), winslash = '/', mustWork = TRUE); if (!startsWith(loaded, normalizePath(%s, winslash = '/', mustWork = TRUE))) stop('stale global-package contamination: ', loaded); cat('LOADED_PATH=', loaded, '\\n', sep = ''); cat('PACKAGE_VERSION=', as.character(packageVersion(pkg)), '\\n', sep = ''); TRUE",
+    cross_repo_r_quote(temp_lib),
+    cross_repo_r_quote(temp_lib),
+    cross_repo_r_quote(archive),
+    cross_repo_r_quote(temp_lib),
+    deparse(repo$package),
+    cross_repo_r_quote(temp_lib)
+  )
+  cross_repo_run_r(repo, expr, timeout = timeout)
+}
+
+cross_repo_extract_loaded_field <- function(output, prefix) {
+  lines <- strsplit(paste(output, collapse = "\n"), "\n", fixed = TRUE)[[1]]
+  hit <- lines[startsWith(lines, prefix)]
+  if (length(hit)) sub(paste0("^", prefix), "", hit[[1]]) else NA_character_
+}
+
+cross_repo_installed_contract_snapshot <- function(repo, temp_lib, suites = list()) {
+  qa_entries <- lapply(suites, function(suite) {
+    if (!identical(suite$type %||% "", "package_qa")) {
+      return(NULL)
+    }
+    list(
+      id = suite$id %||% suite[["function"]],
+      qa_function = suite[["function"]],
+      scope = suite$qa_scope %||% "public"
+    )
+  })
+  qa_entries <- Filter(Negate(is.null), qa_entries)
+  expr <- sprintf(
+    ".libPaths(c(%s, .libPaths())); pkg <- %s; suppressPackageStartupMessages(library(pkg, character.only = TRUE)); exports <- getNamespaceExports(pkg); cat(jsonlite::toJSON(list(path = normalizePath(find.package(pkg), winslash = '/', mustWork = TRUE), version = as.character(packageVersion(pkg)), exports = sort(exports)), auto_unbox = TRUE))",
+    cross_repo_r_quote(temp_lib),
+    deparse(repo$package)
+  )
+  result <- cross_repo_run_r(repo, expr, timeout = 180)
+  output_text <- paste(result$output, collapse = "\n")
+  json_text <- if (grepl("\\{", output_text)) {
+    sub("^[^{]*", "", sub("[^}]*$", "", output_text))
+  } else {
+    output_text
+  }
+  payload <- tryCatch(jsonlite::fromJSON(json_text), error = function(e) list())
+  list(
+    package = repo$package,
+    version = payload$version %||% NA_character_,
+    installed_path = payload$path %||% NA_character_,
+    exports = payload$exports %||% character(),
+    qa_entries = qa_entries,
+    status = result$status,
+    message = result$message
+  )
+}
+
+cross_repo_build_install_packages <- function(discovery, output_dir, mode = "fast") {
+  temp_lib <- file.path(output_dir, "temp_library")
+  build_dir <- file.path(output_dir, "package_builds")
+  dir.create(temp_lib, recursive = TRUE, showWarnings = FALSE)
+  dir.create(build_dir, recursive = TRUE, showWarnings = FALSE)
+  order <- cross_repo_local_package_order(discovery)
+  rows <- list()
+  snapshots <- list()
+
+  for (repo_name in order) {
+    repo <- discovery[[repo_name]]
+    fingerprint <- cross_repo_source_fingerprint(repo)
+    build <- cross_repo_build_package(repo, build_dir = build_dir)
+    install <- if (identical(build$status, "success")) {
+      cross_repo_install_built_package(repo, build$archive, temp_lib = temp_lib)
+    } else {
+      list(status = "skipped", message = "Build failed; install skipped.", output = character(), elapsed = NA_real_)
+    }
+    loaded_path <- cross_repo_extract_loaded_field(install$output %||% character(), "LOADED_PATH=")
+    installed_version <- cross_repo_extract_loaded_field(install$output %||% character(), "PACKAGE_VERSION=")
+    source_exports <- cross_repo_source_namespace_exports(repo$path)
+    snapshot <- if (identical(install$status, "success")) {
+      cross_repo_installed_contract_snapshot(repo, temp_lib, suites = unlist(repo$validation %||% list(), recursive = FALSE))
+    } else {
+      list(package = repo$package, status = "skipped", message = install$message, exports = character())
+    }
+    snapshots[[repo$name]] <- snapshot
+    missing_exports <- setdiff(unlist(repo$expected_exports %||% list(), use.names = FALSE), snapshot$exports %||% character())
+    status <- if (identical(build$status, "success") && identical(install$status, "success") && !length(missing_exports)) "success" else "error"
+    classification <- if (!identical(build$status, "success")) {
+      "package_build_failure"
+    } else if (!identical(install$status, "success")) {
+      "package_installation_failure"
+    } else if (length(missing_exports)) {
+      "export_mismatch"
+    } else {
+      "not_applicable"
+    }
+    rows[[length(rows) + 1L]] <- data.frame(
+      repo = repo$name,
+      package = repo$package,
+      source_path = repo$path,
+      branch = repo$git$branch %||% NA_character_,
+      commit = repo$git$commit %||% NA_character_,
+      dirty = isTRUE(repo$git$dirty),
+      source_fingerprint = fingerprint$fingerprint %||% NA_character_,
+      source_file_count = fingerprint$file_count %||% 0L,
+      package_version = repo$package_metadata$version %||% NA_character_,
+      build_status = build$status,
+      install_status = install$status,
+      status = status,
+      classification = classification,
+      archive = build$archive %||% NA_character_,
+      temp_library = cross_repo_normalize_path(temp_lib),
+      loaded_path = loaded_path,
+      installed_version = installed_version,
+      missing_exports = paste(missing_exports, collapse = ", "),
+      source_exports_count = length(source_exports),
+      installed_exports_count = length(snapshot$exports %||% character()),
+      build_seconds = build$elapsed %||% NA_real_,
+      install_seconds = install$elapsed %||% NA_real_,
+      build_log = paste(build$output %||% character(), collapse = "\n"),
+      install_log = paste(install$output %||% character(), collapse = "\n"),
+      stringsAsFactors = FALSE
+    )
+  }
+  list(
+    temp_library = cross_repo_normalize_path(temp_lib),
+    build_dir = cross_repo_normalize_path(build_dir),
+    install_order = order,
+    results = if (length(rows)) do.call(rbind, rows) else data.frame(),
+    snapshots = snapshots
+  )
+}
+
+cross_repo_validate_contracts <- function(discovery, manifest, validation_lib = NULL) {
   contracts <- manifest$contracts %||% list()
   if (!length(contracts)) {
     return(data.frame(
@@ -452,7 +703,7 @@ cross_repo_validate_contracts <- function(discovery, manifest) {
         stringsAsFactors = FALSE
       ))
     }
-    check <- cross_repo_check_exports(provider, contract$required_exports)
+    check <- cross_repo_check_exports(provider, contract$required_exports, validation_lib = validation_lib)
     check$contract_id <- contract$contract_id
     check$consumer <- contract$consumer
     check$provider <- contract$provider
@@ -475,8 +726,10 @@ cross_repo_write_results <- function(result, output_dir) {
 cross_repo_markdown_summary <- function(result) {
   rows <- result$validation_results
   contract_rows <- result$contract_results
+  package_rows <- result$package_refresh$results %||% list()
   status_counts <- if (length(rows)) table(vapply(rows, `[[`, character(1), "status")) else integer()
   contract_counts <- if (length(contract_rows)) table(vapply(contract_rows, `[[`, character(1), "status")) else integer()
+  package_counts <- if (length(package_rows)) table(vapply(package_rows, `[[`, character(1), "status")) else integer()
   repo_lines <- vapply(result$repositories, function(repo) {
     sprintf("- `%s`: %s (`%s`, branch `%s`, commit `%s`, dirty: `%s`)", repo$name, if (isTRUE(repo$exists)) repo$path else "not found", repo$path_source, repo$git$branch %||% NA_character_, repo$git$commit %||% NA_character_, repo$git$dirty %||% NA)
   }, character(1))
@@ -496,6 +749,12 @@ cross_repo_markdown_summary <- function(result) {
     "## Validation Counts",
     if (length(status_counts)) paste(sprintf("- %s: %s", names(status_counts), as.integer(status_counts)), collapse = "\n") else "- No validation suites were run.",
     "",
+    "## Source-to-Install Counts",
+    if (length(package_counts)) paste(sprintf("- %s: %s", names(package_counts), as.integer(package_counts)), collapse = "\n") else "- Fresh package build/install was not run.",
+    "",
+    "## Package Install Order",
+    if (length(result$package_install_order %||% character())) paste(sprintf("- `%s`", result$package_install_order), collapse = "\n") else "- No package install order was resolved.",
+    "",
     "## Contract Counts",
     if (length(contract_counts)) paste(sprintf("- %s: %s", names(contract_counts), as.integer(contract_counts)), collapse = "\n") else "- No contract checks were run.",
     "",
@@ -511,7 +770,8 @@ cross_repo_validate <- function(
   manifest_path = cross_repo_manifest_path(),
   workspace_root = getwd(),
   output_dir = file.path("exports", "cross_repo_validation"),
-  install_packages = FALSE
+  install_packages = FALSE,
+  fresh_packages = TRUE
 ) {
   mode <- match.arg(mode)
   started <- Sys.time()
@@ -532,6 +792,7 @@ cross_repo_validate <- function(
       repositories = list(),
       validation_results = list(),
       contract_results = list(),
+      package_refresh = list(),
       output_dir = cross_repo_normalize_path(run_output_dir)
     )
     cross_repo_write_results(result, run_output_dir)
@@ -539,6 +800,13 @@ cross_repo_validate <- function(
   }
 
   discovery <- cross_repo_discover_repositories(manifest, workspace_root = workspace_root)
+  dir.create(run_output_dir, recursive = TRUE, showWarnings = FALSE)
+  package_refresh <- if (isTRUE(fresh_packages)) {
+    cross_repo_build_install_packages(discovery, output_dir = run_output_dir, mode = mode)
+  } else {
+    list(temp_library = NULL, build_dir = NULL, install_order = character(), results = data.frame(), snapshots = list())
+  }
+  validation_lib <- package_refresh$temp_library
   temp_lib_root <- file.path(tempdir(), run_id)
   validation_frames <- list()
   for (repo_name in names(discovery)) {
@@ -566,13 +834,15 @@ cross_repo_validate <- function(
         suite = suite,
         mode = mode,
         temp_lib_root = temp_lib_root,
-        install_packages = install_packages
+        install_packages = install_packages,
+        validation_lib = validation_lib
       )
     }
   }
   validation_df <- if (length(validation_frames)) do.call(rbind, validation_frames) else data.frame()
-  contract_df <- cross_repo_validate_contracts(discovery, manifest)
-  terminal_statuses <- c(validation_df$status, contract_df$status)
+  contract_df <- cross_repo_validate_contracts(discovery, manifest, validation_lib = validation_lib)
+  package_df <- package_refresh$results
+  terminal_statuses <- c(validation_df$status, contract_df$status, package_df$status)
   status <- if (any(terminal_statuses == "error")) {
     "error"
   } else if (any(terminal_statuses %in% c("warning", "skipped"))) {
@@ -590,7 +860,17 @@ cross_repo_validate <- function(
     r_version = R.version.string,
     manifest_path = cross_repo_normalize_path(manifest_path),
     install_packages = isTRUE(install_packages),
+    fresh_packages = isTRUE(fresh_packages),
+    validation_temp_library = validation_lib,
+    package_install_order = package_refresh$install_order,
     repositories = discovery,
+    package_refresh = list(
+      temp_library = package_refresh$temp_library,
+      build_dir = package_refresh$build_dir,
+      install_order = package_refresh$install_order,
+      results = lapply(seq_len(nrow(package_df)), function(i) as.list(package_df[i, , drop = FALSE])),
+      snapshots = package_refresh$snapshots
+    ),
     validation_results = lapply(seq_len(nrow(validation_df)), function(i) as.list(validation_df[i, , drop = FALSE])),
     contract_results = lapply(seq_len(nrow(contract_df)), function(i) as.list(contract_df[i, , drop = FALSE])),
     output_dir = cross_repo_normalize_path(run_output_dir)
@@ -608,6 +888,10 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
   fast_suites <- cross_repo_suites_for_mode(discovery$AnalyticsShinyApp, mode = "fast")
   standard_suites <- cross_repo_suites_for_mode(discovery$AnalyticsShinyApp, mode = "standard")
   full_suites <- cross_repo_suites_for_mode(discovery$AnalyticsShinyApp, mode = "full")
+  package_order <- cross_repo_local_package_order(discovery)
+  app_fingerprint <- cross_repo_source_fingerprint(discovery$AnalyticsShinyApp)
+  autoquant_full_suites <- cross_repo_suites_for_mode(discovery$AutoQuant, mode = "full")
+  internal_qa_declared <- any(vapply(autoquant_full_suites, function(suite) identical(suite$qa_scope %||% "public", "internal"), logical(1)))
 
   fixture_manifest <- manifest
   fixture_manifest$repositories <- list(list(
@@ -632,7 +916,8 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
     manifest_path = cross_repo_manifest_path(),
     workspace_root = repo_root,
     output_dir = output_dir,
-    install_packages = FALSE
+    install_packages = FALSE,
+    fresh_packages = FALSE
   )
 
   checks <- data.frame(
@@ -651,6 +936,9 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       "partial_result_written_summary",
       "git_metadata_captured",
       "package_metadata_captured",
+      "source_fingerprint_captured",
+      "package_dependency_order_resolved",
+      "internal_qa_scope_declared",
       "unified_result_fields_exist"
     ),
     status = c(
@@ -668,6 +956,9 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       if (file.exists(file.path(result$output_dir, "summary.md"))) "success" else "error",
       if (isTRUE(discovery$AnalyticsShinyApp$git$available)) "success" else "warning",
       if (isTRUE(discovery$AnalyticsShinyApp$package_metadata$available)) "success" else "error",
+      if (nzchar(app_fingerprint$fingerprint %||% "")) "success" else "error",
+      if (all(c("Rodeo", "AutoPlots", "AutoQuant") %in% package_order)) "success" else "error",
+      if (isTRUE(internal_qa_declared)) "success" else "error",
       if (all(c("run_id", "mode", "status", "repositories", "validation_results", "contract_results", "output_dir") %in% names(result))) "success" else "error"
     ),
     message = c(
@@ -685,6 +976,9 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       file.path(result$output_dir, "summary.md"),
       discovery$AnalyticsShinyApp$git$commit %||% "git metadata unavailable",
       discovery$AnalyticsShinyApp$package_metadata$package %||% "package metadata unavailable",
+      app_fingerprint$fingerprint %||% "missing fingerprint",
+      paste(package_order, collapse = " -> "),
+      "Internal installed QA functions are declared explicitly in the manifest.",
       result$output_dir
     ),
     stringsAsFactors = FALSE
