@@ -22,6 +22,8 @@ command_registry <- function() {
   registry <- register_command(registry, "open_data", "Open Data", "Project", c("data", "upload", "dataset", "source"), "D", list(type = "navigate", target = "Data"))
   registry <- register_command(registry, "open_workflow", "Open Workflow", "Navigation", c("workflow", "lifecycle", "stages", "readiness"), "W", list(type = "navigate", target = "Workflow"))
   registry <- register_command(registry, "open_analysis_modules", "Open Analysis Modules", "Analysis", c("analysis", "modules", "autoquant", "eda", "model readiness", "shap"), "AM", list(type = "navigate", target = "Analysis Modules"))
+  registry <- register_command(registry, "open_semantic_intelligence", "Open Semantic Intelligence", "Decisions", c("semantic", "decision", "alternatives", "business intent", "optionality", "evidence"), "SI", list(type = "navigate", target = "Semantic Intelligence"))
+  registry <- register_command(registry, "open_causal_intelligence", "Open Causal Intelligence", "Decisions", c("causal", "estimand", "identification", "dag", "adjustment", "intervention"), "CI", list(type = "navigate", target = "Causal Intelligence"))
   registry <- register_command(registry, "generate_eda", "Generate EDA", "Analysis", c("eda", "exploration", "summary", "diagnostics"), "EDA", list(type = "navigate", target = "Analysis Modules"))
   registry <- register_command(registry, "run_model_readiness", "Run Model Readiness", "Analysis", c("target analysis", "readiness", "leakage", "drift"), "MR", list(type = "navigate", target = "Analysis Modules"))
   registry <- register_command(registry, "run_shap", "Run SHAP", "Analysis", c("shap", "interpretability", "importance", "dependence"), "SH", list(type = "navigate", target = "Analysis Modules"))
@@ -393,7 +395,7 @@ qa_command_palette <- function() {
   css <- if (file.exists(file.path("www", "app.css"))) paste(readLines(file.path("www", "app.css"), warn = FALSE), collapse = "\n") else ""
   docs <- if (file.exists(file.path("docs", "command_palette_architecture.md"))) paste(readLines(file.path("docs", "command_palette_architecture.md"), warn = FALSE), collapse = "\n") else ""
   has <- function(text, patterns) all(vapply(patterns, grepl, logical(1), x = text, fixed = TRUE))
-  expected <- c("open_mission_control", "open_artifact_studio", "open_project", "open_workflow", "open_analysis_modules", "open_layout", "open_export", "open_code_runner", "open_collector", "open_qa")
+  expected <- c("open_mission_control", "open_artifact_studio", "open_project", "open_workflow", "open_analysis_modules", "open_semantic_intelligence", "open_causal_intelligence", "open_layout", "open_export", "open_code_runner", "open_collector", "open_qa")
 
   data.table::data.table(
     check = c(

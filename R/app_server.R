@@ -55,6 +55,17 @@ server <- function(input, output, session) {
   ctx$analytical_campaign_state <- reactiveValues(
     campaigns = list()
   )
+  ctx$decision_memory_state <- reactiveValues(
+    decisions = list(),
+    reviews = list(),
+    artifacts = list(),
+    last_result = NULL,
+    message = NULL
+  )
+  ctx$semantic_workspace <- reactiveVal(semantic_workspace_empty())
+  ctx$semantic_decision_state <- reactiveVal(semantic_decision_empty())
+  ctx$causal_intelligence_state <- reactiveVal(causal_intelligence_empty())
+  ctx$causal_experiment_state <- reactiveVal(causal_experiment_empty())
   ctx$genai_delegation_state <- reactiveValues(
     session_id = genai_delegation_session_id(),
     grants = list(),
@@ -118,6 +129,23 @@ server <- function(input, output, session) {
     identical(ctx$project_lifecycle_state(), "project_ready") &&
       is.list(project) &&
       identical(project$project_state %||% "", "project_ready")
+  }
+  ctx$decision_memory_summary <- function() {
+    decisions <- ctx$decision_memory_state$decisions %||% list()
+    reviews <- ctx$decision_memory_state$reviews %||% list()
+    artifacts <- ctx$decision_memory_state$artifacts %||% list()
+    review_statuses <- vapply(reviews, function(review) {
+      if (is.data.frame(review) && "review_status" %in% names(review) && nrow(review)) review$review_status[[1]] else NA_character_
+    }, character(1))
+    data.table::data.table(
+      decision_contexts = length(decisions),
+      reviews = length(reviews),
+      memory_artifacts = length(artifacts),
+      validated_reviews = sum(review_statuses == "validated", na.rm = TRUE),
+      negative_reviews = sum(review_statuses %in% c("negative_evidence", "assumption_failed"), na.rm = TRUE),
+      awaiting_review = max(length(decisions) - length(reviews), 0L),
+      last_status = ctx$decision_memory_state$message %||% "not_started"
+    )
   }
   ctx$current_workspace <- function() ctx$workspace_runtime()
   ctx$current_project <- function() ctx$active_project()
@@ -1176,6 +1204,17 @@ server <- function(input, output, session) {
       analytical_campaign_state = list(
         campaigns = ctx$analytical_campaign_state$campaigns
       ),
+      decision_memory_state = list(
+        decisions = ctx$decision_memory_state$decisions,
+        reviews = ctx$decision_memory_state$reviews,
+        artifacts = ctx$decision_memory_state$artifacts,
+        last_result = ctx$decision_memory_state$last_result,
+        message = ctx$decision_memory_state$message
+      ),
+      semantic_workspace = ctx$semantic_workspace(),
+      semantic_decision_state = ctx$semantic_decision_state(),
+      causal_intelligence_state = ctx$causal_intelligence_state(),
+      causal_experiment_state = ctx$causal_experiment_state(),
       source_data_info = ctx$source_project_data_info(),
       plot_configs = ctx$saved_plots$configs,
       plot_code = ctx$saved_plots$code,
@@ -1316,6 +1355,16 @@ server <- function(input, output, session) {
     ctx$feature_experiment_state$adoptions <- feature_state$adoptions %||% list()
     campaign_state <- project_state$analytical_campaign_state %||% list()
     ctx$analytical_campaign_state$campaigns <- campaign_state$campaigns %||% list()
+    decision_memory_state <- project_state$decision_memory_state %||% list()
+    ctx$decision_memory_state$decisions <- decision_memory_state$decisions %||% list()
+    ctx$decision_memory_state$reviews <- decision_memory_state$reviews %||% list()
+    ctx$decision_memory_state$artifacts <- decision_memory_state$artifacts %||% list()
+    ctx$decision_memory_state$last_result <- decision_memory_state$last_result %||% NULL
+    ctx$decision_memory_state$message <- decision_memory_state$message %||% "Decision memory restored from project state."
+    ctx$semantic_workspace(project_state$semantic_workspace %||% semantic_workspace_empty((ctx$current_project() %||% list())$project_id %||% NA_character_))
+    ctx$semantic_decision_state(semantic_decision_normalize(project_state$semantic_decision_state %||% semantic_decision_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
+    ctx$causal_intelligence_state(causal_intelligence_normalize(project_state$causal_intelligence_state %||% causal_intelligence_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
+    ctx$causal_experiment_state(causal_experiment_normalize(project_state$causal_experiment_state %||% causal_experiment_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
     ctx$active_modeling_context(project_state$active_modeling_context %||% modeling_context_from_source(
       data = NULL,
       data_info = list(path = project_state$data_path, name = project_state$data_name),
@@ -1415,6 +1464,8 @@ server <- function(input, output, session) {
   page_plot_builder_server("plot_builder", ctx)
   page_workflow_server("workflow", ctx)
   page_analysis_modules_server("analysis_modules", ctx)
+  page_semantic_intelligence_server("semantic_intelligence", ctx)
+  page_causal_intelligence_server("causal_intelligence", ctx)
   page_code_runner_server("code_runner", ctx)
   page_layouts_server("layouts", ctx)
   page_export_server("export", ctx)

@@ -222,7 +222,7 @@ validate_project_state <- function(project_state, data = NULL) {
 
   optional_fields <- c(
     "data_path", "data_name", "current_plot_type",
-    "active_modeling_context", "source_data_info", "feature_experiment_state", "analytical_campaign_state",
+    "active_modeling_context", "source_data_info", "feature_experiment_state", "analytical_campaign_state", "decision_memory_state", "semantic_workspace", "semantic_decision_state", "causal_intelligence_state", "causal_experiment_state",
     "current_mappings", "current_options", "section_names", "selected_theme",
     "project_metadata", "workspace_root",
     "module_artifacts", "text_artifacts", "table_artifacts", "report_plans", "active_plan_id",

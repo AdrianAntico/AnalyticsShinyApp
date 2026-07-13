@@ -348,6 +348,12 @@ cross_repo_impact_plan <- function(change, manifest = cross_repo_read_manifest()
   affected_repos <- cross_repo_infer_affected_repos(change, capability_map)
   owned_capabilities <- capability_map[capability_map$owner %in% affected_repos, , drop = FALSE]
   affected_contracts <- contracts[contracts$provider %in% affected_repos | contracts$consumer %in% affected_repos, , drop = FALSE]
+  if (category %in% c("contract_update", "public_api_breaking", "public_api_additive") && nrow(affected_contracts)) {
+    affected_repos <- unique(c(affected_repos, affected_contracts$provider, affected_contracts$consumer))
+    affected_repos <- affected_repos[nzchar(affected_repos)]
+    owned_capabilities <- capability_map[capability_map$owner %in% affected_repos, , drop = FALSE]
+    affected_contracts <- contracts[contracts$provider %in% affected_repos | contracts$consumer %in% affected_repos, , drop = FALSE]
+  }
   validation <- cross_repo_validation_plan(category, affected_repos, manifest)
   install_order <- cross_repo_local_package_order(discovery)
   rebuilds <- intersect(install_order, affected_repos)
@@ -439,6 +445,7 @@ qa_cross_repo_impact_analysis <- function() {
       "documentation_change_classified",
       "public_api_change_requires_rebuild",
       "contract_change_full_validation",
+      "contract_change_includes_provider_and_consumer",
       "blast_radius_cross_system_for_contract",
       "implementation_order_respects_package_owner",
       "migration_guidance_present",
@@ -453,6 +460,7 @@ qa_cross_repo_impact_analysis <- function() {
       if (identical(docs_plan$category, "documentation_only")) "success" else "error",
       if (isTRUE(api_plan$validation$rebuild_required[[1]])) "success" else "error",
       if (identical(contract_plan$validation$cross_repo_mode[[1]], "full")) "success" else "error",
+      if (all(c("AutoQuant", "AnalyticsShinyApp") %in% contract_plan$repositories_affected)) "success" else "error",
       if (identical(contract_plan$blast_radius, "cross-system")) "success" else "error",
       if ("AutoQuant" %in% contract_plan$implementation_order) "success" else "error",
       if (nzchar(contract_plan$migration_guidance)) "success" else "error",
@@ -467,6 +475,7 @@ qa_cross_repo_impact_analysis <- function() {
       docs_plan$category,
       api_plan$validation$required_qa[[1]],
       contract_plan$validation$required_qa[[1]],
+      paste(contract_plan$repositories_affected, collapse = ", "),
       contract_plan$blast_radius,
       paste(contract_plan$implementation_order, collapse = " -> "),
       contract_plan$migration_guidance,

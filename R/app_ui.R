@@ -29,6 +29,8 @@ build_app_ui <- function() {
         page_plot_builder_ui("plot_builder"),
         page_workflow_ui("workflow"),
         page_analysis_modules_ui("analysis_modules"),
+        page_semantic_intelligence_ui("semantic_intelligence"),
+        page_causal_intelligence_ui("causal_intelligence"),
         page_code_runner_ui("code_runner"),
         page_artifact_library_ui("artifact_library"),
         page_layouts_ui("layouts"),

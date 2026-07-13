@@ -69,7 +69,7 @@ mission_control_priority_summary <- function(alerts) {
   )
 }
 
-mission_control_alerts <- function(artifacts, collector, quality, workflow, improvement = NULL, remediation = NULL, feature_experiments = NULL, campaigns = NULL) {
+mission_control_alerts <- function(artifacts, collector, quality, workflow, improvement = NULL, remediation = NULL, feature_experiments = NULL, campaigns = NULL, decisions = NULL, semantic_workspace = NULL, semantic_decision = NULL, causal_intelligence = NULL, causal_experiment = NULL) {
   alerts <- list()
   add <- function(title, message, severity = "medium", source = NULL) {
     alerts[[length(alerts) + 1L]] <<- list(title = title, message = message, severity = severity, source = source)
@@ -155,6 +155,66 @@ mission_control_alerts <- function(artifacts, collector, quality, workflow, impr
     }
     if ((campaigns$low_utility_guidance[[1]] %||% 0L) > 0L) {
       add("Campaign guidance needs review", paste(campaigns$low_utility_guidance[[1]], "promoted knowledge record(s) have low observed transfer utility."), "medium", "Analytical Campaign")
+    }
+  }
+  if (!is.null(decisions) && nrow(decisions)) {
+    if ((decisions$awaiting_review[[1]] %||% 0L) > 0L) {
+      add("Decision awaiting outcome review", paste(decisions$awaiting_review[[1]], "decision context(s) have not yet been reviewed."), "medium", "Decision Memory")
+    }
+    if ((decisions$negative_reviews[[1]] %||% 0L) > 0L) {
+      add("Decision memory contains negative evidence", paste(decisions$negative_reviews[[1]], "decision review(s) should inform future recommendations."), "medium", "Decision Memory")
+    }
+    if ((decisions$validated_reviews[[1]] %||% 0L) > 0L) {
+      add("Decision learning available", paste(decisions$validated_reviews[[1]], "validated decision review(s) are available for bounded context and future knowledge promotion."), "success", "Decision Memory")
+    }
+  }
+  if (!is.null(semantic_workspace) && nrow(semantic_workspace)) {
+    if ((semantic_workspace$validation_errors[[1]] %||% 0L) > 0L) {
+      add("Semantic workspace has invalid links", paste(semantic_workspace$validation_errors[[1]], "semantic integrity error(s) require repair before downstream use."), "high", "Semantic Intelligence")
+    }
+    if ((semantic_workspace$validation_warnings[[1]] %||% 0L) > 0L) {
+      add("Semantic workspace needs completion", paste(semantic_workspace$validation_warnings[[1]], "authored knowledge warning(s) remain."), "medium", "Semantic Intelligence")
+    }
+    if ((semantic_workspace$review_objects[[1]] %||% 0L) > 0L) {
+      add("Semantic objects awaiting review", paste(semantic_workspace$review_objects[[1]], "business-intent object(s) are in review state."), "medium", "Semantic Intelligence")
+    }
+  }
+  if (!is.null(semantic_decision) && nrow(semantic_decision)) {
+    if ((semantic_decision$validation_errors[[1]] %||% 0L) > 0L) {
+      add("Authored decision has blockers", paste(semantic_decision$validation_errors[[1]], "decision lifecycle validation error(s) block assessment or artifact registration."), "high", "Decision Lifecycle")
+    }
+    if ((semantic_decision$validation_warnings[[1]] %||% 0L) > 0L) {
+      add("Authored decision needs evidence", paste(semantic_decision$validation_warnings[[1]], "decision lifecycle warning(s) remain."), "medium", "Decision Lifecycle")
+    }
+    if (identical(semantic_decision$assessment_status[[1]] %||% "", "stale")) {
+      add("Decision assessment is stale", "Authored decision inputs changed after the last deterministic assessment.", "high", "Decision Lifecycle")
+    } else if (identical(semantic_decision$assessment_status[[1]] %||% "", "not_assessed") && (semantic_decision$contexts[[1]] %||% 0L) > 0L) {
+      add("Decision not assessed", "A decision context exists but has not yet been assessed with AutoQuant.", "medium", "Decision Lifecycle")
+    }
+    if ((semantic_decision$decisions[[1]] %||% 0L) > 0L && (semantic_decision$reviews[[1]] %||% 0L) == 0L) {
+      add("Decision outcome review missing", "A human decision exists without an attached outcome review.", "medium", "Decision Lifecycle")
+    }
+  }
+  if (!is.null(causal_intelligence) && nrow(causal_intelligence)) {
+    if ((causal_intelligence$questions[[1]] %||% 0L) > 0L && !identical(causal_intelligence$assessment_status[[1]] %||% "", "current")) {
+      add("Causal plan is not current", "A causal question exists but its identification plan has not been assessed or is stale.", "medium", "Causal Intelligence")
+    }
+    if (identical(causal_intelligence$identification_status[[1]] %||% "", "conflicting causal structure")) {
+      add("Causal structure has blockers", "Causal graph diagnostics report structural blockers before any effect estimation can be considered.", "high", "Causal Intelligence")
+    }
+    if ((causal_intelligence$registered_artifacts[[1]] %||% 0L) == 0L && identical(causal_intelligence$assessment_status[[1]] %||% "", "current")) {
+      add("Causal planning artifact not registered", "The current identification plan has not been preserved as a project artifact.", "medium", "Causal Intelligence")
+    }
+  }
+  if (!is.null(causal_experiment) && nrow(causal_experiment)) {
+    if ((causal_experiment$experiment_questions[[1]] %||% 0L) > 0L && !identical(causal_experiment$plan_status[[1]] %||% "", "current")) {
+      add("Experiment design plan is not current", "An experiment question exists but its governed design plan has not been generated or is stale.", "medium", "Causal Experiment Design")
+    }
+    if (identical(causal_experiment$gate_status[[1]] %||% "", "approval_required")) {
+      add("Experiment design requires approval", "Authority, coverage, measurement, or design blockers remain before any operational handoff.", "high", "Causal Experiment Design")
+    }
+    if ((causal_experiment$registered_artifacts[[1]] %||% 0L) == 0L && identical(causal_experiment$plan_status[[1]] %||% "", "current")) {
+      add("Experiment plan artifact not registered", "The current governed experiment design has not been preserved as project evidence.", "medium", "Causal Experiment Design")
     }
   }
 
@@ -302,6 +362,11 @@ page_mission_control_server <- function(id, ctx) {
         adoptions = ctx$feature_experiment_state$adoptions
       )), error = function(e) data.table::data.table(total_proposals = 0L, awaiting_review = 0L, approved_proposals = 0L, unsupported_or_blocked = 0L, executions = 0L, failed_executions = 0L, experiments = 0L, accepted = 0L, rejected = 0L, inconclusive = 0L, adoptions = 0L))
       campaigns <- tryCatch(analytical_campaign_state_summary(ctx$analytical_campaign_state$campaigns), error = function(e) data.table::data.table(total_campaigns = 0L, active_campaigns = 0L, awaiting_approval = 0L, awaiting_adoption = 0L, blocked_campaigns = 0L, completed_campaigns = 0L, latest_status = "none", latest_evidence_readiness = "unknown", latest_evidence_score = NA_integer_, current_opportunity = "", remaining_opportunities = 0L, blocked_opportunities = 0L, completed_opportunities = 0L, learning_assessments = 0L, resolved_learning = 0L, uncertainty_reduced = 0L, unresolved_questions = 0L, closure_recommendation = "none", campaign_confidence = NA_integer_, promoted_knowledge = 0L, knowledge_awaiting_validation = 0L, knowledge_validated = 0L, knowledge_weakened = 0L, knowledge_superseded = 0L, knowledge_conflicts = 0L, knowledge_applicable = 0L, knowledge_uncertain = 0L, knowledge_narrowed = 0L, knowledge_broadened = 0L, knowledge_utility_events = 0L, high_value_guidance = 0L, guidance_needing_validation = 0L, low_utility_guidance = 0L, guidance_calibration_changes = 0L, knowledge_helped = 0L, knowledge_did_not_help = 0L))
+      decisions <- tryCatch(ctx$decision_memory_summary(), error = function(e) data.table::data.table(decision_contexts = 0L, reviews = 0L, memory_artifacts = 0L, validated_reviews = 0L, negative_reviews = 0L, awaiting_review = 0L, last_status = "unavailable"))
+      semantic_workspace <- tryCatch(semantic_workspace_summary(ctx$semantic_workspace()), error = function(e) data.table::data.table(total_objects = 0L, draft_objects = 0L, review_objects = 0L, approved_objects = 0L, archived_objects = 0L, relationships = 0L, validation_errors = 0L, validation_warnings = 0L, last_event = "unavailable"))
+      semantic_decision <- tryCatch(semantic_decision_summary(ctx$semantic_decision_state(), ctx$semantic_workspace()), error = function(e) data.table::data.table(contexts = 0L, alternatives = 0L, criteria = 0L, financial_impacts = 0L, uncertainties = 0L, optionality = 0L, recommendations = 0L, decisions = 0L, reviews = 0L, validation_errors = 0L, validation_warnings = 0L, assessment_status = "unavailable", registered_artifacts = 0L))
+      causal_intelligence <- tryCatch(causal_intelligence_summary(ctx$causal_intelligence_state()), error = function(e) data.table::data.table(questions = 0L, roles = 0L, relationships = 0L, assessment_status = "unavailable", identification_status = "unavailable", registered_artifacts = 0L))
+      causal_experiment <- tryCatch(causal_experiment_summary(ctx$causal_experiment_state()), error = function(e) data.table::data.table(experiment_questions = 0L, design_specs = 0L, plan_status = "unavailable", gate_status = "unavailable", execution_ready = FALSE, registered_artifacts = 0L))
       counts <- mission_control_artifact_counts(artifacts)
       quality <- mission_control_quality_summary(artifacts)
       ai_status <- mission_control_ai_status(collector, artifacts)
@@ -317,10 +382,14 @@ page_mission_control_server <- function(id, ctx) {
         remediation = remediation,
         feature_experiments = feature_experiments,
         campaigns = campaigns,
+        decisions = decisions,
+        semantic_workspace = semantic_workspace,
+        semantic_decision = semantic_decision,
+        causal_intelligence = causal_intelligence,
         counts = counts,
         quality = quality,
         ai_status = ai_status,
-        alerts = mission_control_alerts(artifacts, collector, quality, workflow, improvement, remediation, feature_experiments, campaigns),
+        alerts = mission_control_alerts(artifacts, collector, quality, workflow, improvement, remediation, feature_experiments, campaigns, decisions, semantic_workspace, semantic_decision, causal_intelligence, causal_experiment),
         timeline = mission_control_timeline(ctx, artifacts, collector)
       )
     })
@@ -374,6 +443,9 @@ page_mission_control_server <- function(id, ctx) {
         ui_status_tile("Remediation Plans", paste(state$remediation$active_plans[[1]] %||% 0L, "active"), status = if ((state$remediation$failed_plans[[1]] %||% 0L) > 0L) "error" else if (((state$remediation$awaiting_input[[1]] %||% 0L) + (state$remediation$awaiting_approval[[1]] %||% 0L)) > 0L) "warning" else if ((state$remediation$active_plans[[1]] %||% 0L) > 0L) "info" else "success", detail = paste((state$remediation$awaiting_input[[1]] %||% 0L) + (state$remediation$awaiting_approval[[1]] %||% 0L), "waiting")),
         ui_status_tile("Feature Experiments", paste(state$feature_experiments$experiments[[1]] %||% 0L, "experiments"), status = if ((state$feature_experiments$failed_executions[[1]] %||% 0L) > 0L) "error" else if (((state$feature_experiments$awaiting_review[[1]] %||% 0L) + (state$feature_experiments$approved_proposals[[1]] %||% 0L)) > 0L) "warning" else if ((state$feature_experiments$experiments[[1]] %||% 0L) > 0L) "info" else "neutral", detail = paste(state$feature_experiments$awaiting_review[[1]] %||% 0L, "awaiting review")),
         ui_status_tile("Analytical Campaigns", paste(state$campaigns$total_campaigns[[1]] %||% 0L, "campaigns"), status = if ((state$campaigns$knowledge_conflicts[[1]] %||% 0L) > 0L || (state$campaigns$blocked_campaigns[[1]] %||% 0L) > 0L) "error" else if (((state$campaigns$low_utility_guidance[[1]] %||% 0L) + (state$campaigns$knowledge_weakened[[1]] %||% 0L) + (state$campaigns$knowledge_superseded[[1]] %||% 0L) + (state$campaigns$knowledge_uncertain[[1]] %||% 0L) + (state$campaigns$awaiting_approval[[1]] %||% 0L) + (state$campaigns$awaiting_adoption[[1]] %||% 0L)) > 0L) "warning" else if ((state$campaigns$active_campaigns[[1]] %||% 0L) > 0L) "info" else if ((state$campaigns$completed_campaigns[[1]] %||% 0L) > 0L) "success" else "neutral", detail = paste(ui_status_label(state$campaigns$closure_recommendation[[1]] %||% state$campaigns$latest_status[[1]] %||% "none"), "-", state$campaigns$high_value_guidance[[1]] %||% 0L, "useful,", state$campaigns$low_utility_guidance[[1]] %||% 0L, "low-utility,", state$campaigns$knowledge_conflicts[[1]] %||% 0L, "conflicts")),
+        ui_status_tile("Decision Memory", paste(state$decisions$decision_contexts[[1]] %||% 0L, "contexts"), status = if ((state$decisions$negative_reviews[[1]] %||% 0L) > 0L) "warning" else if ((state$decisions$validated_reviews[[1]] %||% 0L) > 0L) "success" else if ((state$decisions$decision_contexts[[1]] %||% 0L) > 0L) "info" else "neutral", detail = paste(state$decisions$reviews[[1]] %||% 0L, "review(s),", state$decisions$memory_artifacts[[1]] %||% 0L, "artifact(s)")),
+        ui_status_tile("Decision Lifecycle", paste(state$semantic_decision$contexts[[1]] %||% 0L, "contexts"), status = if ((state$semantic_decision$validation_errors[[1]] %||% 0L) > 0L) "error" else if (identical(state$semantic_decision$assessment_status[[1]] %||% "", "stale") || (state$semantic_decision$validation_warnings[[1]] %||% 0L) > 0L) "warning" else if (identical(state$semantic_decision$assessment_status[[1]] %||% "", "current")) "success" else if ((state$semantic_decision$contexts[[1]] %||% 0L) > 0L) "info" else "neutral", detail = paste(ui_status_label(state$semantic_decision$assessment_status[[1]] %||% "none"), "-", state$semantic_decision$registered_artifacts[[1]] %||% 0L, "artifact(s)")),
+        ui_status_tile("Semantic Workspace", paste(state$semantic_workspace$total_objects[[1]] %||% 0L, "objects"), status = if ((state$semantic_workspace$validation_errors[[1]] %||% 0L) > 0L) "error" else if ((state$semantic_workspace$validation_warnings[[1]] %||% 0L) > 0L || (state$semantic_workspace$review_objects[[1]] %||% 0L) > 0L) "warning" else if ((state$semantic_workspace$total_objects[[1]] %||% 0L) > 0L) "success" else "neutral", detail = paste(state$semantic_workspace$relationships[[1]] %||% 0L, "relationship(s),", state$semantic_workspace$review_objects[[1]] %||% 0L, "review")),
         ui_status_tile("Reports", length(state$plans), status = if (length(state$plans)) "success" else "neutral", detail = "report plans"),
         ui_status_tile("Warnings", state$quality$warnings + state$quality$failures, status = if ((state$quality$warnings + state$quality$failures) > 0L) "warning" else "success", detail = "quality signals"),
         ui_status_tile("QA", qa_status, status = if (identical(qa_status, "healthy")) "success" else "warning", detail = "studio smoke")
@@ -551,6 +623,8 @@ qa_mission_control <- function() {
       "timeline_rendering",
       "health_tile_consistency",
       "collector_presentation",
+      "semantic_workspace_presentation",
+      "semantic_decision_lifecycle_presentation",
       "async_job_status",
       "css_cache_busting",
       "documentation"
@@ -573,10 +647,12 @@ qa_mission_control <- function() {
       if (has(css, c(".aq-mission-control", ".aq-health-summary", ".aq-alert-card", ".aq-timeline", ".aq-workflow-status-board"))) "success" else "error",
       if (has(page, c("ui_mission_state_banner", "mission_status", "mission_title")) && has(css, c(".aq-mission-state-banner", ".aq-mission-state-pulse"))) "success" else "error",
       if (has(css, c(".aq-status-tile-success::before", ".aq-status-tile-warning::before", ".aq-status-tile-error::before"))) "success" else "error",
-      if (has(page, c("mission_control_alerts", "critical", "attention", "quality warnings"))) "success" else "error",
+      if (has(page, c("mission_control_alerts", "critical", "attention", "quality warnings", "Decision Memory"))) "success" else "error",
       if (has(css, c(".aq-timeline-item::before", ".aq-timeline-item:not(:last-child)::after"))) "success" else "error",
       if (has(css, c(".aq-health-summary", "grid-column: 1 / -1", ".aq-status-tile-value"))) "success" else "error",
       if (has(page, c("Collector", "manifest_status", "collector_status", "state$counts$total"))) "success" else "error",
+      if (has(page, c("semantic_workspace_summary", "Semantic Workspace", "Semantic Intelligence"))) "success" else "error",
+      if (has(page, c("semantic_decision_summary", "Decision Lifecycle", "assessment_status", "Authored decision"))) "success" else "error",
       if (has(page, c("async_job_summary", "Async Jobs", "aq-async-job-list")) && has(css, c(".aq-async-job-list", ".aq-async-job-row"))) "success" else "error",
       if (has(app_ui, c("app.css?v=", "file.info(css_file)$mtime"))) "success" else "error",
       if (has(docs, c("Mission Control", "Operational awareness", "Alert philosophy", "Timeline"))) "success" else "error"
@@ -603,6 +679,8 @@ qa_mission_control <- function() {
       "Timeline uses connected event markers.",
       "Health tiles share consistent sizing and hierarchy.",
       "Collector state is included in health and alert presentation.",
+      "Authored semantic workspace health is included in Mission Control.",
+      "Authored decision lifecycle assessment and artifact status are included in Mission Control.",
       "Mission Control surfaces basic async job status.",
       "App CSS is cache-busted so Mission Control visual updates render after restart.",
       "Mission Control documentation is present."

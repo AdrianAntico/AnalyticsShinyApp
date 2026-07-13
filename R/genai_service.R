@@ -865,6 +865,69 @@ genai_build_project_context <- function(ctx, strategy = "balanced", max_artifact
       column_count = dataset_resolution$value$column_count
     )
   }
+  semantic_summary <- tryCatch(semantic_workspace_summary(ctx$semantic_workspace()), error = function(e) NULL)
+  if (!is.null(semantic_summary) && nrow(semantic_summary)) {
+    context$semantic_workspace <- list(
+      total_objects = semantic_summary$total_objects[[1]],
+      draft_objects = semantic_summary$draft_objects[[1]],
+      review_objects = semantic_summary$review_objects[[1]],
+      approved_objects = semantic_summary$approved_objects[[1]],
+      relationships = semantic_summary$relationships[[1]],
+      validation_errors = semantic_summary$validation_errors[[1]],
+      validation_warnings = semantic_summary$validation_warnings[[1]],
+      last_event = semantic_summary$last_event[[1]],
+      context_note = "Project-authored business intent summary only; full authored object content is omitted by default."
+    )
+  }
+  semantic_decision_summary_value <- tryCatch(semantic_decision_summary(ctx$semantic_decision_state(), ctx$semantic_workspace()), error = function(e) NULL)
+  if (!is.null(semantic_decision_summary_value) && nrow(semantic_decision_summary_value)) {
+    semantic_decision_seeds <- tryCatch(semantic_decision_campaign_seeds(ctx$semantic_decision_state(), ctx$semantic_workspace()), error = function(e) data.table::data.table())
+    context$semantic_decision_lifecycle <- list(
+      contexts = semantic_decision_summary_value$contexts[[1]],
+      alternatives = semantic_decision_summary_value$alternatives[[1]],
+      criteria = semantic_decision_summary_value$criteria[[1]],
+      financial_impacts = semantic_decision_summary_value$financial_impacts[[1]],
+      uncertainties = semantic_decision_summary_value$uncertainties[[1]],
+      optionality = semantic_decision_summary_value$optionality[[1]],
+      recommendations = semantic_decision_summary_value$recommendations[[1]],
+      decisions = semantic_decision_summary_value$decisions[[1]],
+      reviews = semantic_decision_summary_value$reviews[[1]],
+      validation_errors = semantic_decision_summary_value$validation_errors[[1]],
+      validation_warnings = semantic_decision_summary_value$validation_warnings[[1]],
+      assessment_status = semantic_decision_summary_value$assessment_status[[1]],
+      registered_artifacts = semantic_decision_summary_value$registered_artifacts[[1]],
+      campaign_seed_count = nrow(semantic_decision_seeds),
+      campaign_seed_types = paste(utils::head(unique(semantic_decision_seeds$seed_type %||% character()), 8L), collapse = ", "),
+      context_note = "Authored decision lifecycle summary only; full alternatives, financials, uncertainty, and human decision records are omitted by default."
+    )
+  }
+  causal_summary_value <- tryCatch(causal_intelligence_summary(ctx$causal_intelligence_state()), error = function(e) NULL)
+  if (!is.null(causal_summary_value) && nrow(causal_summary_value)) {
+    causal_seeds <- tryCatch(causal_intelligence_campaign_seeds(ctx$causal_intelligence_state()), error = function(e) data.table::data.table())
+    context$causal_intelligence <- list(
+      questions = causal_summary_value$questions[[1]],
+      roles = causal_summary_value$roles[[1]],
+      relationships = causal_summary_value$relationships[[1]],
+      assessment_status = causal_summary_value$assessment_status[[1]],
+      identification_status = causal_summary_value$identification_status[[1]],
+      registered_artifacts = causal_summary_value$registered_artifacts[[1]],
+      campaign_seed_count = nrow(causal_seeds),
+      campaign_seed_types = paste(utils::head(unique(causal_seeds$seed_type %||% character()), 8L), collapse = ", "),
+      context_note = "Causal Intelligence summary only; full graph, roles, assumptions, and identification plan details are omitted by default."
+    )
+  }
+  causal_experiment_summary_value <- tryCatch(causal_experiment_summary(ctx$causal_experiment_state()), error = function(e) NULL)
+  if (!is.null(causal_experiment_summary_value) && nrow(causal_experiment_summary_value)) {
+    context$causal_experiment_design <- list(
+      experiment_questions = causal_experiment_summary_value$experiment_questions[[1]],
+      design_specs = causal_experiment_summary_value$design_specs[[1]],
+      plan_status = causal_experiment_summary_value$plan_status[[1]],
+      gate_status = causal_experiment_summary_value$gate_status[[1]],
+      execution_ready = causal_experiment_summary_value$execution_ready[[1]],
+      registered_artifacts = causal_experiment_summary_value$registered_artifacts[[1]],
+      context_note = "Governed experiment-design summary only. Treatment execution, exposure delivery, and effect estimation are out of scope."
+    )
+  }
   context$registered_modules <- lapply(get_module_registry(), function(module) {
     list(
       module_id = module$module_id,
@@ -2493,6 +2556,8 @@ qa_genai_service_contract <- function() {
       "vision_support",
       "context_strategy_research",
       "context_policy",
+      "semantic_workspace_context",
+      "semantic_decision_context",
       "context_strategy_registry",
       "action_layer_vertical_slice",
       "telemetry_fields",
@@ -2518,6 +2583,8 @@ qa_genai_service_contract <- function() {
       if (has(genai, c("genai_vision_payload", "run_genai_image_vs_data_experiment", "qa_genai_vision_support", "image_payload_used"))) "success" else "error",
       if (has(genai, c("run_genai_context_strategy_study", "recommend_context_strategy", "genai_infer_artifact_family", "genai_context_provenance"))) "success" else "error",
       if (has(genai, c("project metadata", "artifact captions", "Do not execute", "Do not invent")) || has(genai, c("genai_project_context", "genai_artifact_context", "sidecars"))) "success" else "error",
+      if (has(genai, c("semantic_workspace_summary", "context$semantic_workspace", "Full authored object content is intentionally omitted by default"))) "success" else "error",
+      if (has(genai, c("semantic_decision_lifecycle", "semantic_decision_summary", "campaign_seed_count", "full alternatives, financials, uncertainty"))) "success" else "error",
       if (all(c("screenshot_only", "caption_metadata", "screenshot_caption", "table_preview_only", "full_table", "screenshot_caption_preview", "structured_json_summary") %in% strategy_names)) "success" else "error",
       if (has(actions, c("genai_action_registry", "genai_validate_action_proposal", "genai_execute_action_proposal", "module.open"))) "success" else "error",
       if (all(telemetry_fields %in% names(telemetry))) "success" else "error",
@@ -2543,6 +2610,8 @@ qa_genai_service_contract <- function() {
       "Local vision-model image-vs-data experiment support is implemented.",
       "Plot-type-aware context strategy research framework is implemented.",
       "Context builders avoid full dataset dumps by default.",
+      "Project GenAI context includes bounded semantic workspace summary only.",
+      "Project GenAI context includes bounded authored decision lifecycle status only.",
       "Named context strategies support representation comparison experiments.",
       "GenAI action layer exposes registered proposal validation and approved execution.",
       "GenAI results record the required information-transfer telemetry fields.",
