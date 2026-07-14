@@ -64,8 +64,12 @@ server <- function(input, output, session) {
   )
   ctx$semantic_workspace <- reactiveVal(semantic_workspace_empty())
   ctx$semantic_decision_state <- reactiveVal(semantic_decision_empty())
+  ctx$decision_valuation_state <- reactiveVal(decision_valuation_empty())
+  ctx$decision_workflow_state <- reactiveVal(decision_workflow_empty())
   ctx$causal_intelligence_state <- reactiveVal(causal_intelligence_empty())
   ctx$causal_experiment_state <- reactiveVal(causal_experiment_empty())
+  ctx$causal_completed_experiment_state <- reactiveVal(causal_completed_experiment_empty())
+  ctx$causal_itt_state <- reactiveVal(causal_itt_empty())
   ctx$genai_delegation_state <- reactiveValues(
     session_id = genai_delegation_session_id(),
     grants = list(),
@@ -1213,8 +1217,12 @@ server <- function(input, output, session) {
       ),
       semantic_workspace = ctx$semantic_workspace(),
       semantic_decision_state = ctx$semantic_decision_state(),
+      decision_valuation_state = ctx$decision_valuation_state(),
+      decision_workflow_state = ctx$decision_workflow_state(),
       causal_intelligence_state = ctx$causal_intelligence_state(),
       causal_experiment_state = ctx$causal_experiment_state(),
+      causal_completed_experiment_state = ctx$causal_completed_experiment_state(),
+      causal_itt_state = ctx$causal_itt_state(),
       source_data_info = ctx$source_project_data_info(),
       plot_configs = ctx$saved_plots$configs,
       plot_code = ctx$saved_plots$code,
@@ -1363,8 +1371,12 @@ server <- function(input, output, session) {
     ctx$decision_memory_state$message <- decision_memory_state$message %||% "Decision memory restored from project state."
     ctx$semantic_workspace(project_state$semantic_workspace %||% semantic_workspace_empty((ctx$current_project() %||% list())$project_id %||% NA_character_))
     ctx$semantic_decision_state(semantic_decision_normalize(project_state$semantic_decision_state %||% semantic_decision_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
+    ctx$decision_valuation_state(decision_valuation_normalize(project_state$decision_valuation_state %||% decision_valuation_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
+    ctx$decision_workflow_state(decision_workflow_normalize(project_state$decision_workflow_state %||% decision_workflow_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
     ctx$causal_intelligence_state(causal_intelligence_normalize(project_state$causal_intelligence_state %||% causal_intelligence_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
     ctx$causal_experiment_state(causal_experiment_normalize(project_state$causal_experiment_state %||% causal_experiment_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
+    ctx$causal_completed_experiment_state(causal_completed_experiment_normalize(project_state$causal_completed_experiment_state %||% causal_completed_experiment_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
+    ctx$causal_itt_state(causal_itt_normalize(project_state$causal_itt_state %||% causal_itt_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
     ctx$active_modeling_context(project_state$active_modeling_context %||% modeling_context_from_source(
       data = NULL,
       data_info = list(path = project_state$data_path, name = project_state$data_name),

@@ -23,6 +23,15 @@ command_registry <- function() {
   registry <- register_command(registry, "open_workflow", "Open Workflow", "Navigation", c("workflow", "lifecycle", "stages", "readiness"), "W", list(type = "navigate", target = "Workflow"))
   registry <- register_command(registry, "open_analysis_modules", "Open Analysis Modules", "Analysis", c("analysis", "modules", "autoquant", "eda", "model readiness", "shap"), "AM", list(type = "navigate", target = "Analysis Modules"))
   registry <- register_command(registry, "open_semantic_intelligence", "Open Semantic Intelligence", "Decisions", c("semantic", "decision", "alternatives", "business intent", "optionality", "evidence"), "SI", list(type = "navigate", target = "Semantic Intelligence"))
+  registry <- register_command(registry, "create_decision", "Create Decision", "Decisions", c("decision", "business question", "guided authoring", "context"), "D+", list(type = "navigate", target = "Semantic Intelligence"))
+  registry <- register_command(registry, "add_decision_alternative", "Add Decision Alternative", "Decisions", c("alternative", "baseline", "competing alternative", "tradeoff"), "ALT", list(type = "navigate", target = "Semantic Intelligence"))
+  registry <- register_command(registry, "attach_decision_evidence", "Attach Decision Evidence", "Decisions", c("evidence", "inbox", "artifact", "causal", "predictive"), "EV", list(type = "navigate", target = "Semantic Intelligence"))
+  registry <- register_command(registry, "validate_decision", "Validate Decision", "Decisions", c("validate", "assessment", "blockers", "warnings"), "VAL", list(type = "navigate", target = "Semantic Intelligence"))
+  registry <- register_command(registry, "run_decision_valuation", "Run Decision Valuation", "Decisions", c("valuation", "economics", "uncertainty", "recommendation"), "$", list(type = "navigate", target = "Semantic Intelligence"))
+  registry <- register_command(registry, "freeze_evidence_package", "Freeze Evidence Package", "Decisions", c("evidence package", "freeze", "review package", "collector"), "PKG", list(type = "navigate", target = "Semantic Intelligence"))
+  registry <- register_command(registry, "request_decision_review", "Request Decision Review", "Decisions", c("review", "reviewer", "scope", "deadline"), "REV", list(type = "navigate", target = "Semantic Intelligence"))
+  registry <- register_command(registry, "record_decision_approval", "Record Decision Approval", "Decisions", c("approval", "authority", "conditions", "expiration"), "APP", list(type = "navigate", target = "Semantic Intelligence"))
+  registry <- register_command(registry, "open_decision_queue", "Open Decision Work Queue", "Decisions", c("decision queue", "work queue", "mission control", "next action"), "DQ", list(type = "navigate", target = "Mission Control"))
   registry <- register_command(registry, "open_causal_intelligence", "Open Causal Intelligence", "Decisions", c("causal", "estimand", "identification", "dag", "adjustment", "intervention"), "CI", list(type = "navigate", target = "Causal Intelligence"))
   registry <- register_command(registry, "generate_eda", "Generate EDA", "Analysis", c("eda", "exploration", "summary", "diagnostics"), "EDA", list(type = "navigate", target = "Analysis Modules"))
   registry <- register_command(registry, "run_model_readiness", "Run Model Readiness", "Analysis", c("target analysis", "readiness", "leakage", "drift"), "MR", list(type = "navigate", target = "Analysis Modules"))
@@ -395,7 +404,7 @@ qa_command_palette <- function() {
   css <- if (file.exists(file.path("www", "app.css"))) paste(readLines(file.path("www", "app.css"), warn = FALSE), collapse = "\n") else ""
   docs <- if (file.exists(file.path("docs", "command_palette_architecture.md"))) paste(readLines(file.path("docs", "command_palette_architecture.md"), warn = FALSE), collapse = "\n") else ""
   has <- function(text, patterns) all(vapply(patterns, grepl, logical(1), x = text, fixed = TRUE))
-  expected <- c("open_mission_control", "open_artifact_studio", "open_project", "open_workflow", "open_analysis_modules", "open_semantic_intelligence", "open_causal_intelligence", "open_layout", "open_export", "open_code_runner", "open_collector", "open_qa")
+  expected <- c("open_mission_control", "open_artifact_studio", "open_project", "open_workflow", "open_analysis_modules", "open_semantic_intelligence", "create_decision", "attach_decision_evidence", "record_decision_approval", "open_decision_queue", "open_causal_intelligence", "open_layout", "open_export", "open_code_runner", "open_collector", "open_qa")
 
   data.table::data.table(
     check = c(

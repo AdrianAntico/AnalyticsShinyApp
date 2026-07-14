@@ -35,6 +35,8 @@ Start with these docs before architecture-affecting work:
 - `docs/artifact_quality_policy.md`: shared artifact component expectations, completeness scoring, and graceful degradation rules.
 - `docs/table_artifact_architecture.md`: canonical table artifacts, table render targets, sorting policies, previews, and backing data sidecars.
 - `docs/semantic_intelligence_integration.md`: project-authored business intent, decision memory, semantic workspace validation, and AutoQuant Semantic Intelligence integration.
+- `docs/decision_workflow_architecture.md`: governed decision follow-through, proportional workflow, review/approval, implementation, outcome learning, Mission Control work queue, and bounded GenAI guardrails.
+- `docs/decision_workflow_user_guide.md`: practical route from business question to closed decision.
 - `docs/api_surface_audit.md`: aggressive pre-product API/product surface audit and cleanup recommendations.
 - `docs/agent_task_template.md`: recommended Codex task framing.
 
@@ -46,6 +48,7 @@ Core operating rules:
 - Human reports and LLM collectors are independent render targets built from the same underlying artifacts.
 - AnalyticsShinyApp owns the conservative deterministic Feature Engineering / Model Preparation workflow that creates visible prepared-data artifacts without mutating source data.
 - AnalyticsShinyApp owns the project-authored Semantic Intelligence workspace; AutoQuant owns the canonical business-intent and decision-management analytical contracts.
+- AnalyticsShinyApp owns the operational decision-workflow experience: guided authoring, proportional governance recommendations, evidence inboxes, next-action queues, stale-state explanations, and collector registration.
 - Rodeo and PolarsFE remain future homes for richer R/Python feature engineering engines if they are integrated intentionally.
 - Benchmarks owns performance evidence.
 - shinyelectron owns packaging/runtime.

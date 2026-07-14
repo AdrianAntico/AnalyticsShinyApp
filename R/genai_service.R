@@ -901,6 +901,46 @@ genai_build_project_context <- function(ctx, strategy = "balanced", max_artifact
       context_note = "Authored decision lifecycle summary only; full alternatives, financials, uncertainty, and human decision records are omitted by default."
     )
   }
+  decision_valuation_summary_value <- tryCatch(decision_valuation_summary(ctx$decision_valuation_state()), error = function(e) NULL)
+  if (!is.null(decision_valuation_summary_value) && nrow(decision_valuation_summary_value)) {
+    decision_valuation_seeds <- tryCatch(decision_valuation_campaign_seeds(ctx$decision_valuation_state()), error = function(e) data.table::data.table())
+    context$decision_valuation <- list(
+      contexts = decision_valuation_summary_value$contexts[[1]],
+      active_valuation_context_id = decision_valuation_summary_value$active_valuation_context_id[[1]],
+      cash_flows = decision_valuation_summary_value$cash_flows[[1]],
+      impact_mappings = decision_valuation_summary_value$impact_mappings[[1]],
+      scenarios = decision_valuation_summary_value$scenarios[[1]],
+      thresholds = decision_valuation_summary_value$thresholds[[1]],
+      valuation_status = decision_valuation_summary_value$valuation_status[[1]],
+      alternatives_valued = decision_valuation_summary_value$alternatives_valued[[1]],
+      missing_inputs = decision_valuation_summary_value$missing_inputs[[1]],
+      primary_recommendation = decision_valuation_summary_value$primary_recommendation[[1]],
+      registered_artifacts = decision_valuation_summary_value$registered_artifacts[[1]],
+      campaign_seed_count = nrow(decision_valuation_seeds),
+      campaign_seed_types = paste(utils::head(unique(decision_valuation_seeds$seed_type %||% character()), 8L), collapse = ", "),
+      context_note = "Decision valuation summary only; full economics, source evidence, thresholds, and alternatives are omitted by default."
+    )
+  }
+  decision_workflow_summary_value <- tryCatch(decision_workflow_summary(ctx$decision_workflow_state()), error = function(e) NULL)
+  if (!is.null(decision_workflow_summary_value) && nrow(decision_workflow_summary_value)) {
+    decision_workflow_seeds <- tryCatch(decision_workflow_campaign_seeds(ctx$decision_workflow_state()), error = function(e) data.table::data.table())
+    context$decision_workflow <- list(
+      workflows = decision_workflow_summary_value$workflows[[1]],
+      active_workflow_id = decision_workflow_summary_value$active_workflow_id[[1]],
+      workflow_status = decision_workflow_summary_value$workflow_status[[1]],
+      readiness_state = decision_workflow_summary_value$readiness_state[[1]],
+      reviews = decision_workflow_summary_value$reviews[[1]],
+      approvals = decision_workflow_summary_value$approvals[[1]],
+      open_conditions = decision_workflow_summary_value$open_conditions[[1]],
+      implementation_deviations = decision_workflow_summary_value$implementation_deviations[[1]],
+      quality_state = decision_workflow_summary_value$quality_state[[1]],
+      followup_candidates = decision_workflow_summary_value$followup_candidates[[1]],
+      registered_artifacts = decision_workflow_summary_value$registered_artifacts[[1]],
+      campaign_seed_count = nrow(decision_workflow_seeds),
+      campaign_seed_types = paste(utils::head(unique(decision_workflow_seeds$seed_type %||% character()), 8L), collapse = ", "),
+      context_note = "Decision workflow summary only; full review records, approvals, authority evidence, implementation evidence, and outcome details are omitted by default. GenAI may explain or draft text but may not approve, waive conditions, impersonate reviewers, or execute actions."
+    )
+  }
   causal_summary_value <- tryCatch(causal_intelligence_summary(ctx$causal_intelligence_state()), error = function(e) NULL)
   if (!is.null(causal_summary_value) && nrow(causal_summary_value)) {
     causal_seeds <- tryCatch(causal_intelligence_campaign_seeds(ctx$causal_intelligence_state()), error = function(e) data.table::data.table())
@@ -926,6 +966,47 @@ genai_build_project_context <- function(ctx, strategy = "balanced", max_artifact
       execution_ready = causal_experiment_summary_value$execution_ready[[1]],
       registered_artifacts = causal_experiment_summary_value$registered_artifacts[[1]],
       context_note = "Governed experiment-design summary only. Treatment execution, exposure delivery, and effect estimation are out of scope."
+    )
+  }
+  causal_completed_summary_value <- tryCatch(causal_completed_experiment_summary(ctx$causal_completed_experiment_state()), error = function(e) NULL)
+  if (!is.null(causal_completed_summary_value) && nrow(causal_completed_summary_value)) {
+    causal_completed_seeds <- tryCatch(causal_completed_experiment_campaign_seeds(ctx$causal_completed_experiment_state()), error = function(e) data.table::data.table())
+    context$causal_completed_experiment <- list(
+      completed_experiments = causal_completed_summary_value$completed_experiments[[1]],
+      evidence_mappings = causal_completed_summary_value$evidence_mappings[[1]],
+      readiness_state = causal_completed_summary_value$readiness_state[[1]],
+      assessment_status = causal_completed_summary_value$assessment_status[[1]],
+      assignment_preserved = causal_completed_summary_value$assignment_preserved[[1]],
+      outcome_available = causal_completed_summary_value$outcome_available[[1]],
+      guardrail_status = causal_completed_summary_value$guardrail_status[[1]],
+      registered_artifacts = causal_completed_summary_value$registered_artifacts[[1]],
+      campaign_seed_count = nrow(causal_completed_seeds),
+      campaign_seed_types = paste(utils::head(unique(causal_completed_seeds$seed_type %||% character()), 8L), collapse = ", "),
+      prohibited_claims = c("Do not estimate effects from this summary.", "Do not impute missing outcomes.", "Do not redefine treatment from received treatment or exposure.", "Do not silently apply post-assignment exclusions."),
+      context_note = "Completed-experiment evidence readiness summary only; source logs and full outcome tables are omitted by default."
+    )
+  }
+  causal_itt_summary_value <- tryCatch(causal_itt_summary(ctx$causal_itt_state()), error = function(e) NULL)
+  if (!is.null(causal_itt_summary_value) && nrow(causal_itt_summary_value)) {
+    causal_itt_seeds <- tryCatch(causal_itt_campaign_seeds(ctx$causal_itt_state()), error = function(e) data.table::data.table())
+    context$causal_randomized_itt <- list(
+      specs = causal_itt_summary_value$specs[[1]],
+      active_analysis_id = causal_itt_summary_value$active_analysis_id[[1]],
+      analysis_status = causal_itt_summary_value$analysis_status[[1]],
+      effect_estimated = causal_itt_summary_value$effect_estimated[[1]],
+      review_status = causal_itt_summary_value$review_status[[1]],
+      estimate = causal_itt_summary_value$estimate[[1]],
+      conf_low = causal_itt_summary_value$conf_low[[1]],
+      conf_high = causal_itt_summary_value$conf_high[[1]],
+      materiality_state = causal_itt_summary_value$materiality_state[[1]],
+      registered_artifacts = causal_itt_summary_value$registered_artifacts[[1]],
+      design_depth_status = causal_itt_summary_value$design_depth_status[[1]] %||% "not_available",
+      causal_report_status = causal_itt_summary_value$causal_report_status[[1]] %||% "not_available",
+      robustness_rows = causal_itt_summary_value$robustness_rows[[1]] %||% 0L,
+      campaign_seed_count = nrow(causal_itt_seeds),
+      campaign_seed_types = paste(utils::head(unique(causal_itt_seeds$seed_type %||% character()), 8L), collapse = ", "),
+      prohibited_claims = c("Do not describe the estimate as treatment-on-treated.", "Do not generalize beyond the authored estimand.", "Do not ignore guardrails, missingness, materiality, robustness, design eligibility, or review status.", "Do not select the most favorable robustness row.", "Do not issue autonomous rollout decisions."),
+      context_note = "Randomized ITT and design-depth summary only; assignment logs, full outcomes, and source tables are omitted by default."
     )
   }
   context$registered_modules <- lapply(get_module_registry(), function(module) {

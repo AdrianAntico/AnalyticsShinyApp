@@ -158,3 +158,160 @@ The boundary remains explicit:
 - no completed-experiment analysis,
 - no effect estimation,
 - no autonomous approval.
+
+## Phase 3: Completed Experiment Evidence
+
+Phase 3 extends the workbench from governed experiment design into completed or in-progress experiment evidence ingestion. The app still does not estimate causal effects.
+
+The user-facing flow is:
+
+```text
+Governed experiment plan
+-> Completed experiment record
+-> Evidence column mappings
+-> Assignment / delivery / exposure / outcome ingestion
+-> Execution reconciliation
+-> Estimand preservation
+-> Analysis-readiness classification
+-> Project artifact registration
+-> Future ITT estimator if ready
+```
+
+The completed-experiment state is persisted under `causal_completed_experiment_state`. Material edits to the completed record or evidence mappings mark readiness stale until reassessed.
+
+Phase 3 records:
+
+- completed or in-progress experiment metadata,
+- plan, causal question, decision context, and estimand linkage,
+- original assignment evidence,
+- realized assignment evidence,
+- treatment delivery evidence,
+- exposure evidence,
+- treatment-received / compliance evidence,
+- primary outcome evidence,
+- guardrail evidence,
+- exclusions and post-assignment exclusion risks,
+- missingness and attrition diagnostics,
+- treatment fidelity diagnostics,
+- interference/spillover measurement status,
+- estimand-preservation status,
+- analysis-readiness state,
+- planned-analysis handoff record.
+
+Mission Control warns when completed-experiment readiness is stale, original assignment is missing, outcome evidence is missing, guardrails require review, estimand blockers exist, or a completed-readiness artifact has not been registered. GenAI receives bounded summary context only: readiness state, assignment/outcome availability, guardrail status, campaign seed types, and prohibited claims.
+
+The boundary remains explicit:
+
+- no causal effect estimation,
+- no hypothesis testing,
+- no outcome imputation,
+- no treatment redefinition from exposure or treatment received,
+- no silent post-assignment exclusion,
+- no autonomous analysis approval.
+
+## Phase 4: Randomized ITT Estimation
+
+Phase 4 adds the first governed causal estimator to the workbench. It supports randomized intent-to-treat estimation only, and only after completed-experiment readiness is current and ITT-compatible.
+
+The user-facing flow is:
+
+```text
+Completed-experiment readiness
+-> Frozen randomized ITT specification
+-> Readiness gate
+-> Randomized analysis population
+-> Primary unadjusted ITT estimate
+-> Optional approved pre-treatment precision adjustment
+-> Sensitivity / missingness / guardrail / materiality evidence
+-> Human review
+-> Project artifact registration
+-> Decision evidence
+```
+
+The randomized ITT state is persisted under `causal_itt_state`. The state stores estimator specs, run results, review status, registered effect artifacts, and event history. It does not store full outcome tables.
+
+Phase 4 records:
+
+- active completed experiment linkage,
+- treatment and comparison arm labels,
+- primary outcome and outcome type,
+- approved baseline covariates,
+- optional cluster variable,
+- uncertainty method,
+- minimum meaningful effect,
+- readiness gate result,
+- primary estimate and uncertainty interval,
+- adjusted precision estimate when available,
+- missingness sensitivity,
+- guardrail evidence,
+- materiality state,
+- permitted and prohibited claims,
+- review status,
+- campaign seed suggestions.
+
+Mission Control warns when an ITT spec has not been run, the readiness gate blocks estimation, effect evidence requires review, an effect artifact has not been registered, or materiality suggests possible harm.
+
+GenAI receives bounded summary context only: status, estimate, confidence interval, materiality state, review status, artifact count, campaign seed types, and prohibited claims. Assignment logs, source outcomes, and full source tables are intentionally omitted by default.
+
+The boundary remains explicit:
+
+- randomized ITT only,
+- no treatment-on-treated or CACE/TOT estimation,
+- no observational estimator,
+- no propensity score or matching estimator,
+- no instrumental-variable estimator,
+- no difference-in-differences,
+- no synthetic control,
+- no mediation,
+- no causal forests,
+- no adaptive experiments,
+- no optimization,
+- no autonomous rollout or decision execution.
+
+## Phase 5: Randomized Analysis Depth and Causal Reporting
+
+Phase 5 deepens randomized causal evidence without adding observational estimators or autonomous decisioning. The app continues to use `causal_itt_state`, but ITT run records may now include:
+
+- `design_depth`;
+- `causal_report`;
+- method eligibility;
+- CUPED variance-reduction evidence;
+- block/stratum or cluster/geography diagnostics;
+- carryover evidence for temporal designs;
+- randomization-inference evidence when eligible;
+- multiplicity records;
+- guardrail decision state;
+- materiality regions;
+- robustness matrix rows;
+- report-section availability.
+
+The user-facing workbench adds governed design controls to the existing Randomized ITT Estimation card:
+
+- randomized design type;
+- eligible analysis modes;
+- block and stratum fields;
+- period field;
+- pre-period fields;
+- factorial terms;
+- maximum acceptable harm.
+
+Only the provider package owns the statistical contract. The app does not implement separate estimators. It calls AutoQuant's randomized design-analysis contract when available and degrades gracefully when an older installed AutoQuant package is active.
+
+Mission Control surfaces:
+
+- unavailable randomized design-depth evidence after an ITT result;
+- available causal-effect report contracts;
+- existing review, artifact registration, blocked readiness, and possible harm signals.
+
+Bounded GenAI context includes design-depth status, report status, and robustness row counts. It does not include raw assignment logs, full outcome data, or source tables by default. GenAI may explain design-specific limitations and robustness, but it may not select the most favorable analysis, alter the specification, suppress guardrails, or approve evidence.
+
+Cleanup classification:
+
+- The remaining aggregate app warning is `module_terminology_consistency`.
+- It is a known terminology compatibility warning preserving historical `autoquant_model_assessment` references while the canonical pre-model module remains `autoquant_model_readiness`.
+- It is not caused by causal Phase 4 or Phase 5.
+
+Build artifact policy:
+
+- AutoQuant release tarballs are treated as tracked repository content when already present.
+- Validation builds should be written to isolated temporary build directories rather than regenerating tracked tarballs in the source tree.

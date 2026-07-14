@@ -141,6 +141,87 @@ page_causal_intelligence_ui <- function(id) {
             ui_disclosure("Experiment Gate", uiOutput(ns("experiment_gate_table"))),
             ui_disclosure("Power and Timing", uiOutput(ns("experiment_power_table"))),
             ui_disclosure("Validity Threats", uiOutput(ns("experiment_threats_table")))
+          ),
+          ui_card(
+            "Completed Experiment Evidence",
+            "Ingest completed or in-progress experiment evidence, preserve original assignment, and classify analysis readiness. This does not estimate effects.",
+            tags$div(
+              class = "aq-form-grid",
+              textInput(ns("completed_experiment_id"), "Completed Experiment ID", value = "ce_project_test"),
+              textInput(ns("completed_plan_artifact_id"), "Experiment Plan Artifact ID", placeholder = "aq_experiment_plan_project_test"),
+              textInput(ns("completed_estimand_id"), "Estimand ID", placeholder = "estimand_itt"),
+              selectInput(ns("completed_status"), "Experiment Status", choices = c("completed", "in_progress", "stopped_early", "canceled", "compromised", "outcome_pending", "analysis_pending", "closed")),
+              textInput(ns("actual_start_date"), "Actual Start Date", placeholder = "2026-01-01"),
+              textInput(ns("actual_end_date"), "Actual End Date", placeholder = "2026-02-01"),
+              textInput(ns("data_cutoff_date"), "Data Cutoff Date", placeholder = "2026-02-15"),
+              textInput(ns("execution_owner"), "Execution Owner", value = "analytics")
+            ),
+            tags$div(
+              class = "aq-form-grid",
+              uiOutput(ns("map_unit_id")),
+              uiOutput(ns("map_planned_arm")),
+              uiOutput(ns("map_realized_arm")),
+              uiOutput(ns("map_delivery")),
+              uiOutput(ns("map_delivery_status")),
+              uiOutput(ns("map_exposure")),
+              uiOutput(ns("map_received")),
+              uiOutput(ns("map_primary_outcome")),
+              uiOutput(ns("map_guardrail")),
+              uiOutput(ns("map_exclusion"))
+            ),
+            ui_action_row(
+              actionButton(ns("save_completed_experiment"), "Save Completed Record", class = "btn-primary"),
+              actionButton(ns("save_completed_mappings"), "Save Evidence Mappings", class = "btn-secondary"),
+              actionButton(ns("assess_completed_readiness"), "Assess Readiness", class = "btn-secondary"),
+              actionButton(ns("register_completed_artifact"), "Register Readiness Artifact", class = "btn-secondary")
+            ),
+            verbatimTextOutput(ns("completed_message")),
+            uiOutput(ns("completed_summary_cards")),
+            ui_disclosure("Analysis Readiness", uiOutput(ns("completed_readiness_table"))),
+            ui_disclosure("Execution Reconciliation", uiOutput(ns("completed_reconciliation_table"))),
+            ui_disclosure("Fidelity / Missingness / Estimand", uiOutput(ns("completed_integrity_table"))),
+            ui_disclosure("Completed-Evidence Campaign Seeds", uiOutput(ns("completed_campaign_seeds_table")))
+          ),
+          ui_card(
+            "Randomized ITT Estimation",
+            "Estimate assignment-to-treatment effects only after completed-experiment readiness is current.",
+            tags$div(
+              class = "aq-form-grid",
+              textInput(ns("itt_analysis_id"), "Analysis ID", value = "itt_project_test"),
+              textInput(ns("itt_treatment_arm"), "Treatment Arm", value = "treatment"),
+              textInput(ns("itt_comparison_arm"), "Comparison Arm", value = "control"),
+              textInput(ns("itt_outcome"), "Outcome", placeholder = "revenue"),
+              selectInput(ns("itt_outcome_type"), "Outcome Type", choices = c("continuous", "binary")),
+              textInput(ns("itt_baseline_covariates"), "Approved Baseline Covariates", placeholder = "baseline_y,pre_period_value"),
+              textInput(ns("itt_cluster_variable"), "Cluster Variable", placeholder = "market"),
+              selectInput(ns("itt_se_method"), "Uncertainty Method", choices = c("welch", "hc0", "cluster")),
+              numericInput(ns("itt_minimum_effect"), "Minimum Meaningful Effect", value = NA, step = 0.1),
+              selectInput(ns("itt_design_type"), "Randomized Design", choices = c("completely_randomized", "blocked_randomized", "stratified_randomized", "cluster_randomized", "geographic_randomized", "switchback", "stepped_wedge", "factorial")),
+              textInput(ns("itt_analysis_modes"), "Eligible Analysis Modes", value = "unadjusted,ancova,cuped,randomization_inference"),
+              textInput(ns("itt_block_fields"), "Block Fields", placeholder = "block"),
+              textInput(ns("itt_stratum_fields"), "Stratum Fields", placeholder = "stratum"),
+              textInput(ns("itt_period_field"), "Period Field", placeholder = "period"),
+              textInput(ns("itt_pre_period_fields"), "Pre-Period Fields", placeholder = "pre_revenue"),
+              textInput(ns("itt_factorial_terms"), "Factorial Terms", placeholder = "creative,bid"),
+              numericInput(ns("itt_material_harm"), "Maximum Acceptable Harm", value = NA, step = 0.1)
+            ),
+            ui_action_row(
+              actionButton(ns("save_itt_spec"), "Save ITT Spec", class = "btn-primary"),
+              actionButton(ns("run_itt_analysis"), "Run ITT Analysis", class = "btn-secondary"),
+              actionButton(ns("approve_itt_evidence"), "Approve Evidence", class = "btn-secondary"),
+              actionButton(ns("register_itt_artifact"), "Register Effect Artifact", class = "btn-secondary")
+            ),
+            verbatimTextOutput(ns("itt_message")),
+            uiOutput(ns("itt_summary_cards")),
+            ui_disclosure("Readiness Gate", uiOutput(ns("itt_gate_table"))),
+            ui_disclosure("Primary Effect", uiOutput(ns("itt_primary_table"))),
+            ui_disclosure("Design-Aware Methods", uiOutput(ns("itt_design_methods_table"))),
+            ui_disclosure("Robustness Matrix", uiOutput(ns("itt_robustness_table"))),
+            ui_disclosure("Carryover / Multiplicity / Guardrails", uiOutput(ns("itt_design_evidence_table"))),
+            ui_disclosure("Causal Effect Report Sections", uiOutput(ns("itt_report_sections_table"))),
+            ui_disclosure("Sensitivity / Materiality / Guardrails", uiOutput(ns("itt_evidence_table"))),
+            ui_disclosure("Permitted and Prohibited Claims", uiOutput(ns("itt_claims_table"))),
+            ui_disclosure("ITT Campaign Seeds", uiOutput(ns("itt_campaign_seeds_table")))
           )
         )
       )
@@ -326,6 +407,124 @@ page_causal_intelligence_server <- function(id, ctx) {
 
     output$causal_message <- renderText(message())
     output$experiment_message <- renderText(experiment_message())
+    completed_message <- reactiveVal("Completed-experiment evidence is ready. Save a record, map evidence columns, then assess readiness.")
+    output$completed_message <- renderText(completed_message())
+    itt_message <- reactiveVal("Randomized ITT estimation is ready after completed-experiment readiness is current.")
+    output$itt_message <- renderText(itt_message())
+
+    completed_column_choices <- reactive({
+      data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
+      cols <- if (is.data.frame(data)) names(data) else character()
+      c("(none)" = "", cols)
+    })
+
+    completed_select <- function(input_id, label, preferred = character()) {
+      renderUI({
+        choices <- completed_column_choices()
+        selected <- intersect(preferred, unname(choices))
+        selectInput(ns(input_id), label, choices = choices, selected = if (length(selected)) selected[[1]] else "")
+      })
+    }
+
+    output$map_unit_id <- completed_select("completed_unit_id_col", "Unit ID Column", c("unit_id", "id"))
+    output$map_planned_arm <- completed_select("completed_planned_arm_col", "Original Assignment Column", c("planned_arm", "assignment", "arm"))
+    output$map_realized_arm <- completed_select("completed_realized_arm_col", "Realized Assignment Column", c("realized_assigned_arm", "planned_arm", "assignment", "arm"))
+    output$map_delivery <- completed_select("completed_delivery_col", "Delivered Condition Column", c("delivered_condition", "treatment", "arm"))
+    output$map_delivery_status <- completed_select("completed_delivery_status_col", "Delivery Status Column", c("delivery_status"))
+    output$map_exposure <- completed_select("completed_exposure_col", "Exposure Column", c("exposure", "spend"))
+    output$map_received <- completed_select("completed_received_col", "Treatment Received Column", c("treatment_received", "delivered_condition"))
+    output$map_primary_outcome <- completed_select("completed_primary_outcome_col", "Primary Outcome Column", c(input$experiment_primary_outcome %||% "", input$outcome %||% "", "outcome", "revenue"))
+    output$map_guardrail <- completed_select("completed_guardrail_col", "Guardrail Column", c("guardrail", "cost_guardrail", "cpa"))
+    output$map_exclusion <- completed_select("completed_exclusion_col", "Exclusion Stage Column", c("exclusion_stage"))
+
+    observeEvent(input$save_completed_experiment, {
+      row <- data.table::data.table(
+        completed_experiment_id = input$completed_experiment_id,
+        experiment_plan_artifact_id = input$completed_plan_artifact_id %||% paste0("aq_experiment_plan_", input$experiment_question_id %||% ""),
+        decision_context_id = input$decision_context_id %||% "",
+        causal_question_id = current_question_id(),
+        estimand_id = input$completed_estimand_id %||% input$estimand %||% "",
+        design_version = "v1",
+        assignment_version = "v1",
+        experiment_status = input$completed_status %||% "completed",
+        actual_start_date = input$actual_start_date %||% "",
+        actual_end_date = input$actual_end_date %||% "",
+        data_cutoff_date = input$data_cutoff_date %||% "",
+        execution_owner = input$execution_owner %||% "analytics",
+        primary_outcome = input$completed_primary_outcome_col %||% input$experiment_primary_outcome %||% input$outcome %||% ""
+      )
+      result <- causal_completed_experiment_upsert_completed(ctx$causal_completed_experiment_state(), row)
+      if (identical(result$status, "success")) ctx$causal_completed_experiment_state(result$value)
+      completed_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+
+    observeEvent(input$save_completed_mappings, {
+      id <- input$completed_experiment_id %||% causal_completed_experiment_active_id(ctx$causal_completed_experiment_state())
+      mappings <- data.table::data.table(
+        evidence_role = c("unit_id", "planned_arm", "realized_assigned_arm", "delivered_condition", "delivery_status", "exposure", "treatment_received", "primary_outcome", "guardrail", "exclusion_stage"),
+        source_column = c(input$completed_unit_id_col, input$completed_planned_arm_col, input$completed_realized_arm_col, input$completed_delivery_col, input$completed_delivery_status_col, input$completed_exposure_col, input$completed_received_col, input$completed_primary_outcome_col, input$completed_guardrail_col, input$completed_exclusion_col)
+      )
+      result <- causal_completed_experiment_save_mappings(ctx$causal_completed_experiment_state(), id, mappings)
+      if (identical(result$status, "success")) ctx$causal_completed_experiment_state(result$value)
+      completed_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+
+    observeEvent(input$assess_completed_readiness, {
+      result <- causal_completed_experiment_assess(ctx$causal_completed_experiment_state(), ctx$uploaded_data())
+      if (identical(result$status, "success")) ctx$causal_completed_experiment_state(result$value)
+      completed_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+
+    observeEvent(input$register_completed_artifact, {
+      result <- causal_completed_experiment_register_artifact(ctx, ctx$causal_completed_experiment_state())
+      completed_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+
+    observeEvent(input$save_itt_spec, {
+      completed_id <- causal_completed_experiment_active_id(ctx$causal_completed_experiment_state())
+      row <- data.table::data.table(
+        analysis_id = input$itt_analysis_id %||% "",
+        completed_experiment_id = completed_id,
+        treatment_arm = input$itt_treatment_arm %||% "",
+        comparison_arm = input$itt_comparison_arm %||% "",
+        outcome = input$itt_outcome %||% "",
+        outcome_type = input$itt_outcome_type %||% "continuous",
+        baseline_covariates = input$itt_baseline_covariates %||% "",
+        cluster_variable = input$itt_cluster_variable %||% "",
+        standard_error_method = input$itt_se_method %||% "welch",
+        minimum_meaningful_effect = suppressWarnings(as.numeric(input$itt_minimum_effect)),
+        design_type = input$itt_design_type %||% "completely_randomized",
+        analysis_modes = input$itt_analysis_modes %||% "unadjusted,ancova",
+        block_fields = input$itt_block_fields %||% "",
+        stratum_fields = input$itt_stratum_fields %||% "",
+        period_field = input$itt_period_field %||% "",
+        cluster_unit = input$itt_cluster_variable %||% "",
+        pre_period_fields = input$itt_pre_period_fields %||% "",
+        factorial_terms = input$itt_factorial_terms %||% "",
+        material_benefit = suppressWarnings(as.numeric(input$itt_minimum_effect)),
+        material_harm = suppressWarnings(as.numeric(input$itt_material_harm))
+      )
+      result <- causal_itt_upsert_spec(ctx$causal_itt_state(), row)
+      if (identical(result$status, "success")) ctx$causal_itt_state(result$value)
+      itt_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+
+    observeEvent(input$run_itt_analysis, {
+      result <- causal_itt_run(ctx$causal_itt_state(), ctx$causal_completed_experiment_state(), ctx$uploaded_data())
+      if (identical(result$status, "success")) ctx$causal_itt_state(result$value)
+      itt_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+
+    observeEvent(input$approve_itt_evidence, {
+      result <- causal_itt_review(ctx$causal_itt_state(), approve = TRUE, reviewer = "user")
+      if (identical(result$status, "success")) ctx$causal_itt_state(result$value)
+      itt_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+
+    observeEvent(input$register_itt_artifact, {
+      result <- causal_itt_register_artifact(ctx, ctx$causal_itt_state())
+      itt_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
 
     output$causal_summary_cards <- renderUI({
       summary <- causal_intelligence_summary(ctx$causal_intelligence_state())
@@ -384,6 +583,10 @@ page_causal_intelligence_server <- function(id, ctx) {
       state <- causal_experiment_normalize(ctx$causal_experiment_state())
       state$plans[[causal_experiment_active_id(state)]]
     })
+    completed_assessment <- reactive({
+      state <- causal_completed_experiment_normalize(ctx$causal_completed_experiment_state())
+      state$assessments[[causal_completed_experiment_active_id(state)]]
+    })
     output$experiment_summary_cards <- renderUI({
       summary <- causal_experiment_summary(ctx$causal_experiment_state())
       tags$div(
@@ -408,6 +611,118 @@ page_causal_intelligence_server <- function(id, ctx) {
       plan <- experiment_plan()
       if (is.null(plan)) return(ui_empty_state("No validity threats.", "Generate an experiment design plan."))
       causal_render_table(plan$threats, "No validity threats.")
+    })
+    output$completed_summary_cards <- renderUI({
+      summary <- causal_completed_experiment_summary(ctx$causal_completed_experiment_state())
+      tags$div(
+        class = "aq-metric-grid",
+        ui_card("Completed Records", NULL, tags$strong(summary$completed_experiments[[1]]), tags$p("execution records")),
+        ui_card("Mappings", NULL, tags$strong(summary$evidence_mappings[[1]]), tags$p("evidence columns")),
+        ui_card("Readiness", NULL, tags$strong(ui_display_label(summary$readiness_state[[1]])), tags$p(ui_display_label(summary$assessment_status[[1]]))),
+        ui_card("Assignment", NULL, tags$strong(if (isTRUE(summary$assignment_preserved[[1]])) "Preserved" else "Missing"), tags$p("ITT anchor"))
+      )
+    })
+    output$completed_readiness_table <- renderUI({
+      a <- completed_assessment()
+      if (is.null(a)) return(ui_empty_state("No completed-experiment readiness yet.", "Assess completed experiment readiness."))
+      causal_render_table(a$readiness, "No readiness assessment.")
+    })
+    output$completed_reconciliation_table <- renderUI({
+      a <- completed_assessment()
+      if (is.null(a)) return(ui_empty_state("No execution reconciliation yet.", "Assess completed experiment readiness."))
+      causal_render_table(a$reconciliation, "No execution reconciliation.")
+    })
+    output$completed_integrity_table <- renderUI({
+      a <- completed_assessment()
+      if (is.null(a)) return(ui_empty_state("No integrity diagnostics yet.", "Assess completed experiment readiness."))
+      rows <- data.table::rbindlist(list(
+        data.table::data.table(topic = "fidelity", status = a$fidelity$fidelity_status[[1]] %||% "unknown", finding = a$fidelity$reasons[[1]] %||% ""),
+        data.table::data.table(topic = "estimand", status = a$estimand$estimand_preservation_status[[1]] %||% "unknown", finding = a$estimand$reasons[[1]] %||% ""),
+        data.table::data.table(topic = "guardrails", status = a$guardrails$guardrail_status[[1]] %||% "unknown", finding = a$guardrails$finding[[1]] %||% "")
+      ), use.names = TRUE, fill = TRUE)
+      causal_render_table(rows, "No integrity diagnostics.")
+    })
+    output$completed_campaign_seeds_table <- renderUI({
+      causal_render_table(causal_completed_experiment_campaign_seeds(ctx$causal_completed_experiment_state()), "No completed-evidence campaign seeds.")
+    })
+    itt_record <- reactive({
+      state <- causal_itt_normalize(ctx$causal_itt_state())
+      state$results[[causal_itt_active_id(state)]]
+    })
+    output$itt_summary_cards <- renderUI({
+      summary <- causal_itt_summary(ctx$causal_itt_state())
+      tags$div(
+        class = "aq-metric-grid",
+        ui_card("Specs", NULL, tags$strong(summary$specs[[1]]), tags$p("frozen requests")),
+        ui_card("Status", NULL, tags$strong(ui_display_label(summary$analysis_status[[1]])), tags$p(if (isTRUE(summary$effect_estimated[[1]])) "effect estimated" else "not estimated")),
+        ui_card("Materiality", NULL, tags$strong(ui_display_label(summary$materiality_state[[1]])), tags$p("separate from p-values")),
+        ui_card("Review", NULL, tags$strong(ui_display_label(summary$review_status[[1]])), tags$p(paste(summary$registered_artifacts[[1]], "artifact(s)"))),
+        ui_card("Design Depth", NULL, tags$strong(ui_display_label(summary$design_depth_status[[1]])), tags$p(paste(summary$robustness_rows[[1]], "robustness row(s)"))),
+        ui_card("Report", NULL, tags$strong(ui_display_label(summary$causal_report_status[[1]])), tags$p("causal evidence contract"))
+      )
+    })
+    output$itt_gate_table <- renderUI({
+      record <- itt_record()
+      if (is.null(record) || is.null(record$result)) return(ui_empty_state("No ITT readiness gate yet.", "Run ITT Analysis after saving the spec."))
+      causal_render_table(record$result$gate, "No ITT readiness gate.")
+    })
+    output$itt_primary_table <- renderUI({
+      record <- itt_record()
+      if (is.null(record) || is.null(record$result) || !isTRUE(record$result$effect_estimated)) return(ui_empty_state("No ITT effect estimate.", "Resolve readiness blockers and rerun."))
+      rows <- data.table::rbindlist(list(record$result$primary_estimate, record$result$adjusted_estimate), use.names = TRUE, fill = TRUE)
+      causal_render_table(rows, "No primary effect estimate.")
+    })
+    output$itt_design_methods_table <- renderUI({
+      record <- itt_record()
+      depth <- record$design_depth %||% NULL
+      if (is.null(depth)) return(ui_empty_state("No design-aware method evidence.", "Run ITT Analysis with the updated AutoQuant Phase 5 API installed."))
+      causal_render_table(depth$method_eligibility, "No method eligibility evidence.")
+    })
+    output$itt_robustness_table <- renderUI({
+      record <- itt_record()
+      depth <- record$design_depth %||% NULL
+      if (is.null(depth)) return(ui_empty_state("No robustness matrix.", "Run ITT Analysis after selecting eligible design-aware methods."))
+      causal_render_table(depth$robustness_matrix, "No robustness matrix.")
+    })
+    output$itt_design_evidence_table <- renderUI({
+      record <- itt_record()
+      depth <- record$design_depth %||% NULL
+      if (is.null(depth)) return(ui_empty_state("No design-depth diagnostics.", "Run ITT Analysis with design-aware settings."))
+      rows <- data.table::rbindlist(list(
+        data.table::as.data.table(depth$carryover),
+        data.table::as.data.table(depth$multiplicity),
+        data.table::as.data.table(depth$guardrail_decision),
+        data.table::as.data.table(depth$materiality_regions)
+      ), use.names = TRUE, fill = TRUE)
+      causal_render_table(rows, "No design-depth diagnostics.")
+    })
+    output$itt_report_sections_table <- renderUI({
+      record <- itt_record()
+      report <- record$causal_report %||% NULL
+      if (is.null(report)) return(ui_empty_state("No causal report contract.", "Run ITT Analysis after design-depth evidence is available."))
+      causal_render_table(report$sections, "No causal report sections.")
+    })
+    output$itt_evidence_table <- renderUI({
+      record <- itt_record()
+      if (is.null(record) || is.null(record$result) || !isTRUE(record$result$effect_estimated)) return(ui_empty_state("No sensitivity evidence yet.", "Run a successful ITT analysis."))
+      rows <- data.table::rbindlist(list(
+        data.table::as.data.table(record$result$materiality),
+        data.table::as.data.table(record$result$sensitivity),
+        data.table::as.data.table(record$result$guardrails)
+      ), use.names = TRUE, fill = TRUE)
+      causal_render_table(rows, "No sensitivity, materiality, or guardrail evidence.")
+    })
+    output$itt_claims_table <- renderUI({
+      record <- itt_record()
+      if (is.null(record) || is.null(record$result)) return(ui_empty_state("No claim boundaries yet.", "Run ITT Analysis."))
+      rows <- data.table::rbindlist(list(
+        data.table::data.table(claim_type = "permitted", claim = record$result$permitted_claims %||% character()),
+        data.table::data.table(claim_type = "prohibited", claim = record$result$prohibited_claims %||% character())
+      ), use.names = TRUE, fill = TRUE)
+      causal_render_table(rows, "No claim boundaries.")
+    })
+    output$itt_campaign_seeds_table <- renderUI({
+      causal_render_table(causal_itt_campaign_seeds(ctx$causal_itt_state()), "No ITT campaign seeds.")
     })
   })
 }

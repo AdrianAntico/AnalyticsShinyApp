@@ -69,7 +69,7 @@ mission_control_priority_summary <- function(alerts) {
   )
 }
 
-mission_control_alerts <- function(artifacts, collector, quality, workflow, improvement = NULL, remediation = NULL, feature_experiments = NULL, campaigns = NULL, decisions = NULL, semantic_workspace = NULL, semantic_decision = NULL, causal_intelligence = NULL, causal_experiment = NULL) {
+mission_control_alerts <- function(artifacts, collector, quality, workflow, improvement = NULL, remediation = NULL, feature_experiments = NULL, campaigns = NULL, decisions = NULL, semantic_workspace = NULL, semantic_decision = NULL, decision_valuation = NULL, decision_workflow = NULL, causal_intelligence = NULL, causal_experiment = NULL, causal_completed_experiment = NULL, causal_itt = NULL) {
   alerts <- list()
   add <- function(title, message, severity = "medium", source = NULL) {
     alerts[[length(alerts) + 1L]] <<- list(title = title, message = message, severity = severity, source = source)
@@ -195,6 +195,40 @@ mission_control_alerts <- function(artifacts, collector, quality, workflow, impr
       add("Decision outcome review missing", "A human decision exists without an attached outcome review.", "medium", "Decision Lifecycle")
     }
   }
+  if (!is.null(decision_valuation) && nrow(decision_valuation)) {
+    if ((decision_valuation$contexts[[1]] %||% 0L) > 0L && identical(decision_valuation$valuation_status[[1]] %||% "", "not_run")) {
+      add("Decision valuation not run", "Authored valuation context exists but no economics/recommendation has been generated.", "medium", "Decision Valuation")
+    }
+    if ((decision_valuation$missing_inputs[[1]] %||% 0L) > 0L) {
+      add("Decision valuation has missing inputs", paste(decision_valuation$missing_inputs[[1]], "alternative/scenario row(s) include missing valuation inputs."), "medium", "Decision Valuation")
+    }
+    if ((decision_valuation$registered_artifacts[[1]] %||% 0L) == 0L && identical(decision_valuation$valuation_status[[1]] %||% "", "current")) {
+      add("Decision valuation artifact not registered", "Valuation evidence exists in memory but has not been registered to the collector.", "medium", "Decision Valuation")
+    }
+    if ((decision_valuation$primary_recommendation[[1]] %||% "") %in% c("escalate_authority", "reject_or_escalate")) {
+      add("Decision valuation requires escalation", paste("Primary recommendation:", ui_display_label(decision_valuation$primary_recommendation[[1]])), "high", "Decision Valuation")
+    }
+  }
+  if (!is.null(decision_workflow) && nrow(decision_workflow)) {
+    if ((decision_workflow$workflows[[1]] %||% 0L) > 0L && identical(decision_workflow$workflow_status[[1]] %||% "", "not_run")) {
+      add("Decision workflow not assessed", "A decision workflow exists but review readiness and follow-through evidence have not been assessed.", "medium", "Decision Workflow")
+    }
+    if ((decision_workflow$workflows[[1]] %||% 0L) > 0L && !identical(decision_workflow$readiness_state[[1]] %||% "", "ready_for_review") && !identical(decision_workflow$readiness_state[[1]] %||% "", "not_assessed")) {
+      add("Decision not ready for review", paste("Readiness:", ui_display_label(decision_workflow$readiness_state[[1]])), "medium", "Decision Workflow")
+    }
+    if ((decision_workflow$open_conditions[[1]] %||% 0L) > 0L) {
+      add("Decision workflow has open conditions", paste(decision_workflow$open_conditions[[1]], "condition(s) remain open, breached, or expired."), "medium", "Decision Workflow")
+    }
+    if ((decision_workflow$implementation_deviations[[1]] %||% 0L) > 0L) {
+      add("Implementation deviation requires review", paste(decision_workflow$implementation_deviations[[1]], "material implementation deviation(s) require escalation or review."), "high", "Decision Workflow")
+    }
+    if ((decision_workflow$followup_candidates[[1]] %||% 0L) > 0L) {
+      add("Follow-up decision candidate available", paste(decision_workflow$followup_candidates[[1]], "follow-up candidate(s) are available from workflow evidence."), "medium", "Decision Workflow")
+    }
+    if ((decision_workflow$registered_artifacts[[1]] %||% 0L) == 0L && identical(decision_workflow$workflow_status[[1]] %||% "", "current")) {
+      add("Decision workflow artifact not registered", "Workflow evidence exists in memory but has not been registered to the collector.", "medium", "Decision Workflow")
+    }
+  }
   if (!is.null(causal_intelligence) && nrow(causal_intelligence)) {
     if ((causal_intelligence$questions[[1]] %||% 0L) > 0L && !identical(causal_intelligence$assessment_status[[1]] %||% "", "current")) {
       add("Causal plan is not current", "A causal question exists but its identification plan has not been assessed or is stale.", "medium", "Causal Intelligence")
@@ -215,6 +249,46 @@ mission_control_alerts <- function(artifacts, collector, quality, workflow, impr
     }
     if ((causal_experiment$registered_artifacts[[1]] %||% 0L) == 0L && identical(causal_experiment$plan_status[[1]] %||% "", "current")) {
       add("Experiment plan artifact not registered", "The current governed experiment design has not been preserved as project evidence.", "medium", "Causal Experiment Design")
+    }
+  }
+  if (!is.null(causal_completed_experiment) && nrow(causal_completed_experiment)) {
+    if ((causal_completed_experiment$completed_experiments[[1]] %||% 0L) > 0L && !identical(causal_completed_experiment$assessment_status[[1]] %||% "", "current")) {
+      add("Completed experiment readiness is not current", "Completed or in-progress experiment evidence exists but readiness has not been assessed or is stale.", "medium", "Causal Completed Evidence")
+    }
+    if (!isTRUE(causal_completed_experiment$assignment_preserved[[1]]) && (causal_completed_experiment$completed_experiments[[1]] %||% 0L) > 0L) {
+      add("Original assignment evidence missing", "Completed experiment evidence cannot support ITT analysis until original assignment is preserved.", "high", "Causal Completed Evidence")
+    }
+    if (!isTRUE(causal_completed_experiment$outcome_available[[1]]) && (causal_completed_experiment$completed_experiments[[1]] %||% 0L) > 0L) {
+      add("Outcome evidence missing", "Completed experiment evidence has no mapped outcome evidence for analysis readiness.", "high", "Causal Completed Evidence")
+    }
+    if ((causal_completed_experiment$readiness_state[[1]] %||% "") %in% c("estimand_revision_required", "blocked", "invalid_for_planned_estimand")) {
+      add("Completed experiment has causal readiness blockers", paste("Readiness:", ui_display_label(causal_completed_experiment$readiness_state[[1]])), "high", "Causal Completed Evidence")
+    }
+    if ((causal_completed_experiment$registered_artifacts[[1]] %||% 0L) == 0L && identical(causal_completed_experiment$assessment_status[[1]] %||% "", "current")) {
+      add("Completed experiment readiness artifact not registered", "The completed-experiment readiness assessment has not been preserved as project evidence.", "medium", "Causal Completed Evidence")
+    }
+  }
+  if (!is.null(causal_itt) && nrow(causal_itt)) {
+    if ((causal_itt$specs[[1]] %||% 0L) > 0L && identical(causal_itt$analysis_status[[1]] %||% "", "not_run")) {
+      add("Randomized ITT spec not run", "A governed ITT specification exists but has not produced effect evidence.", "medium", "Causal ITT")
+    }
+    if (identical(causal_itt$analysis_status[[1]] %||% "", "readiness_blocked")) {
+      add("Randomized ITT analysis blocked", "The ITT readiness gate blocked estimation. Review completed-experiment evidence before using causal effect claims.", "high", "Causal ITT")
+    }
+    if (isTRUE(causal_itt$effect_estimated[[1]]) && !identical(causal_itt$review_status[[1]] %||% "", "approved_evidence")) {
+      add("Randomized ITT evidence needs review", "An ITT effect has been estimated but not approved as decision evidence.", "medium", "Causal ITT")
+    }
+    if (isTRUE(causal_itt$effect_estimated[[1]]) && (causal_itt$registered_artifacts[[1]] %||% 0L) == 0L) {
+      add("Randomized ITT artifact not registered", "The ITT effect evidence has not been preserved as a project artifact.", "medium", "Causal ITT")
+    }
+    if (isTRUE(causal_itt$effect_estimated[[1]]) && identical(causal_itt$design_depth_status[[1]] %||% "", "not_available")) {
+      add("Randomized design-depth evidence unavailable", "Run with the updated AutoQuant randomized design analysis contract to inspect variance reduction, robustness, and report evidence.", "medium", "Causal ITT")
+    }
+    if ((causal_itt$robustness_rows[[1]] %||% 0L) > 1L && identical(causal_itt$causal_report_status[[1]] %||% "", "available")) {
+      add("Causal effect report available", "Review the randomized evidence report before linking evidence to a decision.", "low", "Causal ITT")
+    }
+    if ((causal_itt$materiality_state[[1]] %||% "") %in% c("materially_harmful", "possible_harm")) {
+      add("Randomized ITT indicates possible harm", paste("Materiality:", ui_display_label(causal_itt$materiality_state[[1]])), "high", "Causal ITT")
     }
   }
 
@@ -310,6 +384,11 @@ page_mission_control_ui <- function(id) {
             uiOutput(ns("alerts"))
           ),
           ui_card(
+            title = "Decision Work Queue",
+            subtitle = "Deterministic next actions from authored decision, valuation, and workflow state.",
+            uiOutput(ns("decision_work_queue"))
+          ),
+          ui_card(
             title = "Async Jobs",
             subtitle = "Long-running workstation work.",
             uiOutput(ns("async_jobs"))
@@ -365,8 +444,12 @@ page_mission_control_server <- function(id, ctx) {
       decisions <- tryCatch(ctx$decision_memory_summary(), error = function(e) data.table::data.table(decision_contexts = 0L, reviews = 0L, memory_artifacts = 0L, validated_reviews = 0L, negative_reviews = 0L, awaiting_review = 0L, last_status = "unavailable"))
       semantic_workspace <- tryCatch(semantic_workspace_summary(ctx$semantic_workspace()), error = function(e) data.table::data.table(total_objects = 0L, draft_objects = 0L, review_objects = 0L, approved_objects = 0L, archived_objects = 0L, relationships = 0L, validation_errors = 0L, validation_warnings = 0L, last_event = "unavailable"))
       semantic_decision <- tryCatch(semantic_decision_summary(ctx$semantic_decision_state(), ctx$semantic_workspace()), error = function(e) data.table::data.table(contexts = 0L, alternatives = 0L, criteria = 0L, financial_impacts = 0L, uncertainties = 0L, optionality = 0L, recommendations = 0L, decisions = 0L, reviews = 0L, validation_errors = 0L, validation_warnings = 0L, assessment_status = "unavailable", registered_artifacts = 0L))
+      decision_valuation <- tryCatch(decision_valuation_summary(ctx$decision_valuation_state()), error = function(e) data.table::data.table(contexts = 0L, active_valuation_context_id = NA_character_, cash_flows = 0L, impact_mappings = 0L, scenarios = 0L, thresholds = 0L, valuation_status = "unavailable", alternatives_valued = 0L, missing_inputs = 0L, recommendation_count = 0L, primary_recommendation = "unavailable", registered_artifacts = 0L, last_message = "unavailable"))
+      decision_workflow <- tryCatch(decision_workflow_summary(ctx$decision_workflow_state()), error = function(e) data.table::data.table(workflows = 0L, active_workflow_id = NA_character_, workflow_status = "unavailable", readiness_state = "unavailable", reviews = 0L, approvals = 0L, open_conditions = 0L, implementation_deviations = 0L, quality_state = "unavailable", followup_candidates = 0L, registered_artifacts = 0L))
       causal_intelligence <- tryCatch(causal_intelligence_summary(ctx$causal_intelligence_state()), error = function(e) data.table::data.table(questions = 0L, roles = 0L, relationships = 0L, assessment_status = "unavailable", identification_status = "unavailable", registered_artifacts = 0L))
       causal_experiment <- tryCatch(causal_experiment_summary(ctx$causal_experiment_state()), error = function(e) data.table::data.table(experiment_questions = 0L, design_specs = 0L, plan_status = "unavailable", gate_status = "unavailable", execution_ready = FALSE, registered_artifacts = 0L))
+      causal_completed_experiment <- tryCatch(causal_completed_experiment_summary(ctx$causal_completed_experiment_state()), error = function(e) data.table::data.table(completed_experiments = 0L, evidence_mappings = 0L, readiness_state = "unavailable", assessment_status = "unavailable", assignment_preserved = FALSE, outcome_available = FALSE, guardrail_status = "unavailable", registered_artifacts = 0L))
+      causal_itt <- tryCatch(causal_itt_summary(ctx$causal_itt_state()), error = function(e) data.table::data.table(specs = 0L, active_analysis_id = NA_character_, analysis_status = "unavailable", effect_estimated = FALSE, review_status = "unavailable", estimate = NA_real_, conf_low = NA_real_, conf_high = NA_real_, materiality_state = "unavailable", registered_artifacts = 0L, design_depth_status = "unavailable", causal_report_status = "unavailable", robustness_rows = 0L))
       counts <- mission_control_artifact_counts(artifacts)
       quality <- mission_control_quality_summary(artifacts)
       ai_status <- mission_control_ai_status(collector, artifacts)
@@ -385,11 +468,16 @@ page_mission_control_server <- function(id, ctx) {
         decisions = decisions,
         semantic_workspace = semantic_workspace,
         semantic_decision = semantic_decision,
+        decision_valuation = decision_valuation,
+        decision_workflow = decision_workflow,
         causal_intelligence = causal_intelligence,
+        causal_experiment = causal_experiment,
+        causal_completed_experiment = causal_completed_experiment,
+        causal_itt = causal_itt,
         counts = counts,
         quality = quality,
         ai_status = ai_status,
-        alerts = mission_control_alerts(artifacts, collector, quality, workflow, improvement, remediation, feature_experiments, campaigns, decisions, semantic_workspace, semantic_decision, causal_intelligence, causal_experiment),
+        alerts = mission_control_alerts(artifacts, collector, quality, workflow, improvement, remediation, feature_experiments, campaigns, decisions, semantic_workspace, semantic_decision, decision_valuation, decision_workflow, causal_intelligence, causal_experiment, causal_completed_experiment, causal_itt),
         timeline = mission_control_timeline(ctx, artifacts, collector)
       )
     })
@@ -445,6 +533,8 @@ page_mission_control_server <- function(id, ctx) {
         ui_status_tile("Analytical Campaigns", paste(state$campaigns$total_campaigns[[1]] %||% 0L, "campaigns"), status = if ((state$campaigns$knowledge_conflicts[[1]] %||% 0L) > 0L || (state$campaigns$blocked_campaigns[[1]] %||% 0L) > 0L) "error" else if (((state$campaigns$low_utility_guidance[[1]] %||% 0L) + (state$campaigns$knowledge_weakened[[1]] %||% 0L) + (state$campaigns$knowledge_superseded[[1]] %||% 0L) + (state$campaigns$knowledge_uncertain[[1]] %||% 0L) + (state$campaigns$awaiting_approval[[1]] %||% 0L) + (state$campaigns$awaiting_adoption[[1]] %||% 0L)) > 0L) "warning" else if ((state$campaigns$active_campaigns[[1]] %||% 0L) > 0L) "info" else if ((state$campaigns$completed_campaigns[[1]] %||% 0L) > 0L) "success" else "neutral", detail = paste(ui_status_label(state$campaigns$closure_recommendation[[1]] %||% state$campaigns$latest_status[[1]] %||% "none"), "-", state$campaigns$high_value_guidance[[1]] %||% 0L, "useful,", state$campaigns$low_utility_guidance[[1]] %||% 0L, "low-utility,", state$campaigns$knowledge_conflicts[[1]] %||% 0L, "conflicts")),
         ui_status_tile("Decision Memory", paste(state$decisions$decision_contexts[[1]] %||% 0L, "contexts"), status = if ((state$decisions$negative_reviews[[1]] %||% 0L) > 0L) "warning" else if ((state$decisions$validated_reviews[[1]] %||% 0L) > 0L) "success" else if ((state$decisions$decision_contexts[[1]] %||% 0L) > 0L) "info" else "neutral", detail = paste(state$decisions$reviews[[1]] %||% 0L, "review(s),", state$decisions$memory_artifacts[[1]] %||% 0L, "artifact(s)")),
         ui_status_tile("Decision Lifecycle", paste(state$semantic_decision$contexts[[1]] %||% 0L, "contexts"), status = if ((state$semantic_decision$validation_errors[[1]] %||% 0L) > 0L) "error" else if (identical(state$semantic_decision$assessment_status[[1]] %||% "", "stale") || (state$semantic_decision$validation_warnings[[1]] %||% 0L) > 0L) "warning" else if (identical(state$semantic_decision$assessment_status[[1]] %||% "", "current")) "success" else if ((state$semantic_decision$contexts[[1]] %||% 0L) > 0L) "info" else "neutral", detail = paste(ui_status_label(state$semantic_decision$assessment_status[[1]] %||% "none"), "-", state$semantic_decision$registered_artifacts[[1]] %||% 0L, "artifact(s)")),
+        ui_status_tile("Decision Valuation", paste(state$decision_valuation$alternatives_valued[[1]] %||% 0L, "alternatives"), status = if (identical(state$decision_valuation$valuation_status[[1]] %||% "", "current") && (state$decision_valuation$missing_inputs[[1]] %||% 0L) == 0L) "success" else if ((state$decision_valuation$contexts[[1]] %||% 0L) > 0L || (state$decision_valuation$missing_inputs[[1]] %||% 0L) > 0L) "warning" else "neutral", detail = paste(ui_status_label(state$decision_valuation$primary_recommendation[[1]] %||% "not_run"), "-", state$decision_valuation$registered_artifacts[[1]] %||% 0L, "artifact(s)")),
+        ui_status_tile("Decision Workflow", paste(state$decision_workflow$workflows[[1]] %||% 0L, "workflow(s)"), status = if (identical(state$decision_workflow$workflow_status[[1]] %||% "", "current") && (state$decision_workflow$implementation_deviations[[1]] %||% 0L) == 0L) "success" else if ((state$decision_workflow$workflows[[1]] %||% 0L) > 0L || (state$decision_workflow$open_conditions[[1]] %||% 0L) > 0L) "warning" else "neutral", detail = paste(ui_status_label(state$decision_workflow$readiness_state[[1]] %||% "not_run"), "-", state$decision_workflow$registered_artifacts[[1]] %||% 0L, "artifact(s)")),
         ui_status_tile("Semantic Workspace", paste(state$semantic_workspace$total_objects[[1]] %||% 0L, "objects"), status = if ((state$semantic_workspace$validation_errors[[1]] %||% 0L) > 0L) "error" else if ((state$semantic_workspace$validation_warnings[[1]] %||% 0L) > 0L || (state$semantic_workspace$review_objects[[1]] %||% 0L) > 0L) "warning" else if ((state$semantic_workspace$total_objects[[1]] %||% 0L) > 0L) "success" else "neutral", detail = paste(state$semantic_workspace$relationships[[1]] %||% 0L, "relationship(s),", state$semantic_workspace$review_objects[[1]] %||% 0L, "review")),
         ui_status_tile("Reports", length(state$plans), status = if (length(state$plans)) "success" else "neutral", detail = "report plans"),
         ui_status_tile("Warnings", state$quality$warnings + state$quality$failures, status = if ((state$quality$warnings + state$quality$failures) > 0L) "warning" else "success", detail = "quality signals"),
@@ -473,6 +563,23 @@ page_mission_control_server <- function(id, ctx) {
             source = alert$source
           )
         })
+      )
+    })
+
+    output$decision_work_queue <- renderUI({
+      actions <- tryCatch(
+        decision_workflow_next_actions(ctx$semantic_decision_state(), ctx$decision_valuation_state(), ctx$decision_workflow_state()),
+        error = function(e) data.table::data.table()
+      )
+      if (!nrow(actions)) return(ui_empty_state("No decision queue yet.", "Create a decision context to populate guided decision work."))
+      first <- actions[1]
+      tagList(
+        ui_callout(
+          paste("Next:", first$action[[1]]),
+          first$why[[1]],
+          status = if (isTRUE(first$required[[1]])) "warning" else "info"
+        ),
+        render_table(actions[1:min(.N, 6L), .(stage, action, required, authority_required)], engine = "html", searchable = FALSE, sortable = FALSE)
       )
     })
 
@@ -625,6 +732,7 @@ qa_mission_control <- function() {
       "collector_presentation",
       "semantic_workspace_presentation",
       "semantic_decision_lifecycle_presentation",
+      "decision_work_queue",
       "async_job_status",
       "css_cache_busting",
       "documentation"
@@ -653,6 +761,7 @@ qa_mission_control <- function() {
       if (has(page, c("Collector", "manifest_status", "collector_status", "state$counts$total"))) "success" else "error",
       if (has(page, c("semantic_workspace_summary", "Semantic Workspace", "Semantic Intelligence"))) "success" else "error",
       if (has(page, c("semantic_decision_summary", "Decision Lifecycle", "assessment_status", "Authored decision"))) "success" else "error",
+      if (has(page, c("Decision Work Queue", "decision_workflow_next_actions", "output$decision_work_queue"))) "success" else "error",
       if (has(page, c("async_job_summary", "Async Jobs", "aq-async-job-list")) && has(css, c(".aq-async-job-list", ".aq-async-job-row"))) "success" else "error",
       if (has(app_ui, c("app.css?v=", "file.info(css_file)$mtime"))) "success" else "error",
       if (has(docs, c("Mission Control", "Operational awareness", "Alert philosophy", "Timeline"))) "success" else "error"
@@ -681,6 +790,7 @@ qa_mission_control <- function() {
       "Collector state is included in health and alert presentation.",
       "Authored semantic workspace health is included in Mission Control.",
       "Authored decision lifecycle assessment and artifact status are included in Mission Control.",
+      "Mission Control exposes a bounded decision work queue.",
       "Mission Control surfaces basic async job status.",
       "App CSS is cache-busted so Mission Control visual updates render after restart.",
       "Mission Control documentation is present."

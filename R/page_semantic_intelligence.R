@@ -372,6 +372,8 @@ page_semantic_intelligence_ui <- function(id) {
         )
       ),
       semantic_decision_lifecycle_authoring_ui(ns),
+      decision_valuation_authoring_ui(ns),
+      decision_workflow_authoring_ui(ns),
       ui_workspace_grid(
         columns = "two",
         ui_card(
@@ -458,6 +460,8 @@ page_semantic_intelligence_server <- function(id, ctx) {
       result <- semantic_decision_build_autoquant(decision_state(), workspace())
       if (identical(result$status, "success")) result$value else NULL
     })
+    decision_valuation_bind_server(input, output, session, ctx, decision_state, active_decision_id)
+    decision_workflow_bind_server(input, output, session, ctx, decision_state, reactive(decision_valuation_normalize(ctx$decision_valuation_state())), active_decision_id)
 
     observe({
       objects <- workspace_objects()
@@ -893,6 +897,7 @@ qa_semantic_intelligence_page <- function() {
     data.table::data.table(suite = "semantic_intelligence_page", check = "authored_workspace", status = if (grepl("semantic_workspace_upsert_object", page_text, fixed = TRUE) && grepl("semantic_workspace_add_relationship", page_text, fixed = TRUE)) "success" else "error", message = "Page supports project-authored semantic objects and relationships."),
     data.table::data.table(suite = "semantic_intelligence_page", check = "workspace_validation_search_history", status = if (grepl("semantic_workspace_validate", page_text, fixed = TRUE) && grepl("semantic_workspace_search", page_text, fixed = TRUE) && grepl("version_history", page_text, fixed = TRUE)) "success" else "error", message = "Page exposes validation, deterministic search, and version history."),
     data.table::data.table(suite = "semantic_intelligence_page", check = "authored_decision_lifecycle", status = if (grepl("semantic_decision_lifecycle_authoring_ui", page_text, fixed = TRUE) && grepl("assess_authored_decision", page_text, fixed = TRUE) && grepl("semantic_decision_build_autoquant", page_text, fixed = TRUE)) "success" else "error", message = "Page exposes the authored decision lifecycle and AutoQuant assessment path."),
+    data.table::data.table(suite = "semantic_intelligence_page", check = "decision_workflow_workbench", status = if (grepl("decision_workflow_authoring_ui", page_text, fixed = TRUE) && grepl("decision_workflow_bind_server", page_text, fixed = TRUE)) "success" else "error", message = "Page exposes the governed decision workflow workbench."),
     data.table::data.table(suite = "semantic_intelligence_page", check = "no_production_demo_fallback", status = if (!grepl("actionButton\\(ns\\(\"save_demo_decision\"", page_text) && !grepl("observeEvent\\(input\\$save_demo_decision", page_text) && !grepl("observeEvent\\(input\\$attach_outcome_review", page_text) && !grepl("observeEvent\\(input\\$register_memory_artifact", page_text)) "success" else "error", message = "Production page no longer wires demo decision lifecycle fallbacks."),
     data.table::data.table(suite = "semantic_intelligence_page", check = "qa_autoquant_available", status = if (semantic_intelligence_available()) "success" else "warning", message = "Installed AutoQuant exposes decision-management exports.")
   )
