@@ -968,6 +968,23 @@ genai_build_project_context <- function(ctx, strategy = "balanced", max_artifact
       context_note = "Governed experiment-design summary only. Treatment execution, exposure delivery, and effect estimation are out of scope."
     )
   }
+  causal_observational_summary_value <- tryCatch(causal_observational_summary(ctx$causal_observational_state()), error = function(e) NULL)
+  if (!is.null(causal_observational_summary_value) && nrow(causal_observational_summary_value)) {
+    causal_observational_seeds <- tryCatch(causal_observational_campaign_seeds(ctx$causal_observational_state()), error = function(e) data.table::data.table())
+    context$causal_observational <- list(
+      studies = causal_observational_summary_value$studies[[1]],
+      active_study_id = causal_observational_summary_value$active_study_id[[1]],
+      readiness_state = causal_observational_summary_value$readiness_state[[1]],
+      overlap_state = causal_observational_summary_value$overlap_state[[1]],
+      assignment_mechanism = causal_observational_summary_value$assignment_mechanism[[1]],
+      stale = causal_observational_summary_value$stale[[1]],
+      registered_artifacts = causal_observational_summary_value$registered_artifacts[[1]],
+      campaign_seed_count = nrow(causal_observational_seeds),
+      campaign_seed_types = paste(utils::head(unique(causal_observational_seeds$seed %||% character()), 8L), collapse = ", "),
+      prohibited_claims = c("Do not declare ignorability.", "Do not invent confounders.", "Do not claim balance proves no unmeasured confounding.", "Do not estimate observational effects.", "Do not suppress experiment recommendations."),
+      context_note = "Observational causal planning summary only; full data, full covariate tables, assignment models, and source evidence are omitted by default."
+    )
+  }
   causal_completed_summary_value <- tryCatch(causal_completed_experiment_summary(ctx$causal_completed_experiment_state()), error = function(e) NULL)
   if (!is.null(causal_completed_summary_value) && nrow(causal_completed_summary_value)) {
     causal_completed_seeds <- tryCatch(causal_completed_experiment_campaign_seeds(ctx$causal_completed_experiment_state()), error = function(e) data.table::data.table())
@@ -1361,6 +1378,72 @@ genai_suggest_next_action <- function(ctx, config = genai_config(), context_stra
     context_strategy = context_strategy,
     included_components = included_components,
     call_type = "suggest_next_action"
+  )
+  genai_attach_action_proposal(result)
+}
+
+genai_compiled_runtime_guidance <- function(
+  ctx,
+  user_request = "Recommend the next supported analytical action.",
+  explicit_task = NULL,
+  selected_artifact = NULL,
+  audience = "analyst",
+  model_tier = "local_free_model",
+  config = genai_config()
+) {
+  package_result <- build_ai_context_package(
+    ctx = ctx,
+    user_request = user_request,
+    explicit_task = explicit_task,
+    selected_artifact = selected_artifact,
+    audience = audience,
+    model_tier = model_tier
+  )
+  if (!identical(package_result$status, "success")) {
+    return(package_result)
+  }
+  package <- package_result$value
+  prompt <- paste(
+    "You are the Analytics Workstation Guide operating under a compiled runtime knowledge bundle.",
+    "Use only the supplied compiled policy and project digest.",
+    "Do not execute app actions. You may only propose supported actions listed in the package.",
+    "Do not invent ids, modules, artifacts, reports, files, datasets, metrics, estimates, or approvals.",
+    "Return concise structured guidance consistent with the output_schema.",
+    "",
+    "User request:",
+    user_request,
+    "",
+    "Compiled AI context package:",
+    genai_context_json(package),
+    sep = "\n"
+  )
+  result <- genai_generate_with_telemetry(
+    prompt,
+    config = config,
+    context_strategy = "compiled_runtime",
+    included_components = genai_context_components("metadata", "diagnostics", "recommendations", "json_summary", "sidecar_reference"),
+    call_type = paste0("compiled_runtime_", package$task_code)
+  )
+  result$metadata$compiled_runtime <- list(
+    package_id = package$package_id,
+    task_code = package$task_code,
+    bundle_id = package$bundle_id,
+    bundle_version = package$bundle_version,
+    model_tier = model_tier,
+    context_hash = package$context_hash,
+    token_accounting = package$token_accounting,
+    model_tier_policy = package$model_tier_policy,
+    action_class = package$action_class,
+    allowed_actions = package$allowed_actions,
+    prohibited_actions = package$prohibited_actions,
+    cache = package$cache,
+    diagnostics = knowledge_operator_runtime_diagnostics(
+      package,
+      proposal = NULL,
+      validation = service_result("success", messages = "Provider response pending deterministic output validation."),
+      model_tier = model_tier,
+      cache_hit = isTRUE(package_result$metadata$cache_hit)
+    )
   )
   genai_attach_action_proposal(result)
 }
@@ -2637,6 +2720,7 @@ qa_genai_service_contract <- function() {
       "vision_support",
       "context_strategy_research",
       "context_policy",
+      "knowledge_compilation_runtime",
       "semantic_workspace_context",
       "semantic_decision_context",
       "context_strategy_registry",
@@ -2664,6 +2748,7 @@ qa_genai_service_contract <- function() {
       if (has(genai, c("genai_vision_payload", "run_genai_image_vs_data_experiment", "qa_genai_vision_support", "image_payload_used"))) "success" else "error",
       if (has(genai, c("run_genai_context_strategy_study", "recommend_context_strategy", "genai_infer_artifact_family", "genai_context_provenance"))) "success" else "error",
       if (has(genai, c("project metadata", "artifact captions", "Do not execute", "Do not invent")) || has(genai, c("genai_project_context", "genai_artifact_context", "sidecars"))) "success" else "error",
+      if (exists("qa_knowledge_compilation_runtime", mode = "function") && has(genai, c("genai_compiled_runtime_guidance", "compiled_runtime"))) "success" else "error",
       if (has(genai, c("semantic_workspace_summary", "context$semantic_workspace", "Full authored object content is intentionally omitted by default"))) "success" else "error",
       if (has(genai, c("semantic_decision_lifecycle", "semantic_decision_summary", "campaign_seed_count", "full alternatives, financials, uncertainty"))) "success" else "error",
       if (all(c("screenshot_only", "caption_metadata", "screenshot_caption", "table_preview_only", "full_table", "screenshot_caption_preview", "structured_json_summary") %in% strategy_names)) "success" else "error",
@@ -2691,6 +2776,7 @@ qa_genai_service_contract <- function() {
       "Local vision-model image-vs-data experiment support is implemented.",
       "Plot-type-aware context strategy research framework is implemented.",
       "Context builders avoid full dataset dumps by default.",
+      "Knowledge Compilation Runtime exposes compiled bundles and bounded GenAI context packages.",
       "Project GenAI context includes bounded semantic workspace summary only.",
       "Project GenAI context includes bounded authored decision lifecycle status only.",
       "Named context strategies support representation comparison experiments.",

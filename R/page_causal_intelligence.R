@@ -101,6 +101,60 @@ page_causal_intelligence_ui <- function(id) {
             uiOutput(ns("campaign_seeds_table"))
           ),
           ui_card(
+            "Observational Study Design",
+            "Assess whether non-randomized data can support a future causal analysis. This is planning only.",
+            tags$div(
+              class = "aq-form-grid",
+              textInput(ns("observational_study_id"), "Study ID", value = "obs_project_study"),
+              textInput(ns("observational_title"), "Study Title", placeholder = "Observational study for intervention and outcome"),
+              textInput(ns("observational_treatment"), "Treatment / Exposure", placeholder = "treated condition"),
+              textInput(ns("observational_comparison"), "Comparison", placeholder = "untreated or current policy"),
+              textInput(ns("observational_population"), "Population", placeholder = "eligible units"),
+              textInput(ns("observational_unit"), "Unit of Analysis", placeholder = "customer / market-week"),
+              textInput(ns("observational_assignment_time"), "Time Zero / Assignment Time", placeholder = "date treatment eligibility was determined"),
+              textInput(ns("observational_outcome_window"), "Outcome Window", placeholder = "60 days after assignment"),
+              textInput(ns("observational_baseline_window"), "Baseline Window", placeholder = "90 days before assignment"),
+              selectInput(ns("observational_assignment_mechanism"), "Assignment Mechanism", choices = c("unknown", "deterministic_rule", "eligibility_threshold", "discretionary_assignment", "self_selection", "resource_constrained_allocation", "geographic_rollout", "staggered_adoption", "historical_policy", "provider_preference", "customer_choice")),
+              textInput(ns("observational_assignment_inputs"), "Assignment Inputs", placeholder = "prior_spend,region"),
+              selectInput(ns("observational_assignment_confidence"), "Assignment Confidence", choices = c("unknown", "low", "moderate", "high"))
+            ),
+            textAreaInput(ns("observational_assignment_process"), "Assignment Process", rows = 2, placeholder = "Why did some units receive treatment while others did not?"),
+            tags$div(
+              class = "aq-form-grid",
+              textInput(ns("observational_confounders"), "Approved Confounder Candidates", placeholder = "prior_spend,region"),
+              textInput(ns("observational_precision"), "Precision Variables", placeholder = "tenure"),
+              textInput(ns("observational_mediators"), "Excluded Mediators", placeholder = "post_treatment_clicks"),
+              textInput(ns("observational_colliders"), "Excluded Colliders", placeholder = "observed_purchase"),
+              textInput(ns("observational_post_treatment"), "Excluded Post-Treatment Variables", placeholder = "future_status"),
+              uiOutput(ns("observational_treatment_column")),
+              numericInput(ns("observational_treated_count"), "Treated Count", value = 50, min = 0, step = 1),
+              numericInput(ns("observational_comparison_count"), "Comparison Count", value = 50, min = 0, step = 1),
+              textInput(ns("observational_probabilities"), "Diagnostic Treatment Probabilities", placeholder = "0.2,0.4,0.6,0.8"),
+              selectInput(ns("observational_unmeasured_risk_level"), "Unmeasured Confounding Risk", choices = c("unknown", "low", "moderate", "high", "critical")),
+              textInput(ns("observational_unmeasured_risk"), "Unmeasured Risk Factor", placeholder = "manager discretion"),
+              selectInput(ns("observational_selection_severity"), "Selection / Missingness Severity", choices = c("unknown", "low", "moderate", "high", "critical"))
+            ),
+            tags$div(
+              class = "aq-form-grid",
+              checkboxInput(ns("observational_pre_period"), "Pre-Period Available", value = FALSE),
+              checkboxInput(ns("observational_negative_control"), "Negative Control Available", value = FALSE),
+              checkboxInput(ns("observational_donor_pool"), "Donor Pool Available", value = FALSE),
+              checkboxInput(ns("observational_cutoff"), "Running Variable / Cutoff Available", value = FALSE),
+              checkboxInput(ns("observational_instrument"), "Candidate Instrument Available", value = FALSE),
+              checkboxInput(ns("observational_adjustment_approved"), "Adjustment Set Human Approved", value = FALSE)
+            ),
+            ui_action_row(
+              actionButton(ns("save_observational_study"), "Save Observational Study", class = "btn-primary"),
+              actionButton(ns("run_observational_plan"), "Assess Readiness", class = "btn-secondary"),
+              actionButton(ns("register_observational_artifact"), "Register Planning Artifact", class = "btn-secondary")
+            ),
+            verbatimTextOutput(ns("observational_message")),
+            uiOutput(ns("observational_summary_cards")),
+            ui_disclosure("Readiness", uiOutput(ns("observational_readiness_table"))),
+            ui_disclosure("Overlap and Design Eligibility", uiOutput(ns("observational_design_table"))),
+            ui_disclosure("Balance / Timing / Threats", uiOutput(ns("observational_diagnostics_table")))
+          ),
+          ui_card(
             "Experiment Design",
             "Convert a causal question into a governed design artifact. This does not execute treatment or estimate effects.",
             tags$div(
@@ -320,6 +374,87 @@ page_causal_intelligence_server <- function(id, ctx) {
     observeEvent(input$register_causal_artifact, {
       result <- causal_intelligence_register_artifact(ctx, ctx$causal_intelligence_state())
       message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+
+    observational_message <- reactiveVal("Observational planning is ready. Save a study, then assess readiness.")
+    output$observational_message <- renderText(observational_message())
+
+    output$observational_treatment_column <- renderUI({
+      data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
+      cols <- if (is.data.frame(data)) names(data) else character()
+      selectInput(ns("observational_treatment_column_value"), "Treatment Column", choices = c("(manual counts)" = "", cols), selected = "")
+    })
+
+    observeEvent(input$save_observational_study, {
+      qid <- current_question_id()
+      row <- data.table::data.table(
+        observational_study_id = input$observational_study_id %||% "",
+        decision_context_id = input$decision_context_id %||% "",
+        causal_question_id = qid,
+        estimand_id = paste0(input$observational_study_id %||% "obs", "_estimand"),
+        study_title = input$observational_title %||% "",
+        treatment = input$observational_treatment %||% "",
+        comparison_condition = input$observational_comparison %||% "",
+        treatment_levels = "",
+        unit_of_analysis = input$observational_unit %||% "",
+        population = input$observational_population %||% "",
+        eligibility = input$observational_population %||% "",
+        treatment_assignment_time = input$observational_assignment_time %||% "",
+        treatment_window = input$treatment_window %||% "",
+        outcome_window = input$observational_outcome_window %||% "",
+        baseline_window = input$observational_baseline_window %||% "",
+        index_date = input$observational_assignment_time %||% "",
+        data_cutoff = "",
+        organizational_scope = input$business_objective %||% "",
+        authority = "user_authored",
+        coverage = input$observational_population %||% "",
+        status = "draft",
+        outcome = input$outcome %||% "",
+        estimand = input$estimand %||% "ATE",
+        assignment_mechanism = input$observational_assignment_mechanism %||% "unknown",
+        assignment_process = input$observational_assignment_process %||% "",
+        assignment_inputs = input$observational_assignment_inputs %||% "",
+        assignment_confidence = input$observational_assignment_confidence %||% "unknown",
+        approved_confounders = input$observational_confounders %||% "",
+        precision_variables = input$observational_precision %||% "",
+        excluded_mediators = input$observational_mediators %||% "",
+        excluded_colliders = input$observational_colliders %||% "",
+        excluded_post_treatment = input$observational_post_treatment %||% "",
+        treatment_column = input$observational_treatment_column_value %||% "",
+        treated_count = input$observational_treated_count,
+        comparison_count = input$observational_comparison_count,
+        diagnostic_probabilities = input$observational_probabilities %||% "",
+        unmeasured_risk_level = input$observational_unmeasured_risk_level %||% "unknown",
+        unmeasured_confounding_risk = input$observational_unmeasured_risk %||% "",
+        decision_consequence = "decision uncertainty remains bounded by observational assumptions",
+        selection_threat = "selection/missingness review",
+        selection_timing = "unknown",
+        selection_severity = input$observational_selection_severity %||% "unknown",
+        falsification_test = if (isTRUE(input$observational_negative_control)) "negative_control" else "missing_falsification_plan",
+        falsification_rationale = "user-authored observational readiness",
+        falsification_required_data = "",
+        contamination_risk = "unknown",
+        pre_period_available = input$observational_pre_period,
+        negative_control_available = input$observational_negative_control,
+        donor_pool_available = input$observational_donor_pool,
+        running_variable_cutoff = input$observational_cutoff,
+        candidate_instrument = input$observational_instrument,
+        adjustment_approved = input$observational_adjustment_approved
+      )
+      result <- causal_observational_upsert_study(ctx$causal_observational_state(), row)
+      if (identical(result$status, "success")) ctx$causal_observational_state(result$value)
+      observational_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+
+    observeEvent(input$run_observational_plan, {
+      result <- causal_observational_build_plan(ctx$causal_observational_state(), ctx$causal_intelligence_state(), ctx$uploaded_data())
+      if (identical(result$status, "success")) ctx$causal_observational_state(result$value)
+      observational_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+
+    observeEvent(input$register_observational_artifact, {
+      result <- causal_observational_register_artifact(ctx, ctx$causal_observational_state())
+      observational_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
     })
 
     experiment_message <- reactiveVal("Experiment design planning is ready. Save an experiment question and design spec, then generate a plan.")
@@ -578,6 +713,53 @@ page_causal_intelligence_server <- function(id, ctx) {
     })
     output$campaign_seeds_table <- renderUI({
       causal_render_table(causal_intelligence_campaign_seeds(ctx$causal_intelligence_state()), "No campaign seeds.", "Causal planning is currently complete enough that no seed was emitted.")
+    })
+    observational_plan <- reactive({
+      state <- causal_observational_normalize(ctx$causal_observational_state())
+      state$plans[[causal_observational_active_id(state)]]
+    })
+    output$observational_summary_cards <- renderUI({
+      summary <- causal_observational_summary(ctx$causal_observational_state())
+      tags$div(
+        class = "aq-metric-grid",
+        ui_card("Studies", NULL, tags$strong(summary$studies[[1]]), tags$p("observational plans")),
+        ui_card("Readiness", NULL, tags$strong(ui_display_label(summary$readiness_state[[1]])), tags$p(if (summary$stale[[1]]) "stale or not planned" else "current")),
+        ui_card("Overlap", NULL, tags$strong(ui_display_label(summary$overlap_state[[1]])), tags$p("positivity support")),
+        ui_card("Assignment", NULL, tags$strong(ui_display_label(summary$assignment_mechanism[[1]])), tags$p("documented mechanism"))
+      )
+    })
+    output$observational_readiness_table <- renderUI({
+      plan <- observational_plan()
+      if (is.null(plan)) return(ui_empty_state("No observational readiness yet.", "Save an observational study and assess readiness."))
+      causal_render_table(plan$readiness, "No readiness result.")
+    })
+    output$observational_design_table <- renderUI({
+      plan <- observational_plan()
+      if (is.null(plan)) return(ui_empty_state("No overlap or design eligibility yet.", "Assess observational readiness."))
+      rows <- data.table::rbindlist(
+        list(
+          data.table::as.data.table(plan$overlap),
+          data.table::as.data.table(utils::head(plan$design_eligibility[, intersect(c("design_family", "eligibility", "required_data", "recommended_priority"), names(plan$design_eligibility)), with = FALSE], 12L))
+        ),
+        use.names = TRUE,
+        fill = TRUE
+      )
+      causal_render_table(rows, "No overlap or design eligibility.")
+    })
+    output$observational_diagnostics_table <- renderUI({
+      plan <- observational_plan()
+      if (is.null(plan)) return(ui_empty_state("No diagnostics yet.", "Assess observational readiness."))
+      rows <- data.table::rbindlist(
+        list(
+          data.table::as.data.table(plan$temporal[, intersect(c("variable", "role", "temporal_classification", "adjustment_eligible", "recommendation"), names(plan$temporal)), with = FALSE]),
+          data.table::as.data.table(plan$balance[, intersect(c("variable", "balance_metric", "standardized_difference", "severity", "recommendation"), names(plan$balance)), with = FALSE]),
+          data.table::as.data.table(plan$selection[, intersect(c("threat", "state", "recommendation"), names(plan$selection)), with = FALSE]),
+          data.table::as.data.table(plan$unmeasured[, intersect(c("factor", "risk_state", "recommendation"), names(plan$unmeasured)), with = FALSE])
+        ),
+        use.names = TRUE,
+        fill = TRUE
+      )
+      causal_render_table(rows, "No timing, balance, selection, or unmeasured-confounding diagnostics.")
     })
     experiment_plan <- reactive({
       state <- causal_experiment_normalize(ctx$causal_experiment_state())

@@ -14,6 +14,8 @@ AnalyticsShinyApp does not own plotting internals, analytical algorithms, featur
 
 ## Repository Boundaries
 
+Repository boundaries also include a public/private IP boundary. AutoQuant remains public and owns portable implemented APIs, contracts, validation, and examples. AnalyticsShinyApp remains private and owns integrated product intelligence, AI operation, Knowledge Compilation Runtime, workflow orchestration, organizational memory, and future roadmap. See `docs/public_private_ip_boundary.md` before placing architecture, examples, or contracts across repositories.
+
 | repo | owns | does not own |
 | --- | --- | --- |
 | AnalyticsShinyApp | product shell, app UI, state, artifact normalization, report plans, workflow UX, project persistence, app exports, Code Runner UX | AutoPlots internals, AutoQuant algorithms, package training/scoring kernels, benchmark strategy |

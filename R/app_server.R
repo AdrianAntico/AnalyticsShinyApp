@@ -70,6 +70,12 @@ server <- function(input, output, session) {
   ctx$causal_experiment_state <- reactiveVal(causal_experiment_empty())
   ctx$causal_completed_experiment_state <- reactiveVal(causal_completed_experiment_empty())
   ctx$causal_itt_state <- reactiveVal(causal_itt_empty())
+  ctx$causal_observational_state <- reactiveVal(causal_observational_empty())
+  ctx$ai_draft_state <- reactiveValues(
+    store = ai_draft_store_empty(),
+    last_result = NULL,
+    message = NULL
+  )
   ctx$genai_delegation_state <- reactiveValues(
     session_id = genai_delegation_session_id(),
     grants = list(),
@@ -1223,6 +1229,8 @@ server <- function(input, output, session) {
       causal_experiment_state = ctx$causal_experiment_state(),
       causal_completed_experiment_state = ctx$causal_completed_experiment_state(),
       causal_itt_state = ctx$causal_itt_state(),
+      causal_observational_state = ctx$causal_observational_state(),
+      ai_draft_store = ctx$ai_draft_state$store,
       source_data_info = ctx$source_project_data_info(),
       plot_configs = ctx$saved_plots$configs,
       plot_code = ctx$saved_plots$code,
@@ -1377,6 +1385,10 @@ server <- function(input, output, session) {
     ctx$causal_experiment_state(causal_experiment_normalize(project_state$causal_experiment_state %||% causal_experiment_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
     ctx$causal_completed_experiment_state(causal_completed_experiment_normalize(project_state$causal_completed_experiment_state %||% causal_completed_experiment_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
     ctx$causal_itt_state(causal_itt_normalize(project_state$causal_itt_state %||% causal_itt_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
+    ctx$causal_observational_state(causal_observational_normalize(project_state$causal_observational_state %||% causal_observational_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
+    ctx$ai_draft_state$store <- ai_draft_store_normalize(project_state$ai_draft_store %||% NULL)
+    ctx$ai_draft_state$last_result <- NULL
+    ctx$ai_draft_state$message <- "AI draft persistence state restored from project state."
     ctx$active_modeling_context(project_state$active_modeling_context %||% modeling_context_from_source(
       data = NULL,
       data_info = list(path = project_state$data_path, name = project_state$data_name),
@@ -1472,6 +1484,7 @@ server <- function(input, output, session) {
   page_guide_server("guide", ctx)
   page_knowledge_library_server("knowledge_library", ctx)
   page_mission_control_server("mission_control", ctx)
+  page_ai_runtime_server("ai_runtime", ctx)
   page_data_server("data", ctx)
   page_plot_builder_server("plot_builder", ctx)
   page_workflow_server("workflow", ctx)

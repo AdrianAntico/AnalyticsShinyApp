@@ -1,11 +1,62 @@
+decision_valuation_required_exports <- function() {
+  c(
+    "aq_decision_valuation_context",
+    "aq_assess_alternative_economics",
+    "aq_governed_decision_valuation_recommendation",
+    "aq_decision_valuation_artifact",
+    "aq_decision_valuation_sensitivity",
+    "aq_assess_decision_thresholds",
+    "aq_assess_decision_information_value",
+    "aq_validate_evidence_impact_mapping",
+    "aq_evidence_impact_mapping",
+    "aq_decision_valuation_campaign_seeds"
+  )
+}
+
+decision_valuation_provider_diagnostics <- function() {
+  required <- decision_valuation_required_exports()
+  installed <- requireNamespace("AutoQuant", quietly = TRUE)
+  exports <- if (installed) getNamespaceExports("AutoQuant") else character()
+  missing <- setdiff(required, exports)
+  source_path <- normalizePath(file.path(getwd(), "..", "AutoQuant", "R", "decision_valuation.R"), winslash = "/", mustWork = FALSE)
+  source_text <- if (file.exists(source_path)) paste(readLines(source_path, warn = FALSE), collapse = "\n") else ""
+  source_has_exports <- nzchar(source_text) && all(vapply(missing, function(x) grepl(paste0(x, " <- function"), source_text, fixed = TRUE), logical(1L)))
+  reason_code <- if (!installed) {
+    "provider_package_unavailable"
+  } else if (!length(missing)) {
+    "available"
+  } else if (source_has_exports) {
+    "installed_provider_stale"
+  } else {
+    "required_export_missing"
+  }
+  list(
+    provider = "AutoQuant",
+    capability = "decision_valuation",
+    required = TRUE,
+    available = installed && !length(missing),
+    status = if (installed && !length(missing)) "available" else "unavailable",
+    reason_code = reason_code,
+    installed = installed,
+    installed_path = if (installed) find.package("AutoQuant") else NA_character_,
+    required_exports = required,
+    available_exports = intersect(required, exports),
+    missing_exports = missing,
+    source_path = source_path,
+    source_has_missing_exports = source_has_exports,
+    recommendation = switch(
+      reason_code,
+      provider_package_unavailable = "Install AutoQuant in the current R library path.",
+      installed_provider_stale = "Refresh the installed AutoQuant package from the current source tree.",
+      required_export_missing = "Implement or export the missing required AutoQuant decision valuation functions.",
+      available = "No action required.",
+      "Inspect AutoQuant provider configuration."
+    )
+  )
+}
+
 decision_valuation_available <- function() {
-  requireNamespace("AutoQuant", quietly = TRUE) &&
-    all(c(
-      "aq_decision_valuation_context",
-      "aq_assess_alternative_economics",
-      "aq_governed_decision_valuation_recommendation",
-      "aq_decision_valuation_artifact"
-    ) %in% getNamespaceExports("AutoQuant"))
+  isTRUE(decision_valuation_provider_diagnostics()$available)
 }
 
 decision_valuation_empty <- function(project_id = NA_character_) {
@@ -585,7 +636,8 @@ decision_valuation_bind_server <- function(input, output, session, ctx, decision
 qa_decision_valuation_workspace <- function() {
   rows <- list()
   add <- function(check, ok, message) rows[[length(rows) + 1L]] <<- data.table::data.table(suite = "decision_valuation_workspace", check = check, status = if (isTRUE(ok)) "success" else "error", message = message)
-  add("autoquant_available", decision_valuation_available(), "AutoQuant valuation API is available.")
+  availability <- decision_valuation_provider_diagnostics()
+  add("autoquant_available", availability$available, paste("AutoQuant valuation API availability:", availability$reason_code, "-", availability$recommendation))
   state <- decision_valuation_empty("qa_project")
   semantic <- semantic_decision_empty("qa_project")
   semantic <- semantic_decision_upsert_row(semantic, "contexts", "decision_context_id", data.table::data.table(decision_context_id = "decision_1", decision_question = "What should we do?", authority_id = "authority_1", coverage_id = "coverage_1"), "decision_1")$value

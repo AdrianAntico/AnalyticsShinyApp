@@ -2,6 +2,8 @@
 
 Causal Intelligence is the planning layer that sits after authored business intent and before any causal estimation.
 
+Observational Causal Intelligence extends this layer for non-randomized settings. It documents treatment assignment, target-trial structure, adjustment variables, prohibited mediators/colliders/post-treatment variables, temporal eligibility, treatment variation, overlap, balance, selection, unmeasured-confounding risk, falsification requirements, design-family eligibility, and readiness. It intentionally does not estimate observational treatment effects. Negative readiness states such as `experiment_preferred`, `blocked`, `unidentified`, and `descriptive_only` are valid decision evidence.
+
 Phase 1 implements causal question and identification planning only. It does not estimate treatment effects, fit causal models, discover DAGs, or convert predictive artifacts into causal claims.
 
 ## Workflow Position

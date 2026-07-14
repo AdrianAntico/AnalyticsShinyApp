@@ -69,7 +69,7 @@ mission_control_priority_summary <- function(alerts) {
   )
 }
 
-mission_control_alerts <- function(artifacts, collector, quality, workflow, improvement = NULL, remediation = NULL, feature_experiments = NULL, campaigns = NULL, decisions = NULL, semantic_workspace = NULL, semantic_decision = NULL, decision_valuation = NULL, decision_workflow = NULL, causal_intelligence = NULL, causal_experiment = NULL, causal_completed_experiment = NULL, causal_itt = NULL) {
+mission_control_alerts <- function(artifacts, collector, quality, workflow, improvement = NULL, remediation = NULL, feature_experiments = NULL, campaigns = NULL, decisions = NULL, semantic_workspace = NULL, semantic_decision = NULL, decision_valuation = NULL, decision_workflow = NULL, causal_intelligence = NULL, causal_experiment = NULL, causal_completed_experiment = NULL, causal_itt = NULL, causal_observational = NULL, ai_drafts = NULL) {
   alerts <- list()
   add <- function(title, message, severity = "medium", source = NULL) {
     alerts[[length(alerts) + 1L]] <<- list(title = title, message = message, severity = severity, source = source)
@@ -291,6 +291,119 @@ mission_control_alerts <- function(artifacts, collector, quality, workflow, impr
       add("Randomized ITT indicates possible harm", paste("Materiality:", ui_display_label(causal_itt$materiality_state[[1]])), "high", "Causal ITT")
     }
   }
+  if (!is.null(causal_observational) && nrow(causal_observational)) {
+    if ((causal_observational$studies[[1]] %||% 0L) > 0L && isTRUE(causal_observational$stale[[1]])) {
+      add("Observational causal plan is stale", "Study inputs changed or readiness has not been assessed.", "medium", "Observational Causal")
+    }
+    if ((causal_observational$assignment_mechanism[[1]] %||% "") %in% c("unknown", "")) {
+      add("Assignment mechanism unknown", "Observational causal planning requires evidence about why units received treatment.", "medium", "Observational Causal")
+    }
+    if ((causal_observational$overlap_state[[1]] %||% "") %in% c("severe positivity concern", "no credible support")) {
+      add("Observational overlap concern", paste("Overlap state:", ui_display_label(causal_observational$overlap_state[[1]])), "high", "Observational Causal")
+    }
+    if ((causal_observational$readiness_state[[1]] %||% "") %in% c("experiment_preferred", "blocked", "unidentified")) {
+      add("Observational estimation not supported", paste("Readiness:", ui_display_label(causal_observational$readiness_state[[1]])), "high", "Observational Causal")
+    } else if ((causal_observational$readiness_state[[1]] %||% "") %in% c("ready_for_design_implementation", "ready_with_strong_assumptions")) {
+      add("Observational design plan ready", "Planning evidence exists for a future observational estimator under explicit assumptions.", "success", "Observational Causal")
+    }
+  }
+  if (exists("ai_runtime_qualification_summary", mode = "function")) {
+    ai_runtime <- tryCatch(ai_runtime_qualification_summary(), error = function(e) NULL)
+    if (!is.null(ai_runtime) && nrow(ai_runtime)) {
+      if ((ai_runtime$expired[[1]] %||% 0L) > 0L) {
+        add("AI runtime qualification expired", "At least one model qualification is stale after runtime or bundle changes and should be re-evaluated.", "medium", "AI Runtime")
+      }
+      if ((ai_runtime$failures[[1]] %||% 0L) > 0L) {
+        add("AI runtime has unqualified tasks", paste(ai_runtime$failures[[1]], "task/model qualification result(s) require human review, stronger model routing, or validation."), "medium", "AI Runtime")
+      }
+      if ((ai_runtime$qualified_tasks[[1]] %||% 0L) > 0L) {
+        add("AI runtime qualification available", paste("Preferred runtime profile:", ui_display_label(ai_runtime$preferred_model_tier[[1]] %||% "human")), "low", "AI Runtime")
+      }
+    }
+  }
+  if (exists("run_artifact_retrieval_benchmark", mode = "function")) {
+    retrieval_benchmark <- tryCatch(run_artifact_retrieval_benchmark(), error = function(e) NULL)
+    if (!is.null(retrieval_benchmark) && nrow(retrieval_benchmark)) {
+      progressive <- retrieval_benchmark[strategy == "progressive_retrieval"]
+      everything <- retrieval_benchmark[strategy == "retrieve_everything"]
+      if (nrow(progressive) && nrow(everything) && (progressive$average_total_tokens[[1]] %||% Inf) > (everything$average_total_tokens[[1]] %||% 0L)) {
+        add("AI context growth needs review", "Progressive artifact retrieval is using more context than retrieve-everything for the current fixture.", "medium", "AI Runtime")
+      }
+      if (nrow(progressive) && (progressive$retrieval_count[[1]] %||% 0L) > 3L) {
+        add("AI retrieval loop risk", "Progressive retrieval needed repeated expansion. Review artifact summaries or bundle fit.", "medium", "AI Runtime")
+      }
+    }
+  }
+  if (exists("plan_cross_artifact_synthesis", mode = "function")) {
+    synthesis_plan <- tryCatch(plan_cross_artifact_synthesis(), error = function(e) NULL)
+    if (!is.null(synthesis_plan)) {
+      if (!isTRUE(synthesis_plan$sufficiency$sufficient)) {
+        add("Evidence synthesis is insufficient", paste("Sufficiency:", ui_display_label(synthesis_plan$sufficiency$state %||% "unknown")), "medium", "AI Runtime")
+      }
+      if (nrow(synthesis_plan$contradictions %||% data.table::data.table()) > 0L) {
+        add("Contradictory artifacts need review", paste(nrow(synthesis_plan$contradictions), "artifact contradiction or scope-difference signal(s) detected."), "medium", "AI Runtime")
+      }
+      missing <- synthesis_plan$sufficiency$missing_evidence_classes %||% character()
+      if (length(missing)) {
+        if ("Valuation" %in% missing) add("Missing valuation evidence", "Cross-artifact synthesis cannot fully support economics-sensitive guidance without valuation evidence.", "medium", "AI Runtime")
+        if (any(missing %in% c("Observational", "Randomized", "Experimental"))) add("Missing causal evidence", "Cross-artifact synthesis needs causal or design evidence before stronger effect claims.", "medium", "AI Runtime")
+        if ("Workflow" %in% missing) add("Missing workflow evidence", "Workflow evidence is needed to explain readiness or next supported actions.", "low", "AI Runtime")
+        if ("Authority" %in% missing) add("Missing authority evidence", "Authority or approval evidence is missing for governance-sensitive synthesis.", "medium", "AI Runtime")
+      }
+    }
+  }
+  if (exists("run_ai_operated_evidence_review", mode = "function")) {
+    evidence_review <- tryCatch(run_ai_operated_evidence_review(ctx, "What evidence supports the next action?")$value, error = function(e) NULL)
+    if (!is.null(evidence_review)) {
+      add("Evidence review available", "A governed evidence review can inspect current artifacts and recommend the next supported action.", "low", "AI Runtime")
+      if (!isTRUE(evidence_review$sufficiency$sufficient)) {
+        add("Evidence review incomplete", paste("Action sufficiency:", ui_display_label(evidence_review$sufficiency$state %||% "unknown")), "medium", "AI Runtime")
+      }
+      if (nrow(evidence_review$synthesis_summary$contradictions %||% data.table::data.table()) > 0L) {
+        add("Contradiction requires review", "The governed review found contradiction or scope-difference evidence that should be inspected before strengthening recommendations.", "medium", "AI Runtime")
+      }
+      if (isTRUE(evidence_review$sufficiency$sufficient)) {
+        add("Evidence sufficient for next step", paste("Recommended action:", evidence_review$recommended_next_action$action_id %||% "review"), "success", "AI Runtime")
+      }
+      if (nrow(evidence_review$ranked_actions %||% data.table::data.table()) == 0L) {
+        add("No supported AI action", "The evidence review did not find an action from existing supported-action contracts.", "medium", "AI Runtime")
+      } else if (identical(evidence_review$ranked_actions$current_eligibility[[1]] %||% "", "blocked")) {
+        add("Recommended next action blocked", evidence_review$ranked_actions$reason_blocked[[1]] %||% "A prerequisite blocks the top action.", "medium", "AI Runtime")
+      }
+      if (identical(evidence_review$model_routing$escalation %||% "", "human_review")) {
+        add("Human review required", evidence_review$model_routing$reason %||% "The review requires human judgment.", "high", "AI Runtime")
+      }
+      if (identical(evidence_review$draft$confirmation_state %||% "", "preview_only") && any((evidence_review$ranked_actions$action_class %||% integer()) == 2L)) {
+        add("Evidence review draft awaiting confirmation", "A Class 2 preview draft is available; explicit confirmation is required before any storage path is used.", "low", "AI Runtime")
+      }
+      stale_ids <- evidence_review$binder$stale_artifacts %||% character()
+      if (length(stale_ids)) {
+        add("Evidence review stale", paste(length(stale_ids), "artifact(s) should be refreshed before downstream claims."), "medium", "AI Runtime")
+      }
+    }
+  }
+  if (!is.null(ai_drafts) && nrow(ai_drafts)) {
+    if ((ai_drafts$drafts_confirmed[[1]] %||% 0L) > 0L) {
+      add("AI draft awaiting persistence", paste(ai_drafts$drafts_confirmed[[1]], "confirmed AI draft(s) are awaiting governed persistence."), "medium", "AI Drafts")
+    }
+    if ((ai_drafts$drafts_persisted[[1]] %||% 0L) > 0L) {
+      add("AI draft persisted", paste(ai_drafts$drafts_persisted[[1]], "AI draft(s) are persisted in project state."), "success", "AI Drafts")
+    }
+    if ((ai_drafts$drafts_rejected[[1]] %||% 0L) > 0L) {
+      add("AI draft rejected", paste(ai_drafts$drafts_rejected[[1]], "AI draft(s) were rejected and retained for audit."), "low", "AI Drafts")
+    }
+    if ((ai_drafts$drafts_archived[[1]] %||% 0L) > 0L) {
+      add("AI draft archived", paste(ai_drafts$drafts_archived[[1]], "AI draft(s) are archived."), "low", "AI Drafts")
+    }
+    if ((ai_drafts$drafts_undone[[1]] %||% 0L) > 0L) {
+      add("AI draft undo recorded", paste(ai_drafts$drafts_undone[[1]], "AI draft persistence operation(s) were undone."), "medium", "AI Drafts")
+    }
+    if ((ai_drafts$validation_failures[[1]] %||% 0L) > 0L ||
+        (ai_drafts$citation_failures[[1]] %||% 0L) > 0L ||
+        (ai_drafts$handler_failures[[1]] %||% 0L) > 0L) {
+      add("AI draft validation failed", "At least one AI draft failed deterministic validation before persistence.", "high", "AI Drafts")
+    }
+  }
 
   if (!length(alerts)) {
     alerts <- list(list(
@@ -450,6 +563,8 @@ page_mission_control_server <- function(id, ctx) {
       causal_experiment <- tryCatch(causal_experiment_summary(ctx$causal_experiment_state()), error = function(e) data.table::data.table(experiment_questions = 0L, design_specs = 0L, plan_status = "unavailable", gate_status = "unavailable", execution_ready = FALSE, registered_artifacts = 0L))
       causal_completed_experiment <- tryCatch(causal_completed_experiment_summary(ctx$causal_completed_experiment_state()), error = function(e) data.table::data.table(completed_experiments = 0L, evidence_mappings = 0L, readiness_state = "unavailable", assessment_status = "unavailable", assignment_preserved = FALSE, outcome_available = FALSE, guardrail_status = "unavailable", registered_artifacts = 0L))
       causal_itt <- tryCatch(causal_itt_summary(ctx$causal_itt_state()), error = function(e) data.table::data.table(specs = 0L, active_analysis_id = NA_character_, analysis_status = "unavailable", effect_estimated = FALSE, review_status = "unavailable", estimate = NA_real_, conf_low = NA_real_, conf_high = NA_real_, materiality_state = "unavailable", registered_artifacts = 0L, design_depth_status = "unavailable", causal_report_status = "unavailable", robustness_rows = 0L))
+      causal_observational <- tryCatch(causal_observational_summary(ctx$causal_observational_state()), error = function(e) data.table::data.table(studies = 0L, active_study_id = NA_character_, readiness_state = "unavailable", overlap_state = "unavailable", assignment_mechanism = "unknown", stale = TRUE, registered_artifacts = 0L))
+      ai_drafts <- tryCatch(ai_draft_mutation_diagnostics(list(ai_draft_store = ctx$ai_draft_state$store)), error = function(e) data.table::data.table(drafts_generated = 0L, drafts_confirmed = 0L, drafts_persisted = 0L, drafts_rejected = 0L, drafts_undone = 0L, drafts_archived = 0L, validation_failures = 0L, confirmation_failures = 0L, runtime_failures = 0L, handler_failures = 0L, citation_failures = 0L, undo_available = 0L, archive_available = 0L))
       counts <- mission_control_artifact_counts(artifacts)
       quality <- mission_control_quality_summary(artifacts)
       ai_status <- mission_control_ai_status(collector, artifacts)
@@ -474,10 +589,12 @@ page_mission_control_server <- function(id, ctx) {
         causal_experiment = causal_experiment,
         causal_completed_experiment = causal_completed_experiment,
         causal_itt = causal_itt,
+        causal_observational = causal_observational,
+        ai_drafts = ai_drafts,
         counts = counts,
         quality = quality,
         ai_status = ai_status,
-        alerts = mission_control_alerts(artifacts, collector, quality, workflow, improvement, remediation, feature_experiments, campaigns, decisions, semantic_workspace, semantic_decision, decision_valuation, decision_workflow, causal_intelligence, causal_experiment, causal_completed_experiment, causal_itt),
+        alerts = mission_control_alerts(artifacts, collector, quality, workflow, improvement, remediation, feature_experiments, campaigns, decisions, semantic_workspace, semantic_decision, decision_valuation, decision_workflow, causal_intelligence, causal_experiment, causal_completed_experiment, causal_itt, causal_observational, ai_drafts),
         timeline = mission_control_timeline(ctx, artifacts, collector)
       )
     })
@@ -706,6 +823,19 @@ qa_mission_control <- function() {
     collapse = "\n"
   )
   has <- function(text, patterns) all(vapply(patterns, grepl, logical(1), x = text, fixed = TRUE))
+  draft_alerts <- mission_control_alerts(
+    artifacts = list(create_artifact("qa_artifact", "diagnostic", "QA Artifact", "qa")),
+    collector = data.table::data.table(artifact_count = 1L, manifest_status = "ready"),
+    quality = list(avg = 100, warnings = 0L, failures = 0L),
+    workflow = data.table::data.table(status = "implemented", artifact_count = 1L, label = "Explore Data"),
+    ai_drafts = data.table::data.table(
+      drafts_generated = 2L, drafts_confirmed = 1L, drafts_persisted = 1L,
+      drafts_rejected = 0L, drafts_undone = 0L, drafts_archived = 0L,
+      validation_failures = 1L, confirmation_failures = 0L, runtime_failures = 0L,
+      handler_failures = 0L, citation_failures = 0L, undo_available = 1L,
+      archive_available = 1L
+    )
+  )
 
   data.table::data.table(
     check = c(
@@ -733,6 +863,7 @@ qa_mission_control <- function() {
       "semantic_workspace_presentation",
       "semantic_decision_lifecycle_presentation",
       "decision_work_queue",
+      "ai_draft_alerts",
       "async_job_status",
       "css_cache_busting",
       "documentation"
@@ -762,6 +893,7 @@ qa_mission_control <- function() {
       if (has(page, c("semantic_workspace_summary", "Semantic Workspace", "Semantic Intelligence"))) "success" else "error",
       if (has(page, c("semantic_decision_summary", "Decision Lifecycle", "assessment_status", "Authored decision"))) "success" else "error",
       if (has(page, c("Decision Work Queue", "decision_workflow_next_actions", "output$decision_work_queue"))) "success" else "error",
+      if (any(vapply(draft_alerts, function(x) identical(x$source, "AI Drafts"), logical(1)))) "success" else "error",
       if (has(page, c("async_job_summary", "Async Jobs", "aq-async-job-list")) && has(css, c(".aq-async-job-list", ".aq-async-job-row"))) "success" else "error",
       if (has(app_ui, c("app.css?v=", "file.info(css_file)$mtime"))) "success" else "error",
       if (has(docs, c("Mission Control", "Operational awareness", "Alert philosophy", "Timeline"))) "success" else "error"
@@ -791,6 +923,7 @@ qa_mission_control <- function() {
       "Authored semantic workspace health is included in Mission Control.",
       "Authored decision lifecycle assessment and artifact status are included in Mission Control.",
       "Mission Control exposes a bounded decision work queue.",
+      "Mission Control reports confirmed, persisted, rejected, archived, undone, stale, and validation-failed AI draft lifecycle states.",
       "Mission Control surfaces basic async job status.",
       "App CSS is cache-busted so Mission Control visual updates render after restart.",
       "Mission Control documentation is present."

@@ -1,11 +1,69 @@
+decision_workflow_required_exports <- function() {
+  c(
+    "aq_decision_workflow",
+    "aq_assess_decision_review_readiness",
+    "aq_decision_evidence_package",
+    "aq_decision_workflow_artifact",
+    "aq_decision_review_request",
+    "aq_decision_review",
+    "aq_decision_approval",
+    "aq_validate_decision_approval",
+    "aq_decision_condition",
+    "aq_decision_implementation_plan",
+    "aq_record_decision_implementation",
+    "aq_reconcile_decision_implementation",
+    "aq_decision_monitoring_plan",
+    "aq_realized_value_review",
+    "aq_assess_decision_quality",
+    "aq_decision_followup_candidates",
+    "aq_decision_workflow_campaign_seeds"
+  )
+}
+
+decision_workflow_provider_diagnostics <- function() {
+  required <- decision_workflow_required_exports()
+  installed <- requireNamespace("AutoQuant", quietly = TRUE)
+  exports <- if (installed) getNamespaceExports("AutoQuant") else character()
+  missing <- setdiff(required, exports)
+  source_path <- normalizePath(file.path(getwd(), "..", "AutoQuant", "R", "decision_workflow.R"), winslash = "/", mustWork = FALSE)
+  source_text <- if (file.exists(source_path)) paste(readLines(source_path, warn = FALSE), collapse = "\n") else ""
+  source_has_exports <- nzchar(source_text) && all(vapply(missing, function(x) grepl(paste0(x, " <- function"), source_text, fixed = TRUE), logical(1L)))
+  reason_code <- if (!installed) {
+    "provider_package_unavailable"
+  } else if (!length(missing)) {
+    "available"
+  } else if (source_has_exports) {
+    "installed_provider_stale"
+  } else {
+    "required_export_missing"
+  }
+  list(
+    provider = "AutoQuant",
+    capability = "decision_workflow",
+    required = TRUE,
+    available = installed && !length(missing),
+    status = if (installed && !length(missing)) "available" else "unavailable",
+    reason_code = reason_code,
+    installed = installed,
+    installed_path = if (installed) find.package("AutoQuant") else NA_character_,
+    required_exports = required,
+    available_exports = intersect(required, exports),
+    missing_exports = missing,
+    source_path = source_path,
+    source_has_missing_exports = source_has_exports,
+    recommendation = switch(
+      reason_code,
+      provider_package_unavailable = "Install AutoQuant in the current R library path.",
+      installed_provider_stale = "Refresh the installed AutoQuant package from the current source tree.",
+      required_export_missing = "Implement or export the missing required AutoQuant decision workflow functions.",
+      available = "No action required.",
+      "Inspect AutoQuant provider configuration."
+    )
+  )
+}
+
 decision_workflow_available <- function() {
-  requireNamespace("AutoQuant", quietly = TRUE) &&
-    all(c(
-      "aq_decision_workflow",
-      "aq_assess_decision_review_readiness",
-      "aq_decision_evidence_package",
-      "aq_decision_workflow_artifact"
-    ) %in% getNamespaceExports("AutoQuant"))
+  isTRUE(decision_workflow_provider_diagnostics()$available)
 }
 
 decision_workflow_empty <- function(project_id = NA_character_) {
@@ -972,7 +1030,8 @@ decision_workflow_bind_server <- function(input, output, session, ctx, decision_
 qa_decision_workflow_workspace <- function() {
   rows <- list()
   add <- function(check, ok, message) rows[[length(rows) + 1L]] <<- data.table::data.table(suite = "decision_workflow_workspace", check = check, status = if (isTRUE(ok)) "success" else "error", message)
-  add("autoquant_available", decision_workflow_available(), "AutoQuant workflow API is available.")
+  availability <- decision_workflow_provider_diagnostics()
+  add("autoquant_available", availability$available, paste("AutoQuant workflow API availability:", availability$reason_code, "-", availability$recommendation))
   semantic <- semantic_decision_empty("qa_project")
   semantic <- semantic_decision_upsert_row(semantic, "contexts", "decision_context_id", data.table::data.table(decision_context_id = "decision_1", decision_question = "What should we do?", authority_id = "authority_1", coverage_id = "coverage_1"), "decision_1")$value
   semantic <- semantic_decision_upsert_row(semantic, "alternatives", "alternative_id", data.table::data.table(decision_context_id = "decision_1", alternative_id = "baseline", name = "Baseline", baseline = TRUE, alternative_type = "do_nothing"), "decision_1")$value

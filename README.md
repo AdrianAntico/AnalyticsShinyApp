@@ -27,6 +27,7 @@ AnalyticsShinyApp is the central product and coordination repo for the local-fir
 Start with these docs before architecture-affecting work:
 
 - `docs/architecture_constitution.md`: product principles, boundary rules, QA expectations, and deferred scope.
+- `docs/public_private_ip_boundary.md`: public AutoQuant vs private AnalyticsShinyApp placement rules for APIs, docs, compiler assets, lever management, roadmap, and product intelligence.
 - `docs/cross_repository_agent_guide.md`: cross-repository workspace manifest, validation modes, failure classification, and agent entry commands.
 - `docs/ecosystem_operating_model.md`: single-developer operating loop, workflow lifecycle, artifact flow, and Code Runner rules.
 - `docs/repo_contracts.md`: ownership boundaries for AnalyticsShinyApp, AutoQuant, AutoPlots, Rodeo, PolarsFE, Benchmarks, and shinyelectron.
@@ -37,6 +38,16 @@ Start with these docs before architecture-affecting work:
 - `docs/semantic_intelligence_integration.md`: project-authored business intent, decision memory, semantic workspace validation, and AutoQuant Semantic Intelligence integration.
 - `docs/decision_workflow_architecture.md`: governed decision follow-through, proportional workflow, review/approval, implementation, outcome learning, Mission Control work queue, and bounded GenAI guardrails.
 - `docs/decision_workflow_user_guide.md`: practical route from business question to closed decision.
+- `docs/epistemic_integrity_architecture_review.md`: architectural review of reasoning vulnerability, human intervention provenance, claim governance, and reuse boundaries.
+- `docs/epistemic_integrity_phase1.md`: implemented portable epistemic contracts, provenance, claim governance, gates, app integration, and compiled runtime linkage.
+- `docs/knowledge_compilation_runtime_architecture.md`: Phase 0 architecture for compiling source philosophy and contracts into AI runtime bundles.
+- `docs/knowledge_compilation_runtime_phase1.md`: implemented Phase 1 source registry, curated knowledge units, runtime bundles, task routing, context packages, and QA.
+- `docs/knowledge_compilation_runtime_phase2.md`: implemented Phase 2 epistemic runtime expansion, model-tier context compilation, governed operator validation, diagnostics, caching, benchmarking, and AI Runtime page.
+- `docs/knowledge_compilation_runtime_phase3.md`: implemented Phase 3 task-scoped model qualification, benchmark artifacts, epistemic fidelity scoring, bundle variant comparison, and safe Class 2 validation boundaries.
+- `docs/knowledge_compilation_runtime_phase4.md`: implemented Phase 4 progressive artifact retrieval, read-only artifact navigation, digest caching, context sufficiency, retrieval diagnostics, and retrieve-everything benchmarks.
+- `docs/knowledge_compilation_runtime_phase5.md`: implemented Phase 5 cross-artifact synthesis planning, applicability, contradiction handling, evidence sufficiency, coverage, structured cited synthesis, and synthesis compression benchmarks.
+- `docs/knowledge_compilation_runtime_phase6.md`: implemented Phase 6 governed evidence review, evidence binders, sufficiency for action, ranked supported next actions, preview-only drafts, and operator audit records.
+- `docs/knowledge_compilation_runtime_phase7.md`: implemented Phase 7 confirmed draft persistence for evidence-review and campaign-seed drafts through governed Class 3 handlers, project state, collector append, audit, and undo/archive lifecycle.
 - `docs/api_surface_audit.md`: aggressive pre-product API/product surface audit and cleanup recommendations.
 - `docs/agent_task_template.md`: recommended Codex task framing.
 
