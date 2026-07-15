@@ -846,3 +846,89 @@ The Phase 8 experiment plan lives in:
 ```text
 docs/research/product_experience_phase8_prototype_experiment_plan.md
 ```
+
+## Product Experience Runtime Phase 1
+
+The Product Experience Runtime implements the separation introduced by Phase 8:
+
+```text
+Architecture defines what the system is.
+Product Experience Runtime defines how humans encounter it.
+```
+
+The initial runtime provides:
+
+- `experience_prototype_registry()`
+- `experience_intent_registry()`
+- `experience_route_intent()`
+- `experience_compiler()`
+- `experience_runtime()`
+- runtime visibility levels
+- progressive experience compilation
+- prototype comparison
+- prototype-scoped founder review and campaigns
+
+The runtime compiles different experiences over one architecture. It does not choose a winning prototype and does not fork business logic.
+
+The runtime architecture is documented in:
+
+```text
+docs/product_experience_runtime_architecture.md
+```
+
+## Product Experience Runtime Phase 2
+
+Phase 2 turns the runtime into a controlled A/B/current experiment surface.
+
+It adds deterministic packages for:
+
+- Current Golden Workflow
+- Prototype A: Intent-first
+- Prototype B: Business Question first
+
+Each package keeps the synthetic world, Golden Workflow, evidence, decision, artifacts, and AI capability assumptions constant. Only entry experience, routing emphasis, information exposure, Mission Control role, and AI visibility are compared.
+
+Phase 2 remains exploratory. It records comparison metrics and founder review prompts, but does not choose a final experience.
+
+## Product Experience Runtime Phase 4
+
+Phase 4 adds the Relationship Runtime.
+
+The product-experience question shifts from "which app page should open first?" to "what relationship does the user currently have with the product?"
+
+The Relationship Runtime supports deterministic previews for:
+
+- New User
+- Returning User
+- Current Project
+- Resume Workflow
+- Explore
+- Learn
+
+It does not replace production, personalize behavior, log users, or introduce adaptive UI. It documents and previews how the workstation should begin for each relationship state.
+
+The Product Experience Lab now includes Relationship Runtime previews, progressive shell previews, relationship comparisons, founder review prompts, and relationship campaigns.
+
+The central Phase 4 conclusion is:
+
+> The first-time user should be asked what decision or question brought them here. Mission Control should appear first as compact status, not as the full starting experience. AI should not greet by default; it should appear when intent or evidence creates a genuine reasoning need.
+
+## Product Experience Runtime Phase 5
+
+Phase 5 adds Working Context Architecture and the first production Working Context:
+
+```text
+Evidence Review / Decision Evaluation
+```
+
+The product-experience question changes from "how should the application begin?" to "how should meaningful work occur once the user begins?"
+
+The answer is:
+
+```text
+Users should work inside contexts, not modules.
+```
+
+Evidence Review composes question, evidence, sufficiency, valuation, workflow, draft, mission summary, and next action into one focused workspace. It preserves access to advanced capability through adjacent and contextual transitions, but does not expose the whole application as the initial working set.
+
+The Product Experience Lab now includes Working Context previews, progressive depth, capability exposure maps, founder review, replay contract, campaigns, and final assessment.

@@ -22,6 +22,7 @@ build_app_ui <- function() {
       tabsetPanel(
         id = "main_tabs",
         page_guide_ui("guide"),
+        page_evidence_review_ui("evidence_review"),
         page_knowledge_library_ui("knowledge_library"),
         page_mission_control_ui("mission_control"),
         page_ai_runtime_ui("ai_runtime"),

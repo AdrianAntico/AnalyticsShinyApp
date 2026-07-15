@@ -2,6 +2,7 @@ page_product_experience_ui <- function(id) {
   ns <- NS(id)
   worlds <- product_experience_world_registry()
   scenarios <- product_experience_scenario_registry()
+  relationship_states <- relationship_state_registry()
 
   tabPanel(
     "Product Experience",
@@ -12,6 +13,8 @@ page_product_experience_ui <- function(id) {
       eyebrow = "Developer",
       actions = ui_action_row(
         actionButton(ns("run_golden"), "Run Golden Workflow", class = "btn-primary"),
+        actionButton(ns("run_prototype_replays"), "Run Prototype Replays", class = "btn-primary"),
+        actionButton(ns("run_phase3_browser_trial"), "Run Phase 3 Browser Trial", class = "btn-primary"),
         actionButton(ns("run_browser_replay"), "Run Browser Replay", class = "btn-primary"),
         actionButton(ns("run_fixture"), "Run Fixture Scenario", class = "btn-primary"),
         actionButton(ns("refresh"), "Refresh")
@@ -122,6 +125,74 @@ page_product_experience_ui <- function(id) {
             uiOutput(ns("prototype_comparison"))
           ),
           ui_card(
+            title = "Experience Runtime",
+            subtitle = "Compiles user intent into prototype-specific entry, routing, visibility, and AI behavior.",
+            uiOutput(ns("experience_runtime"))
+          ),
+          ui_card(
+            title = "Compiled Experience",
+            subtitle = "The selected philosophy changes presentation only; architecture and workflow remain constant.",
+            selectInput(
+              ns("experience_prototype_id"),
+              "Prototype",
+              choices = stats::setNames(experience_prototype_registry()$prototype_id, experience_prototype_registry()$prototype_name),
+              selected = "prototype_a_intent_first"
+            ),
+            selectInput(
+              ns("experience_intent_id"),
+              "Intent",
+              choices = stats::setNames(experience_intent_registry()$intent_id, experience_intent_registry()$label),
+              selected = "decide"
+            ),
+            uiOutput(ns("compiled_experience"))
+          ),
+          ui_card(
+            title = "Relationship Runtime",
+            subtitle = "Phase 4 determines how the product begins for different user relationships without replacing production.",
+            selectInput(
+              ns("relationship_state"),
+              "Relationship State",
+              choices = stats::setNames(relationship_states$relationship_state, relationship_states$label),
+              selected = "new_user"
+            ),
+            uiOutput(ns("relationship_runtime_preview"))
+          ),
+          ui_card(
+            title = "Progressive Experience Shell",
+            subtitle = "Only immediate information appears first; deeper surfaces unlock as intent, evidence, and decision context emerge.",
+            uiOutput(ns("relationship_shell_preview"))
+          ),
+          ui_card(
+            title = "Working Context Preview",
+            subtitle = "Phase 5 shifts meaningful work from modules into the Evidence Review / Decision Evaluation context.",
+            uiOutput(ns("working_context_preview"))
+          ),
+          ui_card(
+            title = "Progressive Workspace Depth",
+            subtitle = "Question, evidence, reasoning, diagnostics, and architecture unfold as the work deepens.",
+            uiOutput(ns("working_context_depth"))
+          ),
+          ui_card(
+            title = "Prototype Entry Experience",
+            subtitle = "Phase 2 compares the first interaction while holding workflow, evidence, decision, and artifacts constant.",
+            uiOutput(ns("prototype_entry_experience"))
+          ),
+          ui_card(
+            title = "Prototype Replay Package",
+            subtitle = "Current, Intent-first, and Business-question-first replay packages share one Golden Workflow.",
+            uiOutput(ns("prototype_replay_package"))
+          ),
+          ui_card(
+            title = "Phase 3 Browser Trial",
+            subtitle = "Browser-recorded Current, Intent-first, and Business Question first experiences.",
+            uiOutput(ns("phase3_browser_trial"))
+          ),
+          ui_card(
+            title = "Founder Experience Review",
+            subtitle = "Reviewer prompts preserve strengths, weaknesses, delight, confusion, trust, recommendation, and open questions.",
+            uiOutput(ns("founder_experience_review"))
+          ),
+          ui_card(
             title = "Visible Element Inventory",
             subtitle = "Classifies what should show, summarize, collapse, or disappear.",
             uiOutput(ns("visible_element_inventory"))
@@ -170,6 +241,66 @@ page_product_experience_ui <- function(id) {
             uiOutput(ns("research_campaigns"))
           ),
           ui_card(
+            title = "Runtime Comparison",
+            subtitle = "Baseline, intent-first, and business-question-first compiled through one runtime contract.",
+            uiOutput(ns("runtime_comparison"))
+          ),
+          ui_card(
+            title = "Relationship Comparison",
+            subtitle = "Compares first-hour behavior across new, returning, current-project, resume, explore, and learn states.",
+            uiOutput(ns("relationship_comparison"))
+          ),
+          ui_card(
+            title = "Relationship Founder Review",
+            subtitle = "First-hour review dimensions: impression, trust, momentum, curiosity, confidence, overwhelm, understanding, and desired next action.",
+            uiOutput(ns("relationship_founder_review"))
+          ),
+          ui_card(
+            title = "Relationship Campaigns",
+            subtitle = "Campaigns target relationship quality rather than module polish.",
+            uiOutput(ns("relationship_campaigns"))
+          ),
+          ui_card(
+            title = "Working Context Capability Map",
+            subtitle = "Primary and adjacent capabilities appear first; contextual, advanced, architectural, and developer surfaces stay quiet.",
+            uiOutput(ns("working_context_capability_map"))
+          ),
+          ui_card(
+            title = "Working Context Review",
+            subtitle = "Founder review asks whether the workspace preserves focus, priority, location, and next-action clarity.",
+            uiOutput(ns("working_context_review"))
+          ),
+          ui_card(
+            title = "Working Context Campaigns",
+            subtitle = "Campaigns target flow-breaking exposure, transitions, hierarchy, and navigation.",
+            uiOutput(ns("working_context_campaigns"))
+          ),
+          ui_card(
+            title = "Prototype Replay Comparison",
+            subtitle = "Compares Current, A, and B using the same synthetic world and Golden Workflow.",
+            uiOutput(ns("prototype_replay_comparison_phase2"))
+          ),
+          ui_card(
+            title = "Phase 3 Experience Comparison",
+            subtitle = "Browser-trial comparison across philosophy, cognitive load, trust, AI, and workflow preparation.",
+            uiOutput(ns("phase3_experience_comparison"))
+          ),
+          ui_card(
+            title = "Runtime Campaigns",
+            subtitle = "Campaigns are scoped to prototypes rather than broad polishing.",
+            uiOutput(ns("runtime_campaigns"))
+          ),
+          ui_card(
+            title = "Phase 2 Recommendation",
+            subtitle = "Conservative product guidance: compare before selecting a final experience.",
+            uiOutput(ns("phase2_recommendation"))
+          ),
+          ui_card(
+            title = "Phase 3 Final Assessment",
+            subtitle = "Direct answers remain evidence-bound and avoid premature product-philosophy selection.",
+            uiOutput(ns("phase3_final_assessment"))
+          ),
+          ui_card(
             title = "Open UX Questions",
             subtitle = "Current answers, uncertainty, and next experiments.",
             uiOutput(ns("research_open_questions"))
@@ -196,6 +327,8 @@ page_product_experience_server <- function(id, ctx) {
     latest_golden <- reactiveVal(NULL)
     latest_browser <- reactiveVal(NULL)
     latest_review <- reactiveVal(NULL)
+    latest_prototype_replays <- reactiveVal(NULL)
+    latest_phase3_trial <- reactiveVal(NULL)
 
     output$architecture_decision <- renderUI({
       decision <- product_experience_architecture_decision()
@@ -280,6 +413,16 @@ page_product_experience_server <- function(id, ctx) {
           findings = product_experience_golden_review_findings()
         ))
       }
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$run_prototype_replays, {
+      result <- experience_run_all_prototype_replays(write_files = TRUE)
+      latest_prototype_replays(result$value)
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$run_phase3_browser_trial, {
+      result <- experience_run_phase3_browser_trial(port = 6993, ai_mode = "fixture", pacing_profile = "investor")
+      latest_phase3_trial(result$value)
     }, ignoreInit = TRUE)
 
     output$golden_replay <- renderUI({
@@ -537,6 +680,185 @@ page_product_experience_server <- function(id, ctx) {
       )
     })
 
+    output$experience_runtime <- renderUI({
+      registry <- experience_prototype_registry()
+      tags$div(
+        class = "aq-status-list",
+        tags$div(class = "aq-status-item", tags$strong("Runtime"), tags$span("Product Experience Runtime")),
+        tags$div(class = "aq-status-item", tags$strong("Rule"), tags$span("One architecture, multiple compiled experiences.")),
+        render_table(
+          registry[, c("prototype_name", "philosophy", "entry_prompt", "mission_control_behavior", "ai_visibility", "prototype_status"), drop = FALSE],
+          engine = "html",
+          searchable = FALSE,
+          sortable = FALSE
+        )
+      )
+    })
+
+    output$compiled_experience <- renderUI({
+      compiled <- experience_compiler(input$experience_prototype_id %||% "prototype_a_intent_first", intent = input$experience_intent_id %||% "decide")
+      summary <- data.frame(
+        item = c("Prototype", "Intent", "Start Surface", "Workflow", "Architecture", "AI Entry Visibility"),
+        value = c(
+          compiled$prototype$prototype_name[[1]],
+          compiled$intent$intent_label[[1]],
+          compiled$intent$start_surface[[1]],
+          compiled$workflow$workflow_id,
+          if (isTRUE(compiled$controls$architecture_unchanged)) "unchanged" else "changed",
+          compiled$ai_plan$visibility[[1]]
+        ),
+        stringsAsFactors = FALSE
+      )
+      tags$div(
+        class = "aq-status-list",
+        render_table(summary, engine = "html", searchable = FALSE, sortable = FALSE),
+        ui_section_header("Visible Now", paste(compiled$information_plan$component[compiled$information_plan$visibility == "immediate"], collapse = ", ")),
+        ui_section_header("Deferred / Hidden", paste(compiled$information_plan$component[compiled$information_plan$visibility != "immediate"], collapse = ", ")),
+        render_table(compiled$navigation_plan, engine = "html", searchable = FALSE, sortable = FALSE)
+      )
+    })
+
+    output$relationship_runtime_preview <- renderUI({
+      runtime <- relationship_runtime(input$relationship_state %||% "new_user")
+      if (!identical(runtime$status, "success")) {
+        return(ui_empty_state("Relationship Runtime unavailable.", paste(runtime$errors, collapse = "; ")))
+      }
+      value <- runtime$value
+      summary <- data.frame(
+        item = c("State", "Opening Question", "Production Replacement", "Mission Control", "AI"),
+        value = c(
+          value$relationship_state$label[[1]],
+          value$relationship_state$first_question[[1]],
+          as.character(value$production_replacement),
+          value$mission_control_policy$answer[[1]],
+          value$ai_policy$answer[[1]]
+        ),
+        stringsAsFactors = FALSE
+      )
+      tags$div(
+        class = "aq-status-list",
+        render_table(summary, engine = "html", searchable = FALSE, sortable = FALSE),
+        ui_section_header("Immediate User Questions", paste(value$shell_preview$zone[value$shell_preview$visibility_class == "Immediate"], collapse = ", "))
+      )
+    })
+
+    output$relationship_shell_preview <- renderUI({
+      state <- input$relationship_state %||% "new_user"
+      runtime <- relationship_runtime(state)$value
+      tags$div(
+        class = "aq-status-list",
+        render_table(runtime$shell_preview, engine = "html", searchable = FALSE, sortable = FALSE),
+        ui_section_header("Progression", paste(runtime$progressive_shell$stage, collapse = " -> ")),
+        render_table(
+          runtime$progressive_shell[, c("stage", "user_need", "initial_visibility", "shell_behavior"), drop = FALSE],
+          engine = "html",
+          searchable = FALSE,
+          sortable = FALSE
+        )
+      )
+    })
+
+    output$working_context_preview <- renderUI({
+      context <- working_context_build_evidence_review()
+      summary <- data.frame(
+        item = c("Context", "Business Question", "Evidence Sufficiency", "Supported Next Action", "Production Slice"),
+        value = c(
+          context$label,
+          context$business_question,
+          paste0(context$evidence_sufficiency$status[[1]], " (", context$evidence_sufficiency$score[[1]], "%)"),
+          context$supported_next_action,
+          as.character(working_context_registry()$production_slice[[1]])
+        ),
+        stringsAsFactors = FALSE
+      )
+      render_table(summary, engine = "html", searchable = FALSE, sortable = FALSE)
+    })
+
+    output$working_context_depth <- renderUI({
+      render_table(working_context_progressive_depth(), engine = "html", searchable = FALSE, sortable = FALSE)
+    })
+
+    output$prototype_entry_experience <- renderUI({
+      entry <- experience_prototype_entry_experience(input$experience_prototype_id %||% "prototype_a_intent_first")
+      render_table(entry, engine = "html", searchable = FALSE, sortable = FALSE)
+    })
+
+    output$prototype_replay_package <- renderUI({
+      replays <- latest_prototype_replays()
+      if (is.null(replays)) {
+        preview <- experience_prototype_replay_package(input$experience_prototype_id %||% "prototype_a_intent_first", write_files = FALSE)$value
+        summary <- data.frame(
+          item = c("Prototype", "Recorder", "Workflow", "Manifest", "Review Package", "Replay Quality"),
+          value = c(
+            preview$prototype_name,
+            preview$recorder_status,
+            preview$workflow$workflow_id,
+            "not written in preview",
+            "not written in preview",
+            preview$metrics$replay_quality[[1]]
+          ),
+          stringsAsFactors = FALSE
+        )
+        return(tags$div(
+          class = "aq-status-list",
+          ui_empty_state("Prototype replay preview.", "Click Run Prototype Replays to write Current, A, and B packages."),
+          render_table(summary, engine = "html", searchable = FALSE, sortable = FALSE)
+        ))
+      }
+      rows <- do.call(rbind, lapply(replays, function(x) {
+        data.frame(
+          prototype = x$prototype_name,
+          run_id = x$run_id,
+          recorder = x$recorder_status,
+          manifest = x$manifest_path,
+          review_package = x$review_package_path,
+          stringsAsFactors = FALSE
+        )
+      }))
+      render_table(rows, engine = "html", searchable = FALSE, sortable = FALSE)
+    })
+
+    output$phase3_browser_trial <- renderUI({
+      trial <- latest_phase3_trial()
+      if (is.null(trial)) {
+        prototypes <- experience_phase3_trial_prototypes()
+        return(tags$div(
+          class = "aq-status-list",
+          ui_empty_state("No Phase 3 browser trial yet.", "Click Run Phase 3 Browser Trial to record Current, Intent-first, and Business Question first experiences."),
+          render_table(prototypes[, c("replay_id", "prototype_label", "hypothesis", "allowed_difference"), drop = FALSE], engine = "html", searchable = FALSE, sortable = FALSE)
+        ))
+      }
+      rows <- do.call(rbind, lapply(trial$results, function(result) {
+        run <- result$value
+        data.frame(
+          replay = run$replay_id %||% run$prototype_id %||% "unknown",
+          prototype = run$prototype_name %||% "unavailable",
+          status = result$status,
+          video = run$video_path %||% NA_character_,
+          trace = run$trace_path %||% NA_character_,
+          review_package = run$review_package_path %||% NA_character_,
+          stringsAsFactors = FALSE
+        )
+      }))
+      tags$div(
+        class = "aq-status-list",
+        tags$div(class = "aq-status-item", tags$strong("Trial"), tags$span(trial$trial_id)),
+        tags$div(class = "aq-status-item", tags$strong("Summary"), tags$span(trial$summary_path %||% "")),
+        render_table(rows, engine = "html", searchable = FALSE, sortable = FALSE)
+      )
+    })
+
+    output$founder_experience_review <- renderUI({
+      replays <- latest_prototype_replays()
+      founder <- experience_founder_review_package(replays)
+      render_table(
+        founder[, c("prototype_name", "strengths", "weaknesses", "delight", "confusion", "trust", "recommendation", "open_questions"), drop = FALSE],
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
     output$visible_element_inventory <- renderUI({
       render_table(
         product_experience_visible_element_inventory(),
@@ -621,6 +943,148 @@ page_product_experience_server <- function(id, ctx) {
         searchable = FALSE,
         sortable = FALSE
       )
+    })
+
+    output$runtime_comparison <- renderUI({
+      comparison <- experience_compare_compiled_prototypes()
+      render_table(
+        comparison[, c("prototype_name", "entry_prompt", "start_surface", "time_to_first_meaningful_action_sec", "estimated_clicks", "navigation_depth", "ai_interactions", "cognitive_load_estimate", "comparison_note"), drop = FALSE],
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$relationship_comparison <- renderUI({
+      render_table(
+        relationship_runtime_comparison(),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$relationship_founder_review <- renderUI({
+      render_table(
+        relationship_founder_review_template(),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$relationship_campaigns <- renderUI({
+      tags$div(
+        class = "aq-status-list",
+        render_table(relationship_campaigns(), engine = "html", searchable = FALSE, sortable = FALSE),
+        ui_section_header("Open Product Question", relationship_final_assessment()$answer[relationship_final_assessment()$question == "What is the largest unanswered product question?"][[1]])
+      )
+    })
+
+    output$working_context_capability_map <- renderUI({
+      render_table(
+        working_context_capability_map()[, c("capability", "exposure", "initial_visibility", "reason"), drop = FALSE],
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$working_context_review <- renderUI({
+      tags$div(
+        class = "aq-status-list",
+        render_table(working_context_founder_review_template(), engine = "html", searchable = FALSE, sortable = FALSE),
+        ui_disclosure(
+          "Replay Contract",
+          render_table(working_context_replay_contract(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        )
+      )
+    })
+
+    output$working_context_campaigns <- renderUI({
+      tags$div(
+        class = "aq-status-list",
+        render_table(working_context_campaigns(), engine = "html", searchable = FALSE, sortable = FALSE),
+        ui_disclosure(
+          "Final Assessment",
+          render_table(working_context_final_assessment(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        )
+      )
+    })
+
+    output$prototype_replay_comparison_phase2 <- renderUI({
+      comparison <- experience_compare_prototype_replays(latest_prototype_replays())
+      render_table(
+        comparison[, c("prototype_name", "entry_prompt", "time_to_first_action_sec", "time_to_first_evidence_sec", "time_to_first_understanding_sec", "clicks", "context_switches", "visible_concepts", "reading_burden", "strength_hypothesis", "risk_hypothesis"), drop = FALSE],
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$phase3_experience_comparison <- renderUI({
+      trial <- latest_phase3_trial()
+      comparison <- if (!is.null(trial) && nrow(trial$comparison)) {
+        trial$comparison
+      } else {
+        fixture <- experience_run_all_prototype_replays(write_files = FALSE)$value
+        phase2 <- experience_compare_prototype_replays(fixture)
+        data.frame(
+          prototype_id = phase2$prototype_id,
+          prototype_name = phase2$prototype_name,
+          time_to_first_action_sec = phase2$time_to_first_action_sec,
+          time_to_first_evidence_sec = phase2$time_to_first_evidence_sec,
+          time_to_first_insight_sec = phase2$time_to_first_understanding_sec,
+          clicks = phase2$clicks,
+          workflow_duration_sec = NA_integer_,
+          navigation_depth = phase2$navigation_depth,
+          context_switches = phase2$context_switches,
+          visible_concepts = phase2$visible_concepts,
+          ai_interactions = phase2$ai_interactions,
+          cognitive_load_estimate = c("high", "medium", "low_medium"),
+          product_identity_speed = c("Golden Workflow review", "intent choices", "business question prompt"),
+          stringsAsFactors = FALSE
+        )
+      }
+      render_table(
+        comparison[, c("prototype_name", "time_to_first_action_sec", "time_to_first_evidence_sec", "time_to_first_insight_sec", "clicks", "context_switches", "visible_concepts", "ai_interactions", "cognitive_load_estimate", "product_identity_speed"), drop = FALSE],
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$runtime_campaigns <- renderUI({
+      render_table(
+        experience_phase2_campaigns(experience_compare_prototype_replays(latest_prototype_replays())),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$phase2_recommendation <- renderUI({
+      recommendation <- experience_phase2_recommendation(experience_compare_prototype_replays(latest_prototype_replays()))
+      render_table(recommendation, engine = "html", searchable = FALSE, sortable = FALSE)
+    })
+
+    output$phase3_final_assessment <- renderUI({
+      trial <- latest_phase3_trial()
+      comparison <- if (!is.null(trial) && nrow(trial$comparison)) {
+        trial$comparison
+      } else {
+        fixture <- experience_run_all_prototype_replays(write_files = FALSE)$value
+        experience_phase3_compare_browser_replays(lapply(fixture, function(x) {
+          x$video_path <- NA_character_
+          x$trace_path <- NA_character_
+          x$recorder_status <- "fixture_contract_only"
+          x
+        }))
+      }
+      assessment <- experience_phase3_final_assessment(comparison)
+      render_table(assessment, engine = "html", searchable = FALSE, sortable = FALSE)
     })
 
     output$research_open_questions <- renderUI({
