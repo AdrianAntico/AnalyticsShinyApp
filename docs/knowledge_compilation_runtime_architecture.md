@@ -1,6 +1,6 @@
 # Knowledge Compilation and AI Runtime Architecture
 
-Status: Phases 1-7 implemented incrementally; this document remains the architectural source, with phase-specific implementation notes in `docs/knowledge_compilation_runtime_phase*.md`
+Status: Phases 1-8 implemented incrementally; this document remains the architectural source, with phase-specific implementation notes in `docs/knowledge_compilation_runtime_phase*.md`
 Scope: ontology, runtime, compilation, ownership, and long-term placement review
 Date: 2026-07-14
 

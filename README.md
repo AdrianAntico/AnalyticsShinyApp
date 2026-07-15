@@ -48,6 +48,9 @@ Start with these docs before architecture-affecting work:
 - `docs/knowledge_compilation_runtime_phase5.md`: implemented Phase 5 cross-artifact synthesis planning, applicability, contradiction handling, evidence sufficiency, coverage, structured cited synthesis, and synthesis compression benchmarks.
 - `docs/knowledge_compilation_runtime_phase6.md`: implemented Phase 6 governed evidence review, evidence binders, sufficiency for action, ranked supported next actions, preview-only drafts, and operator audit records.
 - `docs/knowledge_compilation_runtime_phase7.md`: implemented Phase 7 confirmed draft persistence for evidence-review and campaign-seed drafts through governed Class 3 handlers, project state, collector append, audit, and undo/archive lifecycle.
+- `docs/knowledge_compilation_runtime_phase8.md`: implemented Phase 8 mutation taxonomy, risk assessment, governance policy, review-request draft persistence, evidence-link draft persistence, mutation audit, and lifecycle management.
+- `docs/platform_productization_phase1.md`: platform-level bottleneck assessment, subsystem maturity, PFSD observations, and productization roadmap.
+- `docs/product_experience_intelligence_architecture.md`: deterministic demo worlds, Golden Workflow replay, repo-local browser runtime provisioning, scenario contracts, review artifacts, UX regression metrics, Playwright recorder decision, and product-experience campaign loop.
 - `docs/api_surface_audit.md`: aggressive pre-product API/product surface audit and cleanup recommendations.
 - `docs/agent_task_template.md`: recommended Codex task framing.
 

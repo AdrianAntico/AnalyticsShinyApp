@@ -76,6 +76,12 @@ server <- function(input, output, session) {
     last_result = NULL,
     message = NULL
   )
+  ctx$ai_mutation_state <- reactiveValues(
+    store = mutation_store_empty(),
+    artifact_relationship_drafts = list(),
+    last_result = NULL,
+    message = NULL
+  )
   ctx$genai_delegation_state <- reactiveValues(
     session_id = genai_delegation_session_id(),
     grants = list(),
@@ -1231,6 +1237,8 @@ server <- function(input, output, session) {
       causal_itt_state = ctx$causal_itt_state(),
       causal_observational_state = ctx$causal_observational_state(),
       ai_draft_store = ctx$ai_draft_state$store,
+      ai_mutation_store = ctx$ai_mutation_state$store,
+      artifact_relationship_drafts = ctx$ai_mutation_state$artifact_relationship_drafts,
       source_data_info = ctx$source_project_data_info(),
       plot_configs = ctx$saved_plots$configs,
       plot_code = ctx$saved_plots$code,
@@ -1389,6 +1397,10 @@ server <- function(input, output, session) {
     ctx$ai_draft_state$store <- ai_draft_store_normalize(project_state$ai_draft_store %||% NULL)
     ctx$ai_draft_state$last_result <- NULL
     ctx$ai_draft_state$message <- "AI draft persistence state restored from project state."
+    ctx$ai_mutation_state$store <- mutation_store_normalize(project_state$ai_mutation_store %||% NULL)
+    ctx$ai_mutation_state$artifact_relationship_drafts <- project_state$artifact_relationship_drafts %||% list()
+    ctx$ai_mutation_state$last_result <- NULL
+    ctx$ai_mutation_state$message <- "Mutation governance state restored from project state."
     ctx$active_modeling_context(project_state$active_modeling_context %||% modeling_context_from_source(
       data = NULL,
       data_info = list(path = project_state$data_path, name = project_state$data_name),
@@ -1485,6 +1497,7 @@ server <- function(input, output, session) {
   page_knowledge_library_server("knowledge_library", ctx)
   page_mission_control_server("mission_control", ctx)
   page_ai_runtime_server("ai_runtime", ctx)
+  page_product_experience_server("product_experience", ctx)
   page_data_server("data", ctx)
   page_plot_builder_server("plot_builder", ctx)
   page_workflow_server("workflow", ctx)

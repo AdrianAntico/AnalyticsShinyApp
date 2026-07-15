@@ -123,4 +123,14 @@ Module artifacts are stored in module artifact state, not as fake Plot Builder c
 
 ## Aggregate QA
 
-Use `qa_analysis_modules_integration()` to run all available module QA helpers and return one compact summary table. Individual module helpers may return a warning or dependency/config message when AutoQuant support is unavailable rather than throwing raw errors.
+Use `qa_analysis_modules_integration()` to run the bounded aggregate module QA profile and return one compact summary table. Individual module helpers may return a warning or dependency/config message when AutoQuant support is unavailable rather than throwing raw errors.
+
+The aggregate helper records per-suite timing, start time, completion time, check counts, warnings, and errors. Heavyweight meta/system suites are explicitly marked `deferred` in the bounded profile rather than being silently skipped.
+
+Profiles:
+
+- `qa_analysis_modules_integration()` or `qa_analysis_modules_integration(profile = "bounded")`: operational smoke validation for routine app work.
+- `qa_analysis_modules_integration(profile = "deep")`: heavyweight suites deferred from the bounded profile.
+- `qa_analysis_modules_integration(profile = "full")`: historical all-in-one behavior for complete linear validation.
+
+This split exists because the full aggregate suite is valid but can exceed short command timeouts. The bounded and deep profiles together preserve coverage with clearer runtime diagnostics.

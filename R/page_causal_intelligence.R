@@ -82,7 +82,7 @@ page_causal_intelligence_ui <- function(id) {
         tags$div(
           ui_card(
             "Planning Status",
-            "Causal Intelligence does not estimate effects in Phase 1.",
+            "Causal Intelligence estimates effects only after governed readiness evidence exists.",
             uiOutput(ns("causal_summary_cards")),
             verbatimTextOutput(ns("causal_message"))
           ),
@@ -102,7 +102,7 @@ page_causal_intelligence_ui <- function(id) {
           ),
           ui_card(
             "Observational Study Design",
-            "Assess whether non-randomized data can support a future causal analysis. This is planning only.",
+            "Assess whether non-randomized data can support a governed causal analysis, then estimate only when readiness passes.",
             tags$div(
               class = "aq-form-grid",
               textInput(ns("observational_study_id"), "Study ID", value = "obs_project_study"),
@@ -127,6 +127,11 @@ page_causal_intelligence_ui <- function(id) {
               textInput(ns("observational_colliders"), "Excluded Colliders", placeholder = "observed_purchase"),
               textInput(ns("observational_post_treatment"), "Excluded Post-Treatment Variables", placeholder = "future_status"),
               uiOutput(ns("observational_treatment_column")),
+              uiOutput(ns("observational_outcome_column")),
+              uiOutput(ns("observational_did_time_column")),
+              uiOutput(ns("observational_did_unit_column")),
+              textInput(ns("observational_did_intervention_time"), "DiD Intervention Time", placeholder = "date or numeric time value"),
+              selectInput(ns("observational_estimand"), "Effect Estimand", choices = c("ATE", "ATT"), selected = "ATE"),
               numericInput(ns("observational_treated_count"), "Treated Count", value = 50, min = 0, step = 1),
               numericInput(ns("observational_comparison_count"), "Comparison Count", value = 50, min = 0, step = 1),
               textInput(ns("observational_probabilities"), "Diagnostic Treatment Probabilities", placeholder = "0.2,0.4,0.6,0.8"),
@@ -146,11 +151,17 @@ page_causal_intelligence_ui <- function(id) {
             ui_action_row(
               actionButton(ns("save_observational_study"), "Save Observational Study", class = "btn-primary"),
               actionButton(ns("run_observational_plan"), "Assess Readiness", class = "btn-secondary"),
-              actionButton(ns("register_observational_artifact"), "Register Planning Artifact", class = "btn-secondary")
+              actionButton(ns("run_observational_estimate"), "Estimate Governed Effect", class = "btn-secondary"),
+              actionButton(ns("run_observational_did"), "Run Governed DiD", class = "btn-secondary"),
+              actionButton(ns("register_observational_artifact"), "Register Planning Artifact", class = "btn-secondary"),
+              actionButton(ns("register_observational_effect_artifact"), "Register Effect Artifact", class = "btn-secondary"),
+              actionButton(ns("register_observational_did_artifact"), "Register DiD Artifact", class = "btn-secondary")
             ),
             verbatimTextOutput(ns("observational_message")),
             uiOutput(ns("observational_summary_cards")),
             ui_disclosure("Readiness", uiOutput(ns("observational_readiness_table"))),
+            ui_disclosure("Effect Evidence", uiOutput(ns("observational_effect_table"))),
+            ui_disclosure("Difference-in-Differences Evidence", uiOutput(ns("observational_did_table"))),
             ui_disclosure("Overlap and Design Eligibility", uiOutput(ns("observational_design_table"))),
             ui_disclosure("Balance / Timing / Threats", uiOutput(ns("observational_diagnostics_table")))
           ),
@@ -384,6 +395,21 @@ page_causal_intelligence_server <- function(id, ctx) {
       cols <- if (is.data.frame(data)) names(data) else character()
       selectInput(ns("observational_treatment_column_value"), "Treatment Column", choices = c("(manual counts)" = "", cols), selected = "")
     })
+    output$observational_outcome_column <- renderUI({
+      data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
+      cols <- if (is.data.frame(data)) names(data) else character()
+      selectInput(ns("observational_outcome_column_value"), "Outcome Column", choices = c("(select outcome)" = "", cols), selected = "")
+    })
+    output$observational_did_time_column <- renderUI({
+      data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
+      cols <- if (is.data.frame(data)) names(data) else character()
+      selectInput(ns("observational_did_time_column_value"), "DiD Time Column", choices = c("(select time)" = "", cols), selected = "")
+    })
+    output$observational_did_unit_column <- renderUI({
+      data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
+      cols <- if (is.data.frame(data)) names(data) else character()
+      selectInput(ns("observational_did_unit_column_value"), "DiD Unit Column", choices = c("(optional)" = "", cols), selected = "")
+    })
 
     observeEvent(input$save_observational_study, {
       qid <- current_question_id()
@@ -421,6 +447,11 @@ page_causal_intelligence_server <- function(id, ctx) {
         excluded_colliders = input$observational_colliders %||% "",
         excluded_post_treatment = input$observational_post_treatment %||% "",
         treatment_column = input$observational_treatment_column_value %||% "",
+        outcome_column = input$observational_outcome_column_value %||% "",
+        did_time_column = input$observational_did_time_column_value %||% "",
+        did_unit_column = input$observational_did_unit_column_value %||% "",
+        did_intervention_time = input$observational_did_intervention_time %||% "",
+        observational_estimand = input$observational_estimand %||% "ATE",
         treated_count = input$observational_treated_count,
         comparison_count = input$observational_comparison_count,
         diagnostic_probabilities = input$observational_probabilities %||% "",
@@ -451,9 +482,27 @@ page_causal_intelligence_server <- function(id, ctx) {
       if (identical(result$status, "success")) ctx$causal_observational_state(result$value)
       observational_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
     })
+    observeEvent(input$run_observational_estimate, {
+      result <- causal_observational_run_estimation(ctx$causal_observational_state(), ctx$uploaded_data())
+      if (identical(result$status, "success")) ctx$causal_observational_state(result$value)
+      observational_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+    observeEvent(input$run_observational_did, {
+      result <- causal_observational_run_did(ctx$causal_observational_state(), ctx$uploaded_data())
+      if (identical(result$status, "success")) ctx$causal_observational_state(result$value)
+      observational_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
 
     observeEvent(input$register_observational_artifact, {
       result <- causal_observational_register_artifact(ctx, ctx$causal_observational_state())
+      observational_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+    observeEvent(input$register_observational_effect_artifact, {
+      result <- causal_observational_register_effect_artifact(ctx, ctx$causal_observational_state())
+      observational_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
+    })
+    observeEvent(input$register_observational_did_artifact, {
+      result <- causal_observational_register_did_artifact(ctx, ctx$causal_observational_state())
       observational_message(paste(result$messages %||% result$errors %||% result$warnings, collapse = " | "))
     })
 
@@ -725,13 +774,45 @@ page_causal_intelligence_server <- function(id, ctx) {
         ui_card("Studies", NULL, tags$strong(summary$studies[[1]]), tags$p("observational plans")),
         ui_card("Readiness", NULL, tags$strong(ui_display_label(summary$readiness_state[[1]])), tags$p(if (summary$stale[[1]]) "stale or not planned" else "current")),
         ui_card("Overlap", NULL, tags$strong(ui_display_label(summary$overlap_state[[1]])), tags$p("positivity support")),
-        ui_card("Assignment", NULL, tags$strong(ui_display_label(summary$assignment_mechanism[[1]])), tags$p("documented mechanism"))
+        ui_card("Assignment", NULL, tags$strong(ui_display_label(summary$assignment_mechanism[[1]])), tags$p("documented mechanism")),
+        ui_card("Effect", NULL, tags$strong(ui_display_label(summary$effect_status[[1]])), tags$p("requires review")),
+        ui_card("DiD", NULL, tags$strong(ui_display_label(summary$did_status[[1]])), tags$p("time-based evidence"))
       )
     })
     output$observational_readiness_table <- renderUI({
       plan <- observational_plan()
       if (is.null(plan)) return(ui_empty_state("No observational readiness yet.", "Save an observational study and assess readiness."))
       causal_render_table(plan$readiness, "No readiness result.")
+    })
+    output$observational_effect_table <- renderUI({
+      state <- causal_observational_normalize(ctx$causal_observational_state())
+      effect <- state$effect_results[[causal_observational_active_id(state)]]
+      if (is.null(effect)) return(ui_empty_state("No governed effect evidence yet.", "Assess readiness, map treatment/outcome columns, then estimate the governed effect."))
+      rows <- data.table::rbindlist(
+        list(
+          data.table::as.data.table(effect$result$primary_estimate),
+          data.table::as.data.table(effect$result$balance_diagnostics),
+          data.table::as.data.table(effect$result$weights[, intersect(c("weight_type", "effective_sample_size", "extreme_weight_share", "status"), names(effect$result$weights)), with = FALSE])
+        ),
+        use.names = TRUE,
+        fill = TRUE
+      )
+      causal_render_table(rows, "No effect evidence.")
+    })
+    output$observational_did_table <- renderUI({
+      state <- causal_observational_normalize(ctx$causal_observational_state())
+      did <- state$did_results[[causal_observational_active_id(state)]]
+      if (is.null(did)) return(ui_empty_state("No Difference-in-Differences evidence yet.", "Assess readiness, map time/unit/intervention fields, then run governed DiD."))
+      rows <- data.table::rbindlist(
+        list(
+          data.table::as.data.table(did$result$primary_estimate),
+          data.table::as.data.table(did$result$parallel_trends),
+          data.table::as.data.table(did$result$composition)
+        ),
+        use.names = TRUE,
+        fill = TRUE
+      )
+      causal_render_table(rows, "No DiD evidence.")
     })
     output$observational_design_table <- renderUI({
       plan <- observational_plan()

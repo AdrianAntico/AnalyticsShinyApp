@@ -69,7 +69,7 @@ mission_control_priority_summary <- function(alerts) {
   )
 }
 
-mission_control_alerts <- function(artifacts, collector, quality, workflow, improvement = NULL, remediation = NULL, feature_experiments = NULL, campaigns = NULL, decisions = NULL, semantic_workspace = NULL, semantic_decision = NULL, decision_valuation = NULL, decision_workflow = NULL, causal_intelligence = NULL, causal_experiment = NULL, causal_completed_experiment = NULL, causal_itt = NULL, causal_observational = NULL, ai_drafts = NULL) {
+mission_control_alerts <- function(artifacts, collector, quality, workflow, improvement = NULL, remediation = NULL, feature_experiments = NULL, campaigns = NULL, decisions = NULL, semantic_workspace = NULL, semantic_decision = NULL, decision_valuation = NULL, decision_workflow = NULL, causal_intelligence = NULL, causal_experiment = NULL, causal_completed_experiment = NULL, causal_itt = NULL, causal_observational = NULL, ai_drafts = NULL, mutations = NULL) {
   alerts <- list()
   add <- function(title, message, severity = "medium", source = NULL) {
     alerts[[length(alerts) + 1L]] <<- list(title = title, message = message, severity = severity, source = source)
@@ -306,6 +306,9 @@ mission_control_alerts <- function(artifacts, collector, quality, workflow, impr
     } else if ((causal_observational$readiness_state[[1]] %||% "") %in% c("ready_for_design_implementation", "ready_with_strong_assumptions")) {
       add("Observational design plan ready", "Planning evidence exists for a future observational estimator under explicit assumptions.", "success", "Observational Causal")
     }
+    if ((causal_observational$did_status[[1]] %||% "not_estimated") %in% c("estimated_requires_review", "diagnostic_blocked")) {
+      add("DiD evidence needs review", paste("Difference-in-Differences status:", ui_display_label(causal_observational$did_status[[1]])), "medium", "Observational Causal")
+    }
   }
   if (exists("ai_runtime_qualification_summary", mode = "function")) {
     ai_runtime <- tryCatch(ai_runtime_qualification_summary(), error = function(e) NULL)
@@ -318,6 +321,19 @@ mission_control_alerts <- function(artifacts, collector, quality, workflow, impr
       }
       if ((ai_runtime$qualified_tasks[[1]] %||% 0L) > 0L) {
         add("AI runtime qualification available", paste("Preferred runtime profile:", ui_display_label(ai_runtime$preferred_model_tier[[1]] %||% "human")), "low", "AI Runtime")
+      }
+    }
+  }
+  if (exists("product_experience_runtime_discovery", mode = "function")) {
+    product_experience_runtime <- tryCatch(product_experience_runtime_discovery(), error = function(e) NULL)
+    if (!is.null(product_experience_runtime) && nrow(product_experience_runtime)) {
+      available <- stats::setNames(product_experience_runtime$available, product_experience_runtime$component)
+      if (!isTRUE(available[["node"]]) || !isTRUE(available[["playwright"]])) {
+        add("Product Experience recorder unavailable", "The Golden Workflow browser runtime is not fully provisioned. Product Experience Lab can provision and validate it.", "medium", "Product Experience")
+      } else if (isTRUE(available[["previous_reports"]]) && isTRUE(available[["previous_videos"]]) && isTRUE(available[["previous_traces"]])) {
+        add("Golden Workflow recording available", "Product Experience Lab has recorded browser replay evidence with report, video, and trace artifacts.", "low", "Product Experience")
+      } else {
+        add("Product Experience runtime ready", "Browser automation is provisioned; run the Golden Workflow replay to create recording evidence.", "low", "Product Experience")
       }
     }
   }
@@ -402,6 +418,29 @@ mission_control_alerts <- function(artifacts, collector, quality, workflow, impr
         (ai_drafts$citation_failures[[1]] %||% 0L) > 0L ||
         (ai_drafts$handler_failures[[1]] %||% 0L) > 0L) {
       add("AI draft validation failed", "At least one AI draft failed deterministic validation before persistence.", "high", "AI Drafts")
+    }
+  }
+  if (!is.null(mutations) && nrow(mutations)) {
+    if ((mutations$pending[[1]] %||% 0L) > 0L) {
+      add("Mutation pending governance", paste(mutations$pending[[1]], "AI mutation proposal(s) are pending validation, preview, confirmation, or persistence."), "medium", "Mutation Governance")
+    }
+    if ((mutations$persisted[[1]] %||% 0L) > 0L) {
+      add("Mutation persisted", paste(mutations$persisted[[1]], "governed mutation(s) are persisted with audit history."), "success", "Mutation Governance")
+    }
+    if ((mutations$rejected[[1]] %||% 0L) > 0L) {
+      add("Mutation rejected", paste(mutations$rejected[[1]], "mutation proposal(s) were rejected and retained for audit."), "low", "Mutation Governance")
+    }
+    if ((mutations$expired[[1]] %||% 0L) > 0L) {
+      add("Mutation expired", paste(mutations$expired[[1]], "mutation proposal(s) expired before confirmation."), "medium", "Mutation Governance")
+    }
+    if ((mutations$high_or_critical[[1]] %||% 0L) > 0L) {
+      add("High-risk mutation present", paste(mutations$high_or_critical[[1]], "high or critical mutation proposal(s) require stronger governance."), "high", "Mutation Governance")
+    }
+    if ((mutations$validation_failures[[1]] %||% 0L) > 0L) {
+      add("Mutation validation failed", "At least one mutation failed deterministic validation before persistence.", "high", "Mutation Governance")
+    }
+    if ((mutations$undo_available[[1]] %||% 0L) > 0L) {
+      add("Mutation undo available", paste(mutations$undo_available[[1]], "persisted mutation(s) can be undone, archived, or superseded."), "low", "Mutation Governance")
     }
   }
 
@@ -563,8 +602,9 @@ page_mission_control_server <- function(id, ctx) {
       causal_experiment <- tryCatch(causal_experiment_summary(ctx$causal_experiment_state()), error = function(e) data.table::data.table(experiment_questions = 0L, design_specs = 0L, plan_status = "unavailable", gate_status = "unavailable", execution_ready = FALSE, registered_artifacts = 0L))
       causal_completed_experiment <- tryCatch(causal_completed_experiment_summary(ctx$causal_completed_experiment_state()), error = function(e) data.table::data.table(completed_experiments = 0L, evidence_mappings = 0L, readiness_state = "unavailable", assessment_status = "unavailable", assignment_preserved = FALSE, outcome_available = FALSE, guardrail_status = "unavailable", registered_artifacts = 0L))
       causal_itt <- tryCatch(causal_itt_summary(ctx$causal_itt_state()), error = function(e) data.table::data.table(specs = 0L, active_analysis_id = NA_character_, analysis_status = "unavailable", effect_estimated = FALSE, review_status = "unavailable", estimate = NA_real_, conf_low = NA_real_, conf_high = NA_real_, materiality_state = "unavailable", registered_artifacts = 0L, design_depth_status = "unavailable", causal_report_status = "unavailable", robustness_rows = 0L))
-      causal_observational <- tryCatch(causal_observational_summary(ctx$causal_observational_state()), error = function(e) data.table::data.table(studies = 0L, active_study_id = NA_character_, readiness_state = "unavailable", overlap_state = "unavailable", assignment_mechanism = "unknown", stale = TRUE, registered_artifacts = 0L))
+      causal_observational <- tryCatch(causal_observational_summary(ctx$causal_observational_state()), error = function(e) data.table::data.table(studies = 0L, active_study_id = NA_character_, readiness_state = "unavailable", overlap_state = "unavailable", assignment_mechanism = "unknown", effect_status = "unavailable", did_status = "unavailable", stale = TRUE, registered_artifacts = 0L))
       ai_drafts <- tryCatch(ai_draft_mutation_diagnostics(list(ai_draft_store = ctx$ai_draft_state$store)), error = function(e) data.table::data.table(drafts_generated = 0L, drafts_confirmed = 0L, drafts_persisted = 0L, drafts_rejected = 0L, drafts_undone = 0L, drafts_archived = 0L, validation_failures = 0L, confirmation_failures = 0L, runtime_failures = 0L, handler_failures = 0L, citation_failures = 0L, undo_available = 0L, archive_available = 0L))
+      mutations <- tryCatch(mutation_governance_diagnostics(list(ai_mutation_store = ctx$ai_mutation_state$store)), error = function(e) data.table::data.table(mutations = 0L, pending = 0L, persisted = 0L, rejected = 0L, archived = 0L, undone = 0L, expired = 0L, superseded = 0L, high_or_critical = 0L, validation_failures = 0L, undo_available = 0L, archive_available = 0L))
       counts <- mission_control_artifact_counts(artifacts)
       quality <- mission_control_quality_summary(artifacts)
       ai_status <- mission_control_ai_status(collector, artifacts)
@@ -591,10 +631,11 @@ page_mission_control_server <- function(id, ctx) {
         causal_itt = causal_itt,
         causal_observational = causal_observational,
         ai_drafts = ai_drafts,
+        mutations = mutations,
         counts = counts,
         quality = quality,
         ai_status = ai_status,
-        alerts = mission_control_alerts(artifacts, collector, quality, workflow, improvement, remediation, feature_experiments, campaigns, decisions, semantic_workspace, semantic_decision, decision_valuation, decision_workflow, causal_intelligence, causal_experiment, causal_completed_experiment, causal_itt, causal_observational, ai_drafts),
+        alerts = mission_control_alerts(artifacts, collector, quality, workflow, improvement, remediation, feature_experiments, campaigns, decisions, semantic_workspace, semantic_decision, decision_valuation, decision_workflow, causal_intelligence, causal_experiment, causal_completed_experiment, causal_itt, causal_observational, ai_drafts, mutations),
         timeline = mission_control_timeline(ctx, artifacts, collector)
       )
     })
@@ -836,6 +877,17 @@ qa_mission_control <- function() {
       archive_available = 1L
     )
   )
+  mutation_alerts <- mission_control_alerts(
+    artifacts = list(create_artifact("qa_artifact", "diagnostic", "QA Artifact", "qa")),
+    collector = data.table::data.table(artifact_count = 1L, manifest_status = "ready"),
+    quality = list(avg = 100, warnings = 0L, failures = 0L),
+    workflow = data.table::data.table(status = "implemented", artifact_count = 1L, label = "Explore Data"),
+    mutations = data.table::data.table(
+      mutations = 2L, pending = 1L, persisted = 1L, rejected = 0L, archived = 0L,
+      undone = 0L, expired = 0L, superseded = 0L, high_or_critical = 1L,
+      validation_failures = 1L, undo_available = 1L, archive_available = 1L
+    )
+  )
 
   data.table::data.table(
     check = c(
@@ -864,6 +916,7 @@ qa_mission_control <- function() {
       "semantic_decision_lifecycle_presentation",
       "decision_work_queue",
       "ai_draft_alerts",
+      "mutation_governance_alerts",
       "async_job_status",
       "css_cache_busting",
       "documentation"
@@ -894,6 +947,7 @@ qa_mission_control <- function() {
       if (has(page, c("semantic_decision_summary", "Decision Lifecycle", "assessment_status", "Authored decision"))) "success" else "error",
       if (has(page, c("Decision Work Queue", "decision_workflow_next_actions", "output$decision_work_queue"))) "success" else "error",
       if (any(vapply(draft_alerts, function(x) identical(x$source, "AI Drafts"), logical(1)))) "success" else "error",
+      if (any(vapply(mutation_alerts, function(x) identical(x$source, "Mutation Governance"), logical(1)))) "success" else "error",
       if (has(page, c("async_job_summary", "Async Jobs", "aq-async-job-list")) && has(css, c(".aq-async-job-list", ".aq-async-job-row"))) "success" else "error",
       if (has(app_ui, c("app.css?v=", "file.info(css_file)$mtime"))) "success" else "error",
       if (has(docs, c("Mission Control", "Operational awareness", "Alert philosophy", "Timeline"))) "success" else "error"
@@ -924,6 +978,7 @@ qa_mission_control <- function() {
       "Authored decision lifecycle assessment and artifact status are included in Mission Control.",
       "Mission Control exposes a bounded decision work queue.",
       "Mission Control reports confirmed, persisted, rejected, archived, undone, stale, and validation-failed AI draft lifecycle states.",
+      "Mission Control reports pending, persisted, rejected, expired, blocked, high-risk, validation-failed, and undoable mutation states.",
       "Mission Control surfaces basic async job status.",
       "App CSS is cache-busted so Mission Control visual updates render after restart.",
       "Mission Control documentation is present."

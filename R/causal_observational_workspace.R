@@ -17,7 +17,18 @@ causal_observational_available <- function() {
       "aq_observational_falsification_plan",
       "aq_plan_observational_causal_analysis",
       "aq_assess_observational_estimation_readiness",
-      "aq_observational_causal_planning_artifact"
+      "aq_observational_causal_planning_artifact",
+      "aq_observational_analysis_spec",
+      "aq_estimate_observational_effect",
+      "aq_observational_effect_artifact",
+      "aq_did_analysis_spec",
+      "aq_did_readiness",
+      "aq_did_pre_period_diagnostics",
+      "aq_did_parallel_trends",
+      "aq_did_composition_stability",
+      "aq_estimate_did_effect",
+      "aq_did_effect_artifact",
+      "aq_did_effect_report"
     ) %in% getNamespaceExports("AutoQuant"))
 }
 
@@ -37,6 +48,8 @@ causal_observational_empty <- function(project_id = NA_character_) {
       updated_at = character()
     ),
     plans = list(),
+    effect_results = list(),
+    did_results = list(),
     artifact_registry = character(),
     stale = TRUE,
     history = data.table::data.table(
@@ -255,6 +268,128 @@ causal_observational_build_plan <- function(state, causal_state = causal_intelli
   service_result(status = "success", value = state, messages = "Observational causal readiness assessed.", metadata = list(observational_study_id = study_id, readiness_state = readiness$readiness_state[[1]], signature = signature))
 }
 
+causal_observational_run_estimation <- function(state, data = NULL, study_id = causal_observational_active_id(state)) {
+  if (!causal_observational_available()) {
+    return(service_result(status = "warning", warnings = "AutoQuant observational estimation API is unavailable in the current R library. Install the updated AutoQuant package to run governed observational estimation."))
+  }
+  state <- causal_observational_normalize(state)
+  plan <- state$plans[[study_id]]
+  if (is.null(plan) || isTRUE(plan$stale)) {
+    return(service_result(status = "error", errors = "Generate a current observational readiness plan before estimating."))
+  }
+  readiness_state <- plan$readiness$readiness_state[[1]] %||% "not_planned"
+  if (!readiness_state %in% c("ready_for_design_implementation", "ready_with_strong_assumptions")) {
+    return(service_result(status = "error", errors = paste("Observational estimation is blocked by readiness state:", readiness_state)))
+  }
+  dt <- if (is.data.frame(data)) data.table::as.data.table(data) else data.table::data.table()
+  if (!nrow(dt)) return(service_result(status = "error", errors = "Load a dataset before running observational estimation."))
+  row <- state$studies[observational_study_id == study_id][1]
+  treatment_col <- row$treatment_column[[1]] %||% ""
+  outcome_col <- row$outcome_column[[1]] %||% row$outcome[[1]] %||% ""
+  if (!nzchar(treatment_col) || !treatment_col %in% names(dt)) return(service_result(status = "error", errors = "Map a valid treatment column before estimation."))
+  if (!nzchar(outcome_col) || !outcome_col %in% names(dt)) return(service_result(status = "error", errors = "Map a valid outcome column before estimation."))
+  confounders <- intersect(causal_observational_parse_list(row$approved_confounders[[1]] %||% ""), names(dt))
+  if (!length(confounders)) return(service_result(status = "error", errors = "Approved confounder columns must be present in the loaded data."))
+  estimand <- row$observational_estimand[[1]] %||% row$estimand[[1]] %||% "ATE"
+  if (!estimand %in% c("ATE", "ATT")) estimand <- "ATE"
+  spec <- tryCatch(
+    AutoQuant::aq_observational_analysis_spec(
+      planning_artifact = plan$aq_artifact,
+      plan = plan$plan,
+      readiness = plan$readiness,
+      target_trial = plan$target_trial,
+      treatment_col = treatment_col,
+      outcome_col = outcome_col,
+      adjustment_variables = confounders,
+      estimand = estimand,
+      approved = TRUE
+    ),
+    error = function(e) e
+  )
+  if (inherits(spec, "error")) return(service_result(status = "error", errors = conditionMessage(spec)))
+  result <- tryCatch(AutoQuant::aq_estimate_observational_effect(dt, spec), error = function(e) e)
+  if (inherits(result, "error")) return(service_result(status = "error", errors = conditionMessage(result)))
+  artifact <- tryCatch(AutoQuant::aq_observational_effect_artifact(result), error = function(e) e)
+  if (inherits(artifact, "error")) return(service_result(status = "error", errors = conditionMessage(artifact)))
+  state$effect_results[[study_id]] <- list(
+    spec = spec,
+    result = result,
+    aq_artifact = artifact,
+    estimated_at = causal_observational_now()
+  )
+  state$history <- data.table::rbindlist(
+    list(state$history, causal_observational_event(study_id, "effect_estimated", causal_observational_signature(state, study_id), "Ran governed observational AIPW effect estimation.")),
+    use.names = TRUE,
+    fill = TRUE
+  )
+  service_result(status = "success", value = state, messages = "Governed observational effect estimated and marked for review.", metadata = list(observational_study_id = study_id, effect_estimated = isTRUE(result$effect_estimated), status = result$status))
+}
+
+causal_observational_run_did <- function(state, data = NULL, study_id = causal_observational_active_id(state)) {
+  if (!causal_observational_available()) {
+    return(service_result(status = "warning", warnings = "AutoQuant DiD API is unavailable in the current R library. Install the updated AutoQuant package to run governed Difference-in-Differences."))
+  }
+  state <- causal_observational_normalize(state)
+  plan <- state$plans[[study_id]]
+  if (is.null(plan) || isTRUE(plan$stale)) {
+    return(service_result(status = "error", errors = "Generate a current observational readiness plan before running Difference-in-Differences."))
+  }
+  readiness_state <- plan$readiness$readiness_state[[1]] %||% "not_planned"
+  if (!readiness_state %in% c("ready_for_design_implementation", "ready_with_strong_assumptions")) {
+    return(service_result(status = "error", errors = paste("Difference-in-Differences is blocked by observational readiness state:", readiness_state)))
+  }
+  dt <- if (is.data.frame(data)) data.table::as.data.table(data) else data.table::data.table()
+  if (!nrow(dt)) return(service_result(status = "error", errors = "Load a dataset before running Difference-in-Differences."))
+  row <- state$studies[observational_study_id == study_id][1]
+  treatment_col <- row$treatment_column[[1]] %||% ""
+  outcome_col <- row$outcome_column[[1]] %||% row$outcome[[1]] %||% ""
+  time_col <- row$did_time_column[[1]] %||% ""
+  unit_col <- row$did_unit_column[[1]] %||% ""
+  intervention_time <- row$did_intervention_time[[1]] %||% ""
+  missing <- c()
+  if (!nzchar(treatment_col) || !treatment_col %in% names(dt)) missing <- c(missing, "treatment column")
+  if (!nzchar(outcome_col) || !outcome_col %in% names(dt)) missing <- c(missing, "outcome column")
+  if (!nzchar(time_col) || !time_col %in% names(dt)) missing <- c(missing, "time column")
+  if (!nzchar(intervention_time)) missing <- c(missing, "intervention time")
+  if (length(missing)) return(service_result(status = "error", errors = paste("Map required DiD fields:", paste(missing, collapse = ", "))))
+  spec <- tryCatch(
+    AutoQuant::aq_did_analysis_spec(
+      planning_artifact = plan$aq_artifact,
+      plan = plan$plan,
+      readiness = plan$readiness,
+      target_trial = plan$target_trial,
+      treatment_col = treatment_col,
+      outcome_col = outcome_col,
+      time_col = time_col,
+      intervention_time = intervention_time,
+      unit_col = if (nzchar(unit_col)) unit_col else NULL,
+      cluster_col = if (nzchar(unit_col)) unit_col else NULL,
+      estimand = "ATT",
+      approved = TRUE
+    ),
+    error = function(e) e
+  )
+  if (inherits(spec, "error")) return(service_result(status = "error", errors = conditionMessage(spec)))
+  result <- tryCatch(AutoQuant::aq_estimate_did_effect(dt, spec), error = function(e) e)
+  if (inherits(result, "error")) return(service_result(status = "error", errors = conditionMessage(result)))
+  aq_artifact <- tryCatch(AutoQuant::aq_did_effect_artifact(result), error = function(e) e)
+  if (inherits(aq_artifact, "error")) return(service_result(status = "error", errors = conditionMessage(aq_artifact)))
+  report <- tryCatch(AutoQuant::aq_did_effect_report(result), error = function(e) NULL)
+  state$did_results[[study_id]] <- list(
+    spec = spec,
+    result = result,
+    aq_artifact = aq_artifact,
+    report = report,
+    estimated_at = causal_observational_now()
+  )
+  state$history <- data.table::rbindlist(
+    list(state$history, causal_observational_event(study_id, "did_effect_estimated", causal_observational_signature(state, study_id), "Ran governed Difference-in-Differences estimation.")),
+    use.names = TRUE,
+    fill = TRUE
+  )
+  service_result(status = "success", value = state, messages = "Governed Difference-in-Differences evidence generated and marked for review.", metadata = list(observational_study_id = study_id, effect_estimated = isTRUE(result$effect_estimated), status = result$status))
+}
+
 causal_observational_register_artifact <- function(ctx, state, study_id = causal_observational_active_id(state)) {
   state <- causal_observational_normalize(state)
   plan <- state$plans[[study_id]]
@@ -299,6 +434,104 @@ causal_observational_register_artifact <- function(ctx, state, study_id = causal
   service_result(status = "success", value = artifact, messages = paste("Registered observational planning artifact", artifact_id), metadata = list(artifact_id = artifact_id))
 }
 
+causal_observational_register_effect_artifact <- function(ctx, state, study_id = causal_observational_active_id(state)) {
+  state <- causal_observational_normalize(state)
+  effect <- state$effect_results[[study_id]]
+  if (is.null(effect)) return(service_result(status = "error", errors = "Run governed observational estimation before registering an effect artifact."))
+  artifact_id <- paste("observational_causal", study_id, "effect", sep = "_")
+  if (artifact_id %in% (state$artifact_registry %||% character())) {
+    ctx$causal_observational_state(state)
+    return(service_result(status = "success", messages = "No duplicate observational effect artifact was registered."))
+  }
+  estimate <- if (is.data.frame(effect$result$primary_estimate) && nrow(effect$result$primary_estimate)) effect$result$primary_estimate$estimate[[1]] else NA_real_
+  artifact <- create_artifact(
+    artifact_id = artifact_id,
+    artifact_type = "table",
+    label = "Observational Effect Evidence",
+    source_module = "causal_intelligence",
+    object = effect$result$primary_estimate,
+    content = "Governed observational AIPW effect evidence with propensity, matching, weighting, balance, sensitivity, and claim-governance diagnostics.",
+    metadata = list(
+      module_id = "causal_observational",
+      analytical_intent = "Observational Causal Effect",
+      artifact_importance = "critical",
+      caption = paste("Governed observational effect estimate for", study_id),
+      diagnostics = paste(effect$result$sensitivity$sensitivity, effect$result$sensitivity$status, sep = ": ", collapse = " | "),
+      recommendations = "Review balance, overlap, sensitivity reminders, and prohibited claims before using this evidence in a decision.",
+      observational_study_id = study_id,
+      effect_estimated = isTRUE(effect$result$effect_estimated),
+      estimate = estimate,
+      estimand = effect$spec$estimand,
+      frozen_design_hash = effect$spec$frozen_design_hash,
+      no_estimator_shopping = TRUE,
+      requires_human_review = TRUE,
+      prohibited_claims = effect$result$prohibited_claims,
+      source_contract = effect$aq_artifact$artifact_envelope$artifact_type %||% "observational_effect_artifact"
+    ),
+    render_targets = c("artifact_studio", "llm_docx", "human_report"),
+    quality = list(completeness = 0.92, warnings = "Observational causal evidence remains assumption-dependent.")
+  )
+  ctx$saved_module_artifacts$artifacts[[artifact_id]] <- artifact
+  state$artifact_registry <- unique(c(state$artifact_registry, artifact_id))
+  state$history <- data.table::rbindlist(
+    list(state$history, causal_observational_event(study_id, "effect_artifact_registered", causal_observational_signature(state, study_id), paste("Registered observational effect artifact", artifact_id))),
+    use.names = TRUE,
+    fill = TRUE
+  )
+  ctx$causal_observational_state(state)
+  service_result(status = "success", value = artifact, messages = paste("Registered observational effect artifact", artifact_id), metadata = list(artifact_id = artifact_id))
+}
+
+causal_observational_register_did_artifact <- function(ctx, state, study_id = causal_observational_active_id(state)) {
+  state <- causal_observational_normalize(state)
+  did <- state$did_results[[study_id]]
+  if (is.null(did)) return(service_result(status = "error", errors = "Run governed Difference-in-Differences before registering a DiD artifact."))
+  artifact_id <- paste("observational_causal", study_id, "did_effect", sep = "_")
+  if (artifact_id %in% (state$artifact_registry %||% character())) {
+    ctx$causal_observational_state(state)
+    return(service_result(status = "success", messages = "No duplicate DiD effect artifact was registered."))
+  }
+  estimate <- if (is.data.frame(did$result$primary_estimate) && nrow(did$result$primary_estimate)) did$result$primary_estimate$estimate[[1]] else NA_real_
+  artifact <- create_artifact(
+    artifact_id = artifact_id,
+    artifact_type = "table",
+    label = "Difference-in-Differences Evidence",
+    source_module = "causal_intelligence",
+    object = did$result$primary_estimate,
+    content = "Governed classic two-group Difference-in-Differences evidence with readiness, pre-period diagnostics, parallel-trends assessment, composition stability, sensitivity, and claim governance.",
+    metadata = list(
+      module_id = "causal_observational",
+      analytical_intent = "Difference-in-Differences Causal Effect",
+      artifact_importance = "critical",
+      caption = paste("Governed DiD evidence for", study_id),
+      diagnostics = paste("Parallel trends:", did$result$parallel_trends$parallel_trends_support[[1]], "| Composition:", did$result$composition$composition_state[[1]]),
+      recommendations = "Review pre-period diagnostics, parallel-trends support, composition stability, sensitivity reminders, and prohibited claims before using this evidence in a decision.",
+      observational_study_id = study_id,
+      effect_estimated = isTRUE(did$result$effect_estimated),
+      estimate = estimate,
+      estimand = did$spec$estimand,
+      frozen_design_hash = did$spec$frozen_design_hash,
+      parallel_trends_support = did$result$parallel_trends$parallel_trends_support[[1]],
+      composition_state = did$result$composition$composition_state[[1]],
+      no_generalized_did = TRUE,
+      requires_human_review = TRUE,
+      prohibited_claims = did$result$prohibited_claims,
+      source_contract = did$aq_artifact$artifact_envelope$artifact_type %||% "did_effect_artifact"
+    ),
+    render_targets = c("artifact_studio", "llm_docx", "human_report"),
+    quality = list(completeness = 0.92, warnings = "DiD causal evidence remains assumption-dependent.")
+  )
+  ctx$saved_module_artifacts$artifacts[[artifact_id]] <- artifact
+  state$artifact_registry <- unique(c(state$artifact_registry, artifact_id))
+  state$history <- data.table::rbindlist(
+    list(state$history, causal_observational_event(study_id, "did_artifact_registered", causal_observational_signature(state, study_id), paste("Registered DiD effect artifact", artifact_id))),
+    use.names = TRUE,
+    fill = TRUE
+  )
+  ctx$causal_observational_state(state)
+  service_result(status = "success", value = artifact, messages = paste("Registered DiD effect artifact", artifact_id), metadata = list(artifact_id = artifact_id))
+}
+
 causal_observational_summary <- function(state) {
   state <- causal_observational_normalize(state)
   study_id <- causal_observational_active_id(state)
@@ -306,12 +539,18 @@ causal_observational_summary <- function(state) {
   readiness <- if (!is.null(plan) && !isTRUE(plan$stale)) plan$readiness$readiness_state[[1]] else "not_planned"
   overlap <- if (!is.null(plan) && !isTRUE(plan$stale)) plan$overlap$overlap_state[[1]] else "not_assessed"
   assignment <- if (!is.null(plan) && !isTRUE(plan$stale)) plan$assignment$mechanism_type else if (nrow(state$studies)) state$studies[observational_study_id == study_id]$assignment_mechanism[[1]] %||% "unknown" else "unknown"
+  effect <- state$effect_results[[study_id]]
+  effect_status <- if (!is.null(effect)) effect$result$status %||% "estimated" else "not_estimated"
+  did <- state$did_results[[study_id]]
+  did_status <- if (!is.null(did)) did$result$status %||% "estimated" else "not_estimated"
   data.table::data.table(
     studies = nrow(state$studies),
     active_study_id = study_id %||% NA_character_,
     readiness_state = readiness,
     overlap_state = overlap,
     assignment_mechanism = assignment,
+    effect_status = effect_status,
+    did_status = did_status,
     stale = isTRUE(state$stale) || isTRUE(plan$stale %||% FALSE),
     registered_artifacts = length(state$artifact_registry %||% character())
   )
@@ -360,12 +599,65 @@ qa_causal_observational_workspace <- function() {
   )
   upsert <- causal_observational_upsert_study(state, row)
   summary <- causal_observational_summary(if (identical(upsert$status, "success")) upsert$value else state)
+  set.seed(99)
+  qa_data <- data.table::data.table(
+    treat = rep(c(0, 1), each = 80),
+    y = c(stats::rnorm(80, 0), stats::rnorm(80, 1)),
+    x1 = stats::rnorm(160),
+    x2 = rep(c("a", "b"), 80)
+  )
+  est_row <- data.table::copy(row)
+  est_row[, `:=`(
+    observational_study_id = "obs_est_qa",
+    treatment_column = "treat",
+    outcome_column = "y",
+    approved_confounders = "x1,x2",
+    observational_estimand = "ATE",
+    assignment_mechanism = "eligibility_threshold",
+    assignment_confidence = "high",
+    diagnostic_probabilities = "0.25,0.35,0.45,0.55,0.65,0.75",
+    unmeasured_risk_level = "low",
+    selection_severity = "low",
+    falsification_test = "negative_control",
+    adjustment_approved = TRUE,
+    negative_control_available = TRUE
+  )]
+  est_state <- causal_observational_empty("qa_est")
+  est_state <- causal_observational_upsert_study(est_state, est_row)$value
+  est_plan <- causal_observational_build_plan(est_state, causal_intelligence_empty(), qa_data)
+  est_run <- if (identical(est_plan$status, "success")) causal_observational_run_estimation(est_plan$value, qa_data) else est_plan
+  did_units <- paste0("u", seq_len(40))
+  did_data <- data.table::CJ(unit = did_units, time = seq_len(6))
+  did_data[, treat := as.integer(as.integer(sub("u", "", unit)) <= 20L)]
+  did_data[, y := 2 + 0.2 * time + 0.9 * treat * as.integer(time >= 4L) + stats::rnorm(.N, 0, 0.25)]
+  did_row <- data.table::copy(row)
+  did_row[, `:=`(
+    observational_study_id = "obs_did_qa",
+    treatment_column = "treat",
+    outcome_column = "y",
+    approved_confounders = "time",
+    did_time_column = "time",
+    did_unit_column = "unit",
+    did_intervention_time = "4",
+    assignment_mechanism = "geographic_rollout",
+    assignment_confidence = "high",
+    diagnostic_probabilities = "0.25,0.35,0.45,0.55,0.65,0.75",
+    unmeasured_risk_level = "low",
+    selection_severity = "low",
+    falsification_test = "negative_control",
+    adjustment_approved = TRUE,
+    negative_control_available = TRUE
+  )]
+  did_state <- causal_observational_empty("qa_did")
+  did_state <- causal_observational_upsert_study(did_state, did_row)$value
+  did_plan <- causal_observational_build_plan(did_state, causal_intelligence_empty(), did_data)
+  did_run <- if (identical(did_plan$status, "success")) causal_observational_run_did(did_plan$value, did_data) else did_plan
   checks <- data.table::data.table(
     check = c(
       "state_contract", "availability_guard", "upsert_and_staleness", "summary",
       "app_sourced", "server_state", "project_persistence", "page_workbench",
       "artifact_registration", "mission_control", "genai_context", "campaign_seeds",
-      "no_effect_estimator_ui"
+      "effect_estimator_ui", "governed_estimation_path", "governed_did_path"
     ),
     status = c(
       if (identical(causal_observational_empty()$schema_version, "causal_observational_workspace_v1")) "success" else "error",
@@ -380,7 +672,9 @@ qa_causal_observational_workspace <- function() {
       if (grepl("causal_observational", mission, fixed = TRUE)) "success" else "error",
       if (grepl("causal_observational", genai, fixed = TRUE)) "success" else "error",
       if (nrow(causal_observational_campaign_seeds(upsert$value)) >= 1L) "success" else "error",
-      if (!grepl("estimate observational effect", page, ignore.case = TRUE)) "success" else "error"
+      if (grepl("run_observational_estimate", page, fixed = TRUE)) "success" else "error",
+      if (identical(est_run$status, "success") && isTRUE(est_run$metadata$effect_estimated)) "success" else "error",
+      if (identical(did_run$status, "success") && isTRUE(did_run$metadata$effect_estimated)) "success" else "error"
     ),
     message = c(
       "Workspace state has a stable schema.",
@@ -395,7 +689,9 @@ qa_causal_observational_workspace <- function() {
       "Mission Control can see observational status.",
       "GenAI context can summarize observational planning without claims.",
       "Campaign seeds surface planning gaps.",
-      "UI does not expose observational effect estimation."
+      "UI exposes governed observational effect estimation.",
+      "App can execute the approved readiness -> governed estimation path.",
+      "App can execute the approved readiness -> governed Difference-in-Differences path."
     )
   )
   checks

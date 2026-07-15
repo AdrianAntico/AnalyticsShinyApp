@@ -517,7 +517,7 @@ qa_ai_draft_persistence <- function(output_dir = file.path(tempdir(), "ai_draft_
       if (identical(campaign_persisted$status, "success") && !isTRUE((campaign_persisted$value$project_state$analytical_campaign_state$campaigns[[campaign$draft_id]] %||% list())$automatic_execution)) "success" else "error",
       if (!isTRUE((persisted$value$project_state$decision_memory_state$reviews[[confirmed$draft_id]] %||% list())$submitted)) "success" else "error",
       "success",
-      if (all(knowledge_operator_action_registry()[action_class == 3L]$operator_action_id %in% c("ai.review_draft.persist", "ai.campaign_draft.persist"))) "success" else "error"
+      if (all(c("ai.review_draft.persist", "ai.campaign_draft.persist") %in% knowledge_operator_action_registry()[action_class == 3L]$operator_action_id)) "success" else "error"
     ),
     message = c(
       "Evidence review draft uses persistable_ai_draft.",
@@ -546,7 +546,7 @@ qa_ai_draft_persistence <- function(output_dir = file.path(tempdir(), "ai_draft_
       "Campaign draft persistence never launches a campaign.",
       "Review draft persistence never submits a review.",
       "Evidence artifacts are referenced, not mutated.",
-      "Only the two Phase 7 Class 3 persistence actions are registered."
+      "The two Phase 7 Class 3 draft-persistence actions remain registered."
     )
   )
 }

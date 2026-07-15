@@ -242,77 +242,119 @@ validate_module_config <- function(module_id, config, data) {
   )
 }
 
-qa_analysis_modules_integration <- function() {
-  helpers <- list(
-    autoquant_eda = qa_autoquant_eda_integration,
-    autoquant_model_readiness = qa_autoquant_model_readiness_integration,
-    feature_preparation = qa_feature_preparation_integration,
-    feature_experiment_loop = qa_feature_experiment_loop,
-    analytical_improvement_campaign = qa_analytical_improvement_campaign,
-    modeling_context_lifecycle = qa_modeling_context_lifecycle,
-    autoquant_regression_model_insights = qa_autoquant_regression_model_insights_integration,
-    autoquant_binary_model_insights = qa_autoquant_binary_model_insights_integration,
-    autoquant_regression_shap_analysis = qa_autoquant_regression_shap_analysis_integration,
-    autoquant_binary_shap_analysis = qa_autoquant_binary_shap_analysis_integration,
-    autoquant_catboost_builder = qa_autoquant_catboost_builder_integration,
-    shap_artifact_contract = qa_shap_artifact_contract,
-    module_terminology_consistency = qa_module_terminology_consistency,
-    project_artifact_collector = qa_project_artifact_collector,
-    screenshot_pipeline_reliability = qa_screenshot_pipeline_reliability,
-    render_targets = qa_render_targets,
-    table_artifact_policy = qa_table_artifact_policy,
-    artifact_producer_semantics = qa_artifact_producer_semantics,
-    artifact_quality_policy = qa_artifact_quality_policy,
-    project_load_paths = qa_project_load_paths,
-    artifact_studio = qa_artifact_studio,
-    mission_control = qa_mission_control,
-    semantic_intelligence_workspace = qa_semantic_intelligence_workspace,
-    semantic_decision_lifecycle = qa_semantic_decision_lifecycle,
-    decision_valuation_workspace = qa_decision_valuation_workspace,
-    decision_workflow_workspace = qa_decision_workflow_workspace,
-    semantic_intelligence_page = qa_semantic_intelligence_page,
-    causal_intelligence_workspace = qa_causal_intelligence_workspace,
-    causal_experiment_design_workspace = qa_causal_experiment_design_workspace,
-    causal_completed_experiment_workspace = qa_causal_completed_experiment_workspace,
-    causal_itt_workspace = qa_causal_itt_workspace,
-    causal_observational_workspace = qa_causal_observational_workspace,
-    epistemic_integrity_workspace = qa_epistemic_integrity_workspace,
-    analytical_workflow_integration = qa_analytical_workflow_integration,
-    async_job_service = qa_async_job_service,
-    command_palette = qa_command_palette,
-    genai_service_contract = qa_genai_service_contract,
-    knowledge_compilation_runtime = qa_knowledge_compilation_runtime,
-    ai_model_qualification = qa_ai_model_qualification,
-    ai_runtime_benchmark_framework = qa_ai_runtime_benchmark_framework,
-    artifact_progressive_retrieval = qa_artifact_progressive_retrieval,
-    cross_artifact_synthesis = qa_cross_artifact_synthesis,
-    ai_operated_evidence_review = qa_ai_operated_evidence_review,
-    knowledge_compilation_runtime_phase6 = qa_knowledge_compilation_runtime_phase6,
-    ai_draft_persistence = qa_ai_draft_persistence,
-    knowledge_compilation_runtime_phase7 = qa_knowledge_compilation_runtime_phase7,
-    ai_runtime_page = qa_ai_runtime_page,
-    genai_experiment_harness = qa_genai_experiment_harness,
-    genai_vision_support = qa_genai_vision_support,
-    genai_context_strategy_study = qa_genai_context_strategy_study,
-    evidence_strategy_config = qa_evidence_strategy_config,
-    evidence_routing_policy = qa_evidence_routing_policy,
-    evidence_routing_observability = qa_evidence_routing_observability,
-    evidence_routing_calibration = qa_evidence_routing_calibration,
-    context_optimization_policy = qa_context_optimization_policy,
-    improvement_ledger = qa_improvement_ledger,
-    remediation_plans = qa_remediation_plans,
-    remediation_plan_hardening = qa_remediation_plan_hardening,
-    cross_system_invariants = qa_cross_system_invariants,
-    cross_repo_validation_orchestrator = qa_cross_repo_validation_orchestrator,
-    cross_repo_impact_analysis = qa_cross_repo_impact_analysis,
-    production_workflow_exercise = qa_production_workflow_exercise,
-    technical_debt_register = qa_technical_debt_register,
-    ui_consistency = qa_ui_consistency
+qa_analysis_modules_registry <- function() {
+  helper_names <- c(
+    autoquant_eda = "qa_autoquant_eda_integration",
+    autoquant_model_readiness = "qa_autoquant_model_readiness_integration",
+    feature_preparation = "qa_feature_preparation_integration",
+    feature_experiment_loop = "qa_feature_experiment_loop",
+    analytical_improvement_campaign = "qa_analytical_improvement_campaign",
+    modeling_context_lifecycle = "qa_modeling_context_lifecycle",
+    autoquant_regression_model_insights = "qa_autoquant_regression_model_insights_integration",
+    autoquant_binary_model_insights = "qa_autoquant_binary_model_insights_integration",
+    autoquant_regression_shap_analysis = "qa_autoquant_regression_shap_analysis_integration",
+    autoquant_binary_shap_analysis = "qa_autoquant_binary_shap_analysis_integration",
+    autoquant_catboost_builder = "qa_autoquant_catboost_builder_integration",
+    shap_artifact_contract = "qa_shap_artifact_contract",
+    module_terminology_consistency = "qa_module_terminology_consistency",
+    project_artifact_collector = "qa_project_artifact_collector",
+    screenshot_pipeline_reliability = "qa_screenshot_pipeline_reliability",
+    render_targets = "qa_render_targets",
+    table_artifact_policy = "qa_table_artifact_policy",
+    artifact_producer_semantics = "qa_artifact_producer_semantics",
+    artifact_quality_policy = "qa_artifact_quality_policy",
+    project_load_paths = "qa_project_load_paths",
+    artifact_studio = "qa_artifact_studio",
+    mission_control = "qa_mission_control",
+    semantic_intelligence_workspace = "qa_semantic_intelligence_workspace",
+    semantic_decision_lifecycle = "qa_semantic_decision_lifecycle",
+    decision_valuation_workspace = "qa_decision_valuation_workspace",
+    decision_workflow_workspace = "qa_decision_workflow_workspace",
+    semantic_intelligence_page = "qa_semantic_intelligence_page",
+    causal_intelligence_workspace = "qa_causal_intelligence_workspace",
+    causal_experiment_design_workspace = "qa_causal_experiment_design_workspace",
+    causal_completed_experiment_workspace = "qa_causal_completed_experiment_workspace",
+    causal_itt_workspace = "qa_causal_itt_workspace",
+    causal_observational_workspace = "qa_causal_observational_workspace",
+    causal_cross_method_contracts = "qa_causal_cross_method_contracts",
+    epistemic_integrity_workspace = "qa_epistemic_integrity_workspace",
+    analytical_workflow_integration = "qa_analytical_workflow_integration",
+    async_job_service = "qa_async_job_service",
+    command_palette = "qa_command_palette",
+    genai_service_contract = "qa_genai_service_contract",
+    knowledge_compilation_runtime = "qa_knowledge_compilation_runtime",
+    ai_model_qualification = "qa_ai_model_qualification",
+    ai_runtime_benchmark_framework = "qa_ai_runtime_benchmark_framework",
+    artifact_progressive_retrieval = "qa_artifact_progressive_retrieval",
+    cross_artifact_synthesis = "qa_cross_artifact_synthesis",
+    ai_operated_evidence_review = "qa_ai_operated_evidence_review",
+    knowledge_compilation_runtime_phase6 = "qa_knowledge_compilation_runtime_phase6",
+    ai_draft_persistence = "qa_ai_draft_persistence",
+    knowledge_compilation_runtime_phase7 = "qa_knowledge_compilation_runtime_phase7",
+    mutation_governance = "qa_mutation_governance",
+    knowledge_compilation_runtime_phase8 = "qa_knowledge_compilation_runtime_phase8",
+    ai_runtime_page = "qa_ai_runtime_page",
+    genai_experiment_harness = "qa_genai_experiment_harness",
+    genai_vision_support = "qa_genai_vision_support",
+    genai_context_strategy_study = "qa_genai_context_strategy_study",
+    evidence_strategy_config = "qa_evidence_strategy_config",
+    evidence_routing_policy = "qa_evidence_routing_policy",
+    evidence_routing_observability = "qa_evidence_routing_observability",
+    evidence_routing_calibration = "qa_evidence_routing_calibration",
+    context_optimization_policy = "qa_context_optimization_policy",
+    improvement_ledger = "qa_improvement_ledger",
+    remediation_plans = "qa_remediation_plans",
+    remediation_plan_hardening = "qa_remediation_plan_hardening",
+    cross_system_invariants = "qa_cross_system_invariants",
+    cross_repo_validation_orchestrator = "qa_cross_repo_validation_orchestrator",
+    cross_repo_impact_analysis = "qa_cross_repo_impact_analysis",
+    production_workflow_exercise = "qa_production_workflow_exercise",
+    technical_debt_register = "qa_technical_debt_register",
+    ui_consistency = "qa_ui_consistency"
   )
+  helpers <- mget(unname(helper_names), mode = "function", inherits = TRUE)
+  names(helpers) <- names(helper_names)
+  deep_modules <- c(
+    "render_targets",
+    "knowledge_compilation_runtime_phase6",
+    "knowledge_compilation_runtime_phase7",
+    "knowledge_compilation_runtime_phase8",
+    "evidence_strategy_config",
+    "evidence_routing_calibration",
+    "cross_repo_validation_orchestrator",
+    "cross_repo_impact_analysis"
+  )
+  data.table::data.table(
+    module_id = names(helper_names),
+    helper = unname(helper_names),
+    qa_tier = ifelse(names(helpers) %in% deep_modules, "deep", "bounded")
+  )[, helper_fn := helpers]
+}
 
-  rows <- lapply(names(helpers), function(module_id) {
+qa_analysis_modules_integration <- function(profile = c("bounded", "full", "deep"), progress = FALSE) {
+  profile <- match.arg(profile)
+  registry <- qa_analysis_modules_registry()
+  if (identical(profile, "bounded")) {
+    selected <- registry[qa_tier == "bounded"]
+    deferred <- registry[qa_tier == "deep"]
+  } else if (identical(profile, "deep")) {
+    selected <- registry[qa_tier == "deep"]
+    deferred <- registry[0]
+  } else {
+    selected <- registry
+    deferred <- registry[0]
+  }
+
+  rows <- lapply(seq_len(nrow(selected)), function(i) {
+    module_id <- selected$module_id[[i]]
+    helper <- selected$helper_fn[[i]]
+    started_at <- Sys.time()
+    if (isTRUE(progress)) {
+      message("qa_analysis_modules_integration: starting ", module_id)
+    }
+    t0 <- proc.time()[["elapsed"]]
     result <- tryCatch(
-      helpers[[module_id]](),
+      helper(),
       error = function(e) {
         data.table::data.table(
           check = "qa_helper",
@@ -321,6 +363,7 @@ qa_analysis_modules_integration <- function() {
         )
       }
     )
+    elapsed_sec <- proc.time()[["elapsed"]] - t0
 
     statuses <- result$status %||% character()
     overall_status <- if (any(statuses == "error")) {
@@ -330,16 +373,37 @@ qa_analysis_modules_integration <- function() {
     } else {
       "success"
     }
+    if (isTRUE(progress)) {
+      message("qa_analysis_modules_integration: finished ", module_id, " in ", round(elapsed_sec, 3), " sec with ", overall_status)
+    }
 
     data.table::data.table(
       module_id = module_id,
+      qa_tier = selected$qa_tier[[i]],
       status = overall_status,
       checks = nrow(result),
       errors = sum(statuses == "error"),
       warnings = sum(statuses %in% c("warning", "missing", "needs_input")),
+      elapsed_sec = round(elapsed_sec, 3),
+      started_at = format(started_at, "%Y-%m-%d %H:%M:%S"),
+      completed_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
       message = paste(result$message %||% character(), collapse = " | ")
     )
   })
+  if (nrow(deferred)) {
+    rows <- c(rows, list(data.table::data.table(
+      module_id = deferred$module_id,
+      qa_tier = deferred$qa_tier,
+      status = "deferred",
+      checks = 0L,
+      errors = 0L,
+      warnings = 0L,
+      elapsed_sec = 0,
+      started_at = NA_character_,
+      completed_at = NA_character_,
+      message = "Deferred from bounded aggregate QA; run qa_analysis_modules_integration(profile = 'deep') or profile = 'full'."
+    )))
+  }
 
   data.table::rbindlist(rows, use.names = TRUE, fill = TRUE)
 }

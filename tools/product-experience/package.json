@@ -1,0 +1,13 @@
+{
+  "name": "analytics-workstation-product-experience",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Repository-local Playwright runtime for deterministic Analytics Workstation product-experience replay.",
+  "scripts": {
+    "validate": "playwright --version",
+    "golden": "node ../../scripts/product_experience/golden_workflow_replay.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
+  }
+}

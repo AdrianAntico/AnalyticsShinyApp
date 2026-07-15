@@ -10,5 +10,13 @@ artifacts/
 reports/
 results/
 runtime/
+node_modules/
+playwright-report/
+test-results/
+.playwright/
+.cache/ms-playwright/
+*.webm
+*.mp4
+*.trace.zip
 session_data/
 temp/

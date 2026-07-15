@@ -25,6 +25,7 @@ build_app_ui <- function() {
         page_knowledge_library_ui("knowledge_library"),
         page_mission_control_ui("mission_control"),
         page_ai_runtime_ui("ai_runtime"),
+        page_product_experience_ui("product_experience"),
         page_project_ui("project"),
         page_data_ui("data"),
         page_plot_builder_ui("plot_builder"),

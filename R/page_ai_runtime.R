@@ -68,6 +68,13 @@ page_ai_runtime_ui <- function(id) {
             uiOutput(ns("draft_persistence_summary")),
             uiOutput(ns("draft_lifecycle_table")),
             tags$pre(class = "aq-code-block", textOutput(ns("draft_audit_timeline"), container = span))
+          ),
+          ui_card(
+            title = "Mutation Governance",
+            subtitle = "Canonical mutation classification, risk, governance, lifecycle, and audit state for future AI-operated workflows.",
+            uiOutput(ns("mutation_governance_summary")),
+            uiOutput(ns("mutation_lifecycle_table")),
+            tags$pre(class = "aq-code-block", textOutput(ns("mutation_audit_timeline"), container = span))
           )
         ),
         tags$aside(
@@ -163,6 +170,11 @@ page_ai_runtime_server <- function(id, ctx) {
     draft_store_snapshot <- reactive({
       store <- tryCatch(ctx$ai_draft_state$store, error = function(e) ai_draft_store_empty())
       list(ai_draft_store = ai_draft_store_normalize(store))
+    })
+
+    mutation_store_snapshot <- reactive({
+      store <- tryCatch(ctx$ai_mutation_state$store, error = function(e) mutation_store_empty())
+      list(ai_mutation_store = mutation_store_normalize(store))
     })
 
     output$runtime_snapshot <- renderUI({
@@ -300,6 +312,31 @@ page_ai_runtime_server <- function(id, ctx) {
       jsonlite::toJSON(store$lifecycle %||% data.table::data.table(), auto_unbox = TRUE, pretty = TRUE, null = "null")
     })
 
+    output$mutation_governance_summary <- renderUI({
+      diagnostics <- mutation_governance_diagnostics(mutation_store_snapshot())
+      ui_stat_grid(
+        ui_stat_tile("Mutations", diagnostics$mutations[[1]], detail = "governed"),
+        ui_stat_tile("Pending", diagnostics$pending[[1]], status = if (diagnostics$pending[[1]] > 0L) "warning" else "neutral"),
+        ui_stat_tile("Persisted", diagnostics$persisted[[1]], status = if (diagnostics$persisted[[1]] > 0L) "success" else "neutral"),
+        ui_stat_tile("High Risk", diagnostics$high_or_critical[[1]], status = if (diagnostics$high_or_critical[[1]] > 0L) "warning" else "success"),
+        ui_stat_tile("Undo", diagnostics$undo_available[[1]], detail = "available"),
+        ui_stat_tile("Validation", diagnostics$validation_failures[[1]], detail = "failure(s)", status = if (diagnostics$validation_failures[[1]] > 0L) "error" else "success")
+      )
+    })
+
+    output$mutation_lifecycle_table <- renderUI({
+      rows <- mutation_lifecycle_table(mutation_store_snapshot())
+      if (!nrow(rows)) {
+        return(ui_empty_state("No governed mutations have been persisted.", "Future review requests and evidence-link drafts will appear here after confirmation."))
+      }
+      render_table(rows, engine = "html", searchable = FALSE, sortable = FALSE)
+    })
+
+    output$mutation_audit_timeline <- renderText({
+      store <- mutation_store_snapshot()$ai_mutation_store
+      jsonlite::toJSON(store$lifecycle %||% data.table::data.table(), auto_unbox = TRUE, pretty = TRUE, null = "null")
+    })
+
     output$action_proposal <- renderText({
       jsonlite::toJSON(routed_snapshot()$proposal %||% list(), auto_unbox = TRUE, pretty = TRUE, null = "null")
     })
@@ -325,7 +362,7 @@ qa_ai_runtime_page <- function() {
   ui_text <- paste(capture.output(print(ui)), collapse = "\n")
   has <- function(text, patterns) all(vapply(patterns, grepl, logical(1), x = text, fixed = TRUE))
   data.table::data.table(
-    check = c("page_ui", "task_choices", "developer_snapshot", "benchmark_available", "qualification_visible", "retrieval_visible", "synthesis_visible", "evidence_review_visible", "draft_persistence_visible"),
+    check = c("page_ui", "task_choices", "developer_snapshot", "benchmark_available", "qualification_visible", "retrieval_visible", "synthesis_visible", "evidence_review_visible", "draft_persistence_visible", "mutation_governance_visible"),
     status = c(
       if (inherits(ui, "shiny.tag")) "success" else "error",
       if (all(c("recommend_supported_next_action", "open_artifact", "create_review_draft", "review_evidence_and_recommend_next_action") %in% taxonomy$task_code)) "success" else "error",
@@ -335,7 +372,8 @@ qa_ai_runtime_page <- function() {
       if (identical(qa_artifact_progressive_retrieval()[check == "progressive_expansion"]$status[[1]], "success")) "success" else "error",
       if (identical(qa_cross_artifact_synthesis()[check == "structured_synthesis"]$status[[1]], "success")) "success" else "error",
       if (identical(qa_ai_operated_evidence_review()[check == "ai_runtime_integration_data"]$status[[1]], "success")) "success" else "error",
-      if (has(ui_text, c("Confirmed Draft Persistence", "draft_persistence_summary", "draft_lifecycle_table"))) "success" else "error"
+      if (has(ui_text, c("Confirmed Draft Persistence", "draft_persistence_summary", "draft_lifecycle_table"))) "success" else "error",
+      if (has(ui_text, c("Mutation Governance", "mutation_governance_summary", "mutation_lifecycle_table"))) "success" else "error"
     ),
     message = c(
       "AI Runtime page UI renders.",
@@ -346,7 +384,8 @@ qa_ai_runtime_page <- function() {
       "AI Runtime page can display progressive retrieval diagnostics.",
       "AI Runtime page can display cross-artifact synthesis diagnostics.",
       "AI Runtime page can display governed evidence-review diagnostics.",
-      "AI Runtime page exposes confirmed draft lifecycle, undo/archive availability, and audit timeline."
+      "AI Runtime page exposes confirmed draft lifecycle, undo/archive availability, and audit timeline.",
+      "AI Runtime page exposes mutation classification, risk, governance, lifecycle, and audit state."
     )
   )
 }

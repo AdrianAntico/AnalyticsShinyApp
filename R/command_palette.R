@@ -18,6 +18,7 @@ command_registry <- function() {
   registry <- register_command(registry, "open_knowledge_library", "Open Knowledge Library", "Knowledge", c("knowledge", "library", "book", "docs", "ontology", "manifesto", "architecture"), "KL", list(type = "navigate", target = "Knowledge Library"))
   registry <- register_command(registry, "open_mission_control", "Open Mission Control", "Navigation", c("mission", "control", "status", "health", "operations"), "MC", list(type = "navigate", target = "Mission Control"))
   registry <- register_command(registry, "open_ai_runtime", "Open AI Runtime", "Developer", c("ai", "runtime", "compiled", "bundle", "operator", "model tier", "diagnostics"), "AIR", list(type = "navigate", target = "AI Runtime"))
+  registry <- register_command(registry, "open_product_experience", "Open Product Experience Lab", "Developer", c("product", "experience", "demo", "scenario", "world", "playwright", "review"), "PX", list(type = "navigate", target = "Product Experience"))
   registry <- register_command(registry, "open_artifact_studio", "Open Artifact Studio", "Artifacts", c("artifact", "studio", "evidence", "gallery", "inspector"), "AS", list(type = "navigate", target = "Artifact Studio"))
   registry <- register_command(registry, "open_project", "Open Project", "Project", c("project", "workspace", "settings", "load", "save"), "P", list(type = "navigate", target = "Project"))
   registry <- register_command(registry, "open_data", "Open Data", "Project", c("data", "upload", "dataset", "source"), "D", list(type = "navigate", target = "Data"))
@@ -405,7 +406,7 @@ qa_command_palette <- function() {
   css <- if (file.exists(file.path("www", "app.css"))) paste(readLines(file.path("www", "app.css"), warn = FALSE), collapse = "\n") else ""
   docs <- if (file.exists(file.path("docs", "command_palette_architecture.md"))) paste(readLines(file.path("docs", "command_palette_architecture.md"), warn = FALSE), collapse = "\n") else ""
   has <- function(text, patterns) all(vapply(patterns, grepl, logical(1), x = text, fixed = TRUE))
-  expected <- c("open_mission_control", "open_ai_runtime", "open_artifact_studio", "open_project", "open_workflow", "open_analysis_modules", "open_semantic_intelligence", "create_decision", "attach_decision_evidence", "record_decision_approval", "open_decision_queue", "open_causal_intelligence", "open_layout", "open_export", "open_code_runner", "open_collector", "open_qa")
+  expected <- c("open_mission_control", "open_ai_runtime", "open_product_experience", "open_artifact_studio", "open_project", "open_workflow", "open_analysis_modules", "open_semantic_intelligence", "create_decision", "attach_decision_evidence", "record_decision_approval", "open_decision_queue", "open_causal_intelligence", "open_layout", "open_export", "open_code_runner", "open_collector", "open_qa")
 
   data.table::data.table(
     check = c(
