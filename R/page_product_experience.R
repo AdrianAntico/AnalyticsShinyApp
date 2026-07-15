@@ -37,10 +37,17 @@ page_product_experience_ui <- function(id) {
             uiOutput(ns("ux_iteration_passes"))
           ),
           ui_card(
+            title = "Golden Workflow Review",
+            subtitle = "Step-by-step understanding, action, friction, cognitive load, and campaign mapping.",
+            uiOutput(ns("workflow_review"))
+          ),
+          ui_card(
             title = "Golden Replay",
             subtitle = "Replay package, recorder state, screenshot chapters, video, trace, and regression status.",
             uiOutput(ns("golden_replay")),
-            uiOutput(ns("golden_regression"))
+            uiOutput(ns("golden_regression")),
+            uiOutput(ns("replay_metrics")),
+            uiOutput(ns("replay_comparison"))
           ),
           ui_card(
             title = "Browser Runtime",
@@ -88,6 +95,36 @@ page_product_experience_ui <- function(id) {
             subtitle = "Human review findings become structured product evidence and campaign seeds.",
             uiOutput(ns("review_summary")),
             uiOutput(ns("campaign_seeds"))
+          ),
+          ui_card(
+            title = "Founder Review Findings",
+            subtitle = "Founder observations become structured evidence for UX campaigns.",
+            uiOutput(ns("founder_review"))
+          ),
+          ui_card(
+            title = "UX Campaign Priority",
+            subtitle = "Campaigns are ranked by user, commercial, scientific, effort, risk, and expected UX improvement.",
+            uiOutput(ns("ux_campaign_priority"))
+          ),
+          ui_card(
+            title = "Research Mode",
+            subtitle = "Phase 6 treats the current Golden Workflow as a benchmark, not a conclusion.",
+            uiOutput(ns("research_mode_principles"))
+          ),
+          ui_card(
+            title = "Experience Hypotheses",
+            subtitle = "Competing information architectures to test before converging.",
+            uiOutput(ns("experience_hypotheses"))
+          ),
+          ui_card(
+            title = "Prototype Comparison",
+            subtitle = "Intent-first and business-question-first are next research candidates.",
+            uiOutput(ns("prototype_comparison"))
+          ),
+          ui_card(
+            title = "Visible Element Inventory",
+            subtitle = "Classifies what should show, summarize, collapse, or disappear.",
+            uiOutput(ns("visible_element_inventory"))
           )
         ),
         tagList(
@@ -106,6 +143,36 @@ page_product_experience_ui <- function(id) {
             title = "Investor Promotion Gate",
             subtitle = "No video is investor_candidate until the unedited workflow passes every gate.",
             uiOutput(ns("promotion_gate"))
+          ),
+          ui_card(
+            title = "Final Assessment",
+            subtitle = "Current classification of the canonical workflow.",
+            uiOutput(ns("final_assessment"))
+          ),
+          ui_card(
+            title = "Information Exposure",
+            subtitle = "Essential, helpful, contextual, advanced, architectural, and developer surfaces.",
+            uiOutput(ns("information_exposure"))
+          ),
+          ui_card(
+            title = "Progressive Disclosure",
+            subtitle = "The proposed visibility ladder from orientation to architecture.",
+            uiOutput(ns("progressive_disclosure"))
+          ),
+          ui_card(
+            title = "AI Role Assessment",
+            subtitle = "Where AI should add reasoning and where deterministic UX should replace it.",
+            uiOutput(ns("ai_role_assessment"))
+          ),
+          ui_card(
+            title = "Research Campaigns",
+            subtitle = "Next lightweight prototypes to compare against the Golden Workflow benchmark.",
+            uiOutput(ns("research_campaigns"))
+          ),
+          ui_card(
+            title = "Open UX Questions",
+            subtitle = "Current answers, uncertainty, and next experiments.",
+            uiOutput(ns("research_open_questions"))
           ),
           ui_card(
             title = "Stable Selectors",
@@ -170,6 +237,16 @@ page_product_experience_server <- function(id, ctx) {
       )
     })
 
+    output$workflow_review <- renderUI({
+      review <- product_experience_golden_workflow_review()
+      render_table(
+        review[, c("step", "expected_understanding", "expected_action", "current_friction", "cognitive_load", "severity", "campaign_id"), drop = FALSE],
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
     observeEvent(input$run_golden, {
       result <- product_experience_run_golden_workflow(automation = "fixture", ai_mode = "fixture")
       latest_golden(result$value)
@@ -227,6 +304,22 @@ page_product_experience_server <- function(id, ctx) {
         return(NULL)
       }
       render_table(product_experience_compare_regression(run), engine = "html", searchable = FALSE, sortable = FALSE)
+    })
+
+    output$replay_metrics <- renderUI({
+      run <- latest_golden()
+      if (is.null(run)) {
+        return(ui_empty_state("No replay metrics yet.", "Run the Golden Workflow or Browser Replay to populate UX metrics."))
+      }
+      render_table(product_experience_replay_metrics_summary(run), engine = "html", searchable = FALSE, sortable = FALSE)
+    })
+
+    output$replay_comparison <- renderUI({
+      run <- latest_golden()
+      if (is.null(run)) {
+        return(NULL)
+      }
+      render_table(product_experience_compare_replay_runs(run), engine = "html", searchable = FALSE, sortable = FALSE)
     })
 
     output$browser_runtime <- renderUI({
@@ -394,6 +487,65 @@ page_product_experience_server <- function(id, ctx) {
       render_table(seeds, engine = "html", searchable = FALSE, sortable = FALSE)
     })
 
+    output$founder_review <- renderUI({
+      run <- latest_golden()
+      findings <- product_experience_founder_review_template(run = run, reviewer = "founder")
+      render_table(
+        findings[, c("workflow_step", "category", "severity", "finding", "recommendation", "campaign_id", "status"), drop = FALSE],
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$ux_campaign_priority <- renderUI({
+      campaigns <- product_experience_prioritize_ux_campaigns(product_experience_founder_review_template(run = latest_golden(), reviewer = "founder"))
+      render_table(
+        campaigns[, c("campaign_id", "category", "severity", "priority_score", "recommendation", "expected_ux_improvement", "dependencies"), drop = FALSE],
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$research_mode_principles <- renderUI({
+      render_table(
+        product_experience_research_mode_principles(),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$experience_hypotheses <- renderUI({
+      hypotheses <- product_experience_experience_hypotheses()
+      render_table(
+        hypotheses[, c("hypothesis", "opening_prompt", "flow", "current_recommendation", "primary_risk"), drop = FALSE],
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$prototype_comparison <- renderUI({
+      comparison <- product_experience_prototype_comparison()
+      render_table(
+        comparison[, c("prototype_name", "entry_surface", "default_visible_level", "learning_score", "prototype_status", "success_metric"), drop = FALSE],
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$visible_element_inventory <- renderUI({
+      render_table(
+        product_experience_visible_element_inventory(),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
     output$ai_modes <- renderUI({
       render_table(product_experience_ai_modes()[, c("ai_mode", "label", "allowed_for_qa", "description"), drop = FALSE], engine = "html", searchable = FALSE, sortable = FALSE)
     })
@@ -416,6 +568,67 @@ page_product_experience_server <- function(id, ctx) {
         tags$div(class = "aq-status-item", tags$strong("Promotion State"), tags$span(state)),
         tags$div(class = "aq-status-item", tags$strong("Rule"), tags$span("Founder approval and no blockers are required before investor_candidate.")),
         render_table(gate[, c("criterion", "status", "observed_value", "failure_action"), drop = FALSE], engine = "html", searchable = FALSE, sortable = FALSE)
+      )
+    })
+
+    output$final_assessment <- renderUI({
+      assessment <- product_experience_final_assessment(
+        run = latest_golden(),
+        founder_approved = FALSE,
+        developer_content_visible = TRUE
+      )
+      tags$div(
+        class = "aq-status-list",
+        tags$div(class = "aq-status-item", tags$strong("Classification"), tags$span(assessment$classification)),
+        tags$div(class = "aq-status-item", tags$strong("Promotion State"), tags$span(assessment$promotion_state)),
+        tags$div(class = "aq-status-item", tags$strong("Coherence"), tags$span(assessment$does_workflow_feel_more_coherent)),
+        tags$div(class = "aq-status-item", tags$strong("Business Story"), tags$span(assessment$is_business_story_obvious)),
+        tags$div(class = "aq-status-item", tags$strong("Largest Weakness"), tags$span(assessment$largest_ux_weakness))
+      )
+    })
+
+    output$information_exposure <- renderUI({
+      render_table(
+        product_experience_information_exposure_taxonomy(),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$progressive_disclosure <- renderUI({
+      render_table(
+        product_experience_progressive_disclosure_strategy(),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$ai_role_assessment <- renderUI({
+      render_table(
+        product_experience_ai_role_assessment(),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$research_campaigns <- renderUI({
+      render_table(
+        product_experience_research_campaigns(),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
+      )
+    })
+
+    output$research_open_questions <- renderUI({
+      render_table(
+        product_experience_research_open_questions(),
+        engine = "html",
+        searchable = FALSE,
+        sortable = FALSE
       )
     })
 

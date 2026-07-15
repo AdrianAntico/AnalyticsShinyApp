@@ -545,6 +545,580 @@ product_experience_assess_investor_candidate <- function(
   gate
 }
 
+product_experience_golden_workflow_review <- function() {
+  workflow <- product_experience_golden_workflow()
+  data.frame(
+    step = workflow$steps$chapter,
+    purpose = workflow$steps$user_story,
+    expected_understanding = c(
+      "The product starts from a business question, not a module menu.",
+      "Evidence has been gathered and is being reviewed for relevance.",
+      "The system can synthesize across artifacts instead of listing outputs.",
+      "The system distinguishes enough evidence from missing evidence.",
+      "The next action is governed, explained, and not magical.",
+      "Navigation should feel like flow, not hunting.",
+      "The system can prepare a bounded draft without mutating state silently.",
+      "Human confirmation makes durable project memory."
+    ),
+    expected_action = c(
+      "Understand the decision context.",
+      "Inspect the evidence summary.",
+      "Review support, contradictions, and uncertainty.",
+      "Decide whether more evidence is required.",
+      "Follow the recommended next step.",
+      "Arrive at the right workspace.",
+      "Review the draft and its limitations.",
+      "Approve, reject, or preserve the draft."
+    ),
+    current_friction = c(
+      "The opening question is still generic and should be tied to the flagship synthetic world.",
+      "Evidence review exists, but the first important insight is not always visually dominant.",
+      "Synthesis is present but can read like a technical panel instead of a decision story.",
+      "Sufficiency language needs stronger hierarchy between conclusion, uncertainty, and next action.",
+      "Mission Control is useful, but priority ordering should make the one next action unmistakable.",
+      "The current replay still visits developer/product-experience surfaces during the canonical recording.",
+      "Draft/review state is structured, but the visible review moment is not yet emotionally satisfying.",
+      "Persistence and learning are documented, but the final screen does not yet feel like a clean close."
+    ),
+    cognitive_load = c("medium", "medium", "medium", "medium", "low", "high", "medium", "medium"),
+    estimated_duration_sec = c(6, 6, 6, 6, 5, 7, 6, 6),
+    estimated_clicks = c(0, 1, 0, 0, 1, 1, 1, 0),
+    navigation_depth = c(0, 1, 1, 1, 1, 2, 2, 2),
+    severity = c("medium", "high", "medium", "medium", "medium", "critical", "medium", "medium"),
+    campaign_id = paste0("ux_campaign_", sprintf("%02d", seq_len(8))),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_founder_review_schema <- function() {
+  data.frame(
+    field = c(
+      "review_id", "reviewer", "timestamp", "run_id", "workflow_step",
+      "finding", "category", "severity", "screenshot_path", "video_timestamp",
+      "recommendation", "campaign_id", "status"
+    ),
+    purpose = c(
+      "Durable review identifier.",
+      "Founder or reviewer name.",
+      "When the observation was recorded.",
+      "Replay run being reviewed.",
+      "Golden Workflow step associated with the observation.",
+      "What the reviewer observed.",
+      "Navigation, visual, terminology, AI, evidence, decision, workflow, Mission Control, performance, loading, or hierarchy.",
+      "low, medium, high, critical.",
+      "Optional screenshot evidence.",
+      "Optional video timestamp.",
+      "Recommended UX change.",
+      "Campaign created or linked from the observation.",
+      "open, accepted, deferred, fixed, or rejected."
+    ),
+    required = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_founder_review_template <- function(run = NULL, reviewer = "founder") {
+  workflow_review <- product_experience_golden_workflow_review()
+  data.frame(
+    review_id = paste0("founder_review_", seq_len(nrow(workflow_review))),
+    reviewer = reviewer,
+    timestamp = as.character(Sys.time()),
+    run_id = run$run_id %||% "pending_replay",
+    workflow_step = workflow_review$step,
+    finding = workflow_review$current_friction,
+    category = c("workflow", "evidence", "AI", "evidence", "Mission Control", "navigation", "decision", "workflow"),
+    severity = workflow_review$severity,
+    screenshot_path = NA_character_,
+    video_timestamp = NA_character_,
+    recommendation = c(
+      "Bind the opening segment to the flagship business question.",
+      "Move the key insight above supporting detail.",
+      "Rewrite synthesis as decision support with supporting evidence below.",
+      "Use a clear conclusion/uncertainty/next-action hierarchy.",
+      "Make the highest-priority next action visually dominant.",
+      "Remove Product Experience Lab/developer surfaces from investor-facing capture.",
+      "Make review draft state feel like a meaningful analytical dossier.",
+      "Add a concise final summary screen with decision, guardrails, and next action."
+    ),
+    campaign_id = workflow_review$campaign_id,
+    status = "open",
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_prioritize_ux_campaigns <- function(findings = product_experience_founder_review_template()) {
+  severity_score <- c(low = 1L, medium = 2L, high = 3L, critical = 4L)
+  category_impact <- c(
+    navigation = 4L,
+    evidence = 4L,
+    `Mission Control` = 3L,
+    AI = 3L,
+    decision = 4L,
+    workflow = 3L,
+    visual = 2L,
+    terminology = 2L,
+    performance = 2L,
+    loading = 2L,
+    hierarchy = 4L
+  )
+  effort <- c(
+    ux_campaign_01 = 2L,
+    ux_campaign_02 = 2L,
+    ux_campaign_03 = 2L,
+    ux_campaign_04 = 2L,
+    ux_campaign_05 = 2L,
+    ux_campaign_06 = 4L,
+    ux_campaign_07 = 3L,
+    ux_campaign_08 = 2L
+  )
+  campaigns <- data.frame(
+    campaign_id = findings$campaign_id,
+    finding = findings$finding,
+    category = findings$category,
+    severity = findings$severity,
+    recommendation = findings$recommendation,
+    user_impact = unname(severity_score[findings$severity] %||% 1L),
+    commercial_impact = ifelse(findings$campaign_id %in% c("ux_campaign_01", "ux_campaign_02", "ux_campaign_06", "ux_campaign_08"), 4L, 3L),
+    scientific_impact = ifelse(findings$category %in% c("evidence", "AI", "decision"), 4L, 2L),
+    implementation_effort = unname(effort[findings$campaign_id] %||% 2L),
+    risk = ifelse(findings$campaign_id == "ux_campaign_06", 3L, 1L),
+    dependencies = ifelse(findings$campaign_id == "ux_campaign_06", "Need user-facing replay state seeding or capture route.", "None"),
+    expected_ux_improvement = c(
+      "Viewer understands why the workflow exists immediately.",
+      "Viewer sees the consequential insight earlier.",
+      "AI feels like decision support rather than pasted text.",
+      "Evidence sufficiency becomes easier to trust.",
+      "The one next action is obvious.",
+      "Investor recording stops showing developer scaffolding.",
+      "Review feels important rather than administrative.",
+      "Workflow ends with a clear decision memory."
+    ),
+    stringsAsFactors = FALSE
+  )
+  campaigns$priority_score <- campaigns$user_impact + campaigns$commercial_impact + campaigns$scientific_impact - campaigns$implementation_effort - campaigns$risk
+  campaigns[order(-campaigns$priority_score, -campaigns$user_impact, campaigns$implementation_effort), , drop = FALSE]
+}
+
+product_experience_replay_metrics_summary <- function(run = NULL) {
+  metrics <- run$metrics %||% list()
+  data.frame(
+    metric = c(
+      "clicks", "completion_time_sec", "backtracking", "help_usage", "scroll_events",
+      "context_expansions", "ai_interactions", "navigation_depth", "mission_control_visits",
+      "review_completion", "promotion_state"
+    ),
+    value = c(
+      metrics$clicks %||% NA_integer_,
+      metrics$completion_time_sec %||% NA_real_,
+      metrics$backtracking %||% NA_integer_,
+      metrics$help_usage %||% NA_integer_,
+      metrics$scroll_events %||% NA_integer_,
+      metrics$context_expansions %||% NA_integer_,
+      metrics$ai_interactions %||% NA_integer_,
+      metrics$navigation_depth %||% NA_integer_,
+      sum(vapply(run$events %||% list(), function(x) identical(x$page %||% "", "Mission Control") || grepl("Mission Control", x$result %||% ""), logical(1))),
+      ifelse(nzchar(run$review_package_path %||% ""), "available", "pending"),
+      attr(product_experience_assess_investor_candidate(run, developer_content_visible = TRUE), "promotion_state") %||% "awaiting_review"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_compare_replay_runs <- function(current_run, previous_run = NULL) {
+  current <- product_experience_replay_metrics_summary(current_run)
+  names(current)[names(current) == "value"] <- "current"
+  if (is.null(previous_run)) {
+    current$previous <- NA_character_
+    current$semantic_change <- "baseline"
+    current$interpretation <- "No previous replay supplied."
+    return(current[, c("metric", "previous", "current", "semantic_change", "interpretation"), drop = FALSE])
+  }
+  previous <- product_experience_replay_metrics_summary(previous_run)
+  names(previous)[names(previous) == "value"] <- "previous"
+  rows <- merge(previous, current, by = "metric", all = TRUE)
+  rows$semantic_change <- "unchanged"
+  numeric_metrics <- suppressWarnings(!is.na(as.numeric(rows$current)) & !is.na(as.numeric(rows$previous)))
+  delta <- suppressWarnings(as.numeric(rows$current) - as.numeric(rows$previous))
+  lower_is_better <- rows$metric %in% c("clicks", "completion_time_sec", "backtracking", "scroll_events", "navigation_depth")
+  rows$semantic_change[numeric_metrics & lower_is_better & delta < 0] <- "improved"
+  rows$semantic_change[numeric_metrics & lower_is_better & delta > 0] <- "regressed"
+  rows$semantic_change[numeric_metrics & !lower_is_better & delta > 0] <- "improved"
+  rows$semantic_change[numeric_metrics & !lower_is_better & delta < 0] <- "regressed"
+  rows$interpretation <- ifelse(
+    rows$semantic_change == "improved",
+    "The workflow moved in the desired direction.",
+    ifelse(rows$semantic_change == "regressed", "The workflow became heavier or less complete.", "No semantic movement detected.")
+  )
+  rows[, c("metric", "previous", "current", "semantic_change", "interpretation"), drop = FALSE]
+}
+
+product_experience_final_assessment <- function(run = NULL, founder_approved = FALSE, developer_content_visible = TRUE) {
+  gate <- product_experience_assess_investor_candidate(run, founder_approved = founder_approved, developer_content_visible = developer_content_visible)
+  blockers <- gate[gate$status != "pass", , drop = FALSE]
+  classification <- if (nrow(blockers) == 0L) {
+    "Investor Candidate"
+  } else if (any(blockers$criterion_id %in% c("meaningful_execution", "opening_business_question"))) {
+    "Internal"
+  } else if (any(blockers$criterion_id %in% c("no_developer_only_content", "founder_approved_unedited_workflow"))) {
+    "Beta"
+  } else {
+    "Internal"
+  }
+  list(
+    classification = classification,
+    does_workflow_feel_more_coherent = "Partially. The replay is structured and paced, but developer-surface leakage remains the largest coherence blocker.",
+    is_business_story_obvious = "Improving. The flagship world supplies the story, but the recording must open and close around that story more cleanly.",
+    does_ai_appear_only_when_valuable = "Not fully. AI is bounded and read-only, but deterministic UI should replace generic explanatory panels where possible.",
+    is_cognitive_load_lower = "Partially. The three-pass protocol identifies where load remains high.",
+    can_users_identify_next_action = "Partially. Mission Control exists, but the one next action needs stronger visual dominance.",
+    unnecessary_complexity_removed = "Not enough yet. The next campaign should remove developer-only Product Experience Lab surfaces from investor capture.",
+    largest_ux_weakness = "The Golden Workflow still contains product-experience/developer scaffolding in the recording path.",
+    promotion_state = attr(gate, "promotion_state") %||% "awaiting_review",
+    blockers = blockers
+  )
+}
+
+product_experience_research_mode_principles <- function() {
+  data.frame(
+    principle = c(
+      "Explore before exploiting",
+      "Optimize human understanding",
+      "Current Golden Workflow is a benchmark, not a conclusion",
+      "Architecture remains capability-first; UX may become intent-first",
+      "Do not expose architecture by default",
+      "Prefer deterministic UX over AI for basic interface operation"
+    ),
+    implication = c(
+      "Do not converge on final navigation until competing information architectures have been compared.",
+      "A screen succeeds when the user understands why it exists and what to do next.",
+      "Replay comparison should include alternative prototypes, not only incremental polish of the current flow.",
+      "Modules and capabilities can remain intact while the entry experience asks what the user is trying to accomplish.",
+      "Architecture belongs in advanced/developer layers unless the user asks for it.",
+      "AI should assist understanding, evidence, navigation, and reasoning; deterministic UI should handle obvious next steps."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_experience_hypotheses <- function() {
+  data.frame(
+    hypothesis_id = c(
+      "hypothesis_intent_first",
+      "hypothesis_mission_control_first",
+      "hypothesis_business_question_first",
+      "hypothesis_decision_first",
+      "hypothesis_analyst_workspace",
+      "hypothesis_evidence_gallery_first"
+    ),
+    hypothesis = c(
+      "Intent-first",
+      "Mission Control first",
+      "Business Question first",
+      "Decision-first",
+      "Analyst Workspace",
+      "Evidence Gallery first"
+    ),
+    opening_prompt = c(
+      "What are you trying to accomplish?",
+      "What needs attention?",
+      "What question are we trying to answer?",
+      "What decision needs to be made?",
+      "What workspace do you want to use?",
+      "What evidence already exists?"
+    ),
+    flow = c(
+      "Intent -> workflow -> evidence -> decision -> action",
+      "System state -> priority signal -> evidence -> decision",
+      "Question -> evidence -> understanding -> action",
+      "Decision -> alternatives -> evidence -> workflow",
+      "Capability -> module -> artifact -> report",
+      "Evidence -> pattern -> question -> decision"
+    ),
+    learning_value = c(
+      "Tests whether first-time users think in goals rather than features.",
+      "Tests whether operational status is the best home base.",
+      "Tests whether the product should anchor around authored analytical questions.",
+      "Tests whether business owners orient around decisions and alternatives.",
+      "Preserves power-user familiarity and reveals what current architecture already does well.",
+      "Tests whether artifacts are the most natural entry point once evidence exists."
+    ),
+    primary_risk = c(
+      "May hide power and frustrate experts.",
+      "May feel like monitoring rather than thinking.",
+      "May over-constrain open-ended exploration.",
+      "May require business intent authoring before users feel ready.",
+      "May continue exposing too much too early.",
+      "May be weak for cold-start projects."
+    ),
+    current_recommendation = c(
+      "Prototype next",
+      "Keep as comparison",
+      "Prototype next",
+      "Prototype later",
+      "Use as baseline",
+      "Prototype after artifact-rich seeded project"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_prototype_modes <- function() {
+  hypotheses <- product_experience_experience_hypotheses()
+  data.frame(
+    prototype_id = c("prototype_a_intent", "prototype_b_mission", "prototype_c_question", "prototype_d_decision", "prototype_e_analyst", "prototype_f_evidence"),
+    hypothesis_id = hypotheses$hypothesis_id,
+    prototype_name = hypotheses$hypothesis,
+    entry_surface = c("Guide", "Mission Control", "Guide", "Decision Workflow", "Project Workspace", "Artifact Studio"),
+    default_visible_level = c("Level 0 Orientation", "Level 1 Workflow", "Level 0 Orientation", "Level 1 Workflow", "Level 2 Evidence", "Level 2 Evidence"),
+    immediate_visible_elements = I(list(
+      c("intent prompt", "current project status", "recommended starting paths"),
+      c("top priority", "workspace health", "running jobs", "collector status"),
+      c("business question prompt", "known evidence", "missing evidence", "next evidence request"),
+      c("decision statement", "alternatives", "decision readiness", "evidence gaps"),
+      c("workspace tabs", "module selectors", "artifact counts", "developer controls"),
+      c("artifact gallery", "evidence filters", "inspector", "collector memory")
+    )),
+    intentionally_hidden_initially = I(list(
+      c("module registry", "architecture docs", "developer QA"),
+      c("low-priority diagnostics", "implementation details", "developer QA"),
+      c("module registry", "raw capability map", "architecture terminology"),
+      c("advanced diagnostics", "module internals", "raw artifacts"),
+      c("nothing significant", "baseline exposes most capability"),
+      c("empty-project architecture", "advanced diagnostics", "developer controls")
+    )),
+    success_metric = c(
+      "User can choose a path without asking what the app does.",
+      "User can identify the one next action immediately.",
+      "User understands the business story without narration.",
+      "User can evaluate alternatives and evidence gaps.",
+      "Expert can access power with minimal ceremony.",
+      "User can understand existing evidence and choose what to inspect."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_information_exposure_taxonomy <- function() {
+  data.frame(
+    exposure_class = c("Essential", "Helpful", "Contextual", "Advanced", "Architectural", "Developer"),
+    definition = c(
+      "Required to understand or advance the current intent.",
+      "Useful but not required for the next action.",
+      "Only useful in the current project/module state.",
+      "Power-user controls or deeper diagnostics.",
+      "Explains how the system is built or governed.",
+      "Implementation, QA, replay, runtime, or debug details."
+    ),
+    default_visibility = c("show", "summarize", "surface_when_relevant", "collapse", "hide_until_requested", "hide_from_investor_workflow"),
+    examples = c(
+      "business question, current recommendation, next action",
+      "project status, evidence count, top limitation",
+      "warnings for selected artifact, missing data fields, model-specific diagnostics",
+      "provider configuration, threshold settings, detailed lineage",
+      "ontology, architecture docs, runtime bundle, QA contracts",
+      "Product Experience Lab, replay trace, generated code panels, internal IDs"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_progressive_disclosure_strategy <- function() {
+  data.frame(
+    level = c("Level 0", "Level 1", "Level 2", "Level 3", "Level 4"),
+    name = c("Orientation", "Workflow", "Evidence", "Diagnostics", "Architecture"),
+    user_question = c(
+      "What is this and where should I start?",
+      "What am I doing next?",
+      "What do we know?",
+      "Can I trust this?",
+      "How is this system built?"
+    ),
+    should_show = c(
+      "intent, project state, recommended path",
+      "current stage, next step, required inputs, completion state",
+      "artifact summary, key finding, limitations, guardrails",
+      "warnings, data quality, assumptions, validation details",
+      "contracts, policies, runtime, QA, ontology"
+    ),
+    should_hide = c(
+      "module internals, developer tools, long diagnostics",
+      "architecture maps, full raw tables, hidden advanced controls",
+      "low-level implementation, all sidecars by default",
+      "source code and full architectural docs unless requested",
+      "nothing; user explicitly asked for architecture"
+    ),
+    mechanism = c(
+      "Guide card or intent launcher",
+      "workflow stage panel",
+      "evidence summary and inspector",
+      "expandable diagnostics and trust panels",
+      "Knowledge Library / Developer / QA surfaces"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_visible_element_inventory <- function() {
+  data.frame(
+    surface = c(
+      "Guide",
+      "Mission Control",
+      "Artifact Studio",
+      "AI Runtime",
+      "Product Experience Lab",
+      "Analysis Modules",
+      "Knowledge Library",
+      "Command Palette"
+    ),
+    element = c(
+      "primary action cards",
+      "health/status tiles",
+      "artifact cards and inspector",
+      "runtime and evidence review panels",
+      "replay, QA, campaign, and media-governance controls",
+      "module selector and generated code",
+      "architecture/book/research reader",
+      "navigation and action launcher"
+    ),
+    exposure_class = c("Essential", "Helpful", "Essential", "Contextual", "Developer", "Advanced", "Architectural", "Helpful"),
+    investor_workflow_visibility = c("show", "summarize", "show_when_artifacts_exist", "show_if_ai_contributes", "hide", "hide_unless_module_execution_visible", "hide", "optional"),
+    rationale = c(
+      "The entry experience should orient around intent.",
+      "Status helps if it reveals one next action.",
+      "Artifacts are evidence and should be central when evidence exists.",
+      "AI should be visible only when it explains evidence or reasoning.",
+      "Developer/replay surfaces explain how demos are produced, not why the product matters.",
+      "Useful for analysts, but raw module selection can overload first-time viewers.",
+      "Important institutional memory, not first-run product value.",
+      "Helpful for power users, but not necessary in a narrated investor workflow."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_ai_role_assessment <- function() {
+  data.frame(
+    interaction = c(
+      "Navigate to obvious next workspace",
+      "Explain why a next action is recommended",
+      "Summarize cross-artifact evidence",
+      "Expose uncertainty and guardrails",
+      "Operate basic UI controls",
+      "Generate long generic prose"
+    ),
+    preferred_owner = c("deterministic UI", "AI or deterministic explanation", "AI-assisted reasoning", "AI-assisted reasoning", "deterministic UI", "neither by default"),
+    rationale = c(
+      "Navigation should not require probabilistic reasoning when the next step is known.",
+      "Explanation may benefit from context synthesis, but canned deterministic reasons can cover simple cases.",
+      "Cross-artifact synthesis is a genuine AI value zone.",
+      "Guardrails and uncertainty require careful synthesis and should remain auditable.",
+      "The user should not need AI to click obvious controls.",
+      "Long prose increases cognitive load and feels pasted into a dashboard."
+    ),
+    current_research_question = c(
+      "Can visible next-action controls replace this?",
+      "Which explanations should be deterministic templates?",
+      "How much evidence is enough for useful synthesis?",
+      "Can guardrails be visually legible before prose?",
+      "Where is the UI still forcing AI to act as glue?",
+      "What is the shortest useful AI response?"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_prototype_comparison <- function() {
+  prototypes <- product_experience_prototype_modes()
+  scores <- data.frame(
+    prototype_id = prototypes$prototype_id,
+    human_understanding = c(5L, 4L, 5L, 4L, 3L, 4L),
+    cognitive_load = c(2L, 3L, 2L, 3L, 5L, 3L),
+    commercial_story = c(4L, 3L, 5L, 4L, 2L, 3L),
+    expert_power_preserved = c(3L, 3L, 3L, 3L, 5L, 3L),
+    implementation_risk = c(2L, 2L, 2L, 3L, 1L, 3L),
+    research_value = c(5L, 4L, 5L, 4L, 3L, 4L),
+    stringsAsFactors = FALSE
+  )
+  merged <- merge(prototypes, scores, by = "prototype_id", all.x = TRUE)
+  merged$learning_score <- merged$human_understanding + merged$commercial_story + merged$research_value - merged$cognitive_load - merged$implementation_risk
+  merged$prototype_status <- ifelse(
+    merged$prototype_name %in% c("Intent-first", "Business Question first"),
+    "prototype_next",
+    ifelse(merged$prototype_name == "Analyst Workspace", "baseline", "comparison_candidate")
+  )
+  merged[order(-merged$learning_score, merged$implementation_risk), , drop = FALSE]
+}
+
+product_experience_research_campaigns <- function() {
+  comparison <- product_experience_prototype_comparison()
+  next_prototypes <- comparison[comparison$prototype_status == "prototype_next", , drop = FALSE]
+  campaign_notes <- data.frame(
+    prototype_name = c("Intent-first", "Business Question first"),
+    minimum_prototype = c(
+      "A Guide variant that asks intent first and unfolds only relevant workflow cards.",
+      "A Guide variant that anchors on the flagship business question, then reveals evidence and action."
+    ),
+    reject_if = c(
+      "Users cannot find advanced capability or feel trapped in a wizard.",
+      "Users cannot handle open-ended exploration or need to browse evidence before authoring a question."
+    ),
+    keep_if = c(
+      "First-time users understand where to start faster than the baseline.",
+      "The business story becomes obvious without narration."
+    ),
+    stringsAsFactors = FALSE
+  )
+  next_prototypes <- merge(next_prototypes, campaign_notes, by = "prototype_name", all.x = TRUE)
+  data.frame(
+    campaign_id = paste0("research_campaign_", seq_len(nrow(next_prototypes))),
+    prototype_id = next_prototypes$prototype_id,
+    hypothesis = next_prototypes$prototype_name,
+    objective = paste("Test", next_prototypes$prototype_name, "as an alternative to current Golden Workflow navigation."),
+    learning_goal = next_prototypes$success_metric,
+    minimum_prototype = next_prototypes$minimum_prototype,
+    reject_if = next_prototypes$reject_if,
+    keep_if = next_prototypes$keep_if,
+    stringsAsFactors = FALSE
+  )
+}
+
+product_experience_research_open_questions <- function() {
+  data.frame(
+    question_id = paste0("ux_question_", sprintf("%02d", seq_len(8))),
+    question = c(
+      "Does the current architecture expose too much too early?",
+      "Do users think in terms of intent, business question, evidence, decision, or modules?",
+      "Should the Golden Workflow remain canonical or become one benchmark among several?",
+      "What should disappear from the default surface?",
+      "What should unfold progressively?",
+      "Where should AI become invisible?",
+      "What is the first moment where the product feels valuable?",
+      "What is the largest unanswered UX question?"
+    ),
+    current_answer = c(
+      "Probably yes; developer and architectural surfaces are visible too soon in recorded workflows.",
+      "Hypothesis: first-time users think in intent/question language; experts tolerate modules.",
+      "It should remain the current benchmark, not the final canonical experience.",
+      "Developer replay controls, raw architecture language, generated code, and internal IDs.",
+      "Diagnostics, architecture, provider details, sidecars, full tables, QA and runtime status.",
+      "Basic navigation and obvious next-step execution should be deterministic.",
+      "Likely when evidence changes a business decision or prevents premature action.",
+      "Whether the product should open on intent, question, mission control, decision, or evidence."
+    ),
+    next_experiment = c(
+      "Run baseline vs intent-first prototype review.",
+      "Compare prototype entry surfaces with identical synthetic world.",
+      "Replay at least two alternative flows before promoting a new benchmark.",
+      "Classify visible elements in the current Golden Workflow capture.",
+      "Prototype progressive disclosure levels 0-4.",
+      "Replace one AI navigation/explanation moment with deterministic UI.",
+      "Use founder review timestamps for moment-of-understanding capture.",
+      "Build the next prototype as intent-first and compare to business-question-first."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
 product_experience_replay_output_root <- function(root = getwd(), media_root = NULL) {
   product_experience_media_dirs(root, media_root, create = TRUE)$runs
 }
@@ -1350,7 +1924,14 @@ product_experience_run_golden_workflow <- function(
     workflow = workflow[c("workflow_id", "title", "guiding_question", "success_statement")],
     chapters = chapters,
     metrics = metrics,
-    review_schema = product_experience_review_schema()
+    review_schema = product_experience_review_schema(),
+    research_mode_principles = product_experience_research_mode_principles(),
+    experience_hypotheses = product_experience_experience_hypotheses(),
+    prototype_comparison = product_experience_prototype_comparison(),
+    information_exposure = product_experience_information_exposure_taxonomy(),
+    progressive_disclosure = product_experience_progressive_disclosure_strategy(),
+    research_campaigns = product_experience_research_campaigns(),
+    research_open_questions = product_experience_research_open_questions()
   ), review_path)
 
   run$manifest_path <- normalizePath(manifest_path, winslash = "/", mustWork = FALSE)
@@ -1472,21 +2053,41 @@ product_experience_regenerate_golden_workflow <- function(
   report$verification <- verification
   product_experience_write_json(report, report_path)
   media_manifest <- product_experience_showcase_media_manifest(run, lifecycle_state = "awaiting_review")
+  founder_findings <- product_experience_founder_review_template(run = run, reviewer = "founder")
+  ux_campaigns <- product_experience_prioritize_ux_campaigns(founder_findings)
+  ux_metrics <- product_experience_replay_metrics_summary(run)
+  replay_comparison <- product_experience_compare_replay_runs(run)
   promotion_gate <- product_experience_assess_investor_candidate(
     run = run,
-    findings = product_experience_golden_review_findings()$description,
+    findings = founder_findings$finding,
     founder_approved = FALSE,
     developer_content_visible = TRUE
   )
+  final_assessment <- product_experience_final_assessment(run, founder_approved = FALSE, developer_content_visible = TRUE)
   product_experience_write_json(list(
     workflow = product_experience_golden_workflow()[c("workflow_id", "title", "guiding_question", "success_statement")],
     chapters = run$chapters,
     metrics = run$metrics,
     replay_metrics = report$metrics,
+    ux_metrics = ux_metrics,
+    semantic_replay_comparison = replay_comparison,
+    research_mode_principles = product_experience_research_mode_principles(),
+    experience_hypotheses = product_experience_experience_hypotheses(),
+    prototype_comparison = product_experience_prototype_comparison(),
+    information_exposure = product_experience_information_exposure_taxonomy(),
+    progressive_disclosure = product_experience_progressive_disclosure_strategy(),
+    visible_element_inventory = product_experience_visible_element_inventory(),
+    ai_role_assessment = product_experience_ai_role_assessment(),
+    research_campaigns = product_experience_research_campaigns(),
+    research_open_questions = product_experience_research_open_questions(),
+    founder_review_findings = founder_findings,
+    ux_campaigns = ux_campaigns,
     validation = verification,
     media_manifest = media_manifest,
     investor_promotion_gate = promotion_gate,
     investor_promotion_state = attr(promotion_gate, "promotion_state") %||% "awaiting_review",
+    final_assessment = final_assessment[setdiff(names(final_assessment), "blockers")],
+    final_assessment_blockers = final_assessment$blockers,
     showcase = product_experience_flagship_evidence_package(),
     known_issues = if (identical(verification$status, "success")) character() else verification$errors,
     campaign_seeds = product_experience_golden_review_findings(),
@@ -1865,8 +2466,73 @@ qa_product_experience_intelligence <- function() {
   blocked_assessment <- product_experience_assess_investor_candidate(golden_run$value, founder_approved = FALSE, developer_content_visible = TRUE)
   add_check("investor_candidate_requires_review", identical(attr(blocked_assessment, "promotion_state"), "awaiting_review") && any(blocked_assessment$status == "block"), "Unreviewed/developer-facing recordings are not promoted to investor_candidate.")
 
+  workflow_review <- product_experience_golden_workflow_review()
+  add_check("golden_workflow_review", nrow(workflow_review) == nrow(golden$steps) && all(c("expected_understanding", "expected_action", "current_friction", "cognitive_load", "campaign_id") %in% names(workflow_review)), "Golden Workflow review preserves understanding, action, friction, load, and campaign mapping.")
+  founder_schema <- product_experience_founder_review_schema()
+  add_check("founder_review_schema", all(c("workflow_step", "finding", "severity", "campaign_id") %in% founder_schema$field), "Founder review schema captures workflow step, finding, severity, and campaign.")
+  founder_findings <- product_experience_founder_review_template(golden_run$value)
+  campaigns <- product_experience_prioritize_ux_campaigns(founder_findings)
+  add_check("ux_campaign_prioritization", nrow(campaigns) == nrow(founder_findings) && all(c("priority_score", "expected_ux_improvement", "dependencies") %in% names(campaigns)), "Founder findings become ranked UX campaigns.")
+  replay_metrics <- product_experience_replay_metrics_summary(golden_run$value)
+  add_check("ux_metrics", all(c("clicks", "completion_time_sec", "promotion_state") %in% replay_metrics$metric), "Replay metrics include clicks, time, and promotion state.")
+  replay_comparison <- product_experience_compare_replay_runs(golden_run$value)
+  add_check("semantic_replay_comparison", all(c("metric", "semantic_change", "interpretation") %in% names(replay_comparison)), "Replay comparison reports semantic improvement/regression labels.")
+  final_assessment <- product_experience_final_assessment(golden_run$value, founder_approved = FALSE, developer_content_visible = TRUE)
+  add_check("final_assessment_conservative", final_assessment$classification %in% c("Internal", "Beta") && identical(final_assessment$promotion_state, "awaiting_review"), "Final assessment stays conservative before founder approval and developer-surface removal.")
+
+  hypotheses <- product_experience_experience_hypotheses()
+  comparison <- product_experience_prototype_comparison()
+  exposure <- product_experience_information_exposure_taxonomy()
+  disclosure <- product_experience_progressive_disclosure_strategy()
+  ai_roles <- product_experience_ai_role_assessment()
+  campaigns_research <- product_experience_research_campaigns()
+  open_questions <- product_experience_research_open_questions()
+  add_check("experience_hypotheses", nrow(hypotheses) >= 6L && all(c("Intent-first", "Business Question first", "Analyst Workspace") %in% hypotheses$hypothesis), "Competing experience hypotheses include intent-first, question-first, and current baseline.")
+  add_check("prototype_comparison", all(c("prototype_next", "baseline") %in% comparison$prototype_status), "Prototype comparison marks next prototypes and baseline separately.")
+  add_check("information_exposure_taxonomy", all(c("Essential", "Helpful", "Contextual", "Advanced", "Architectural", "Developer") %in% exposure$exposure_class), "Information exposure taxonomy classifies essential through developer surfaces.")
+  add_check("progressive_disclosure_levels", all(paste("Level", 0:4) %in% disclosure$level), "Progressive disclosure levels 0-4 are represented.")
+  add_check("ai_visibility_rule", any(ai_roles$preferred_owner == "deterministic UI") && any(grepl("synthesis|reasoning", ai_roles$preferred_owner, ignore.case = TRUE)), "AI role assessment separates deterministic UI from genuine reasoning zones.")
+  add_check("research_campaigns", nrow(campaigns_research) >= 2L && all(campaigns_research$prototype_id %in% comparison$prototype_id), "Research campaigns target next prototype candidates.")
+  add_check("research_open_questions", all(c("question", "current_answer", "next_experiment") %in% names(open_questions)) && any(grepl("Golden Workflow", open_questions$question)), "Research open questions preserve current answers and next experiments.")
+
   doc_path <- file.path("docs", "product_experience_intelligence_architecture.md")
   add_check("documentation", file.exists(doc_path), "Architecture documentation exists.")
+
+  do.call(rbind, checks)
+}
+
+qa_product_experience_research_mode <- function() {
+  checks <- list()
+  add_check <- function(check, ok, message) {
+    checks[[length(checks) + 1L]] <<- data.frame(
+      check = check,
+      status = if (isTRUE(ok)) "PASS" else "FAIL",
+      message = message,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  principles <- product_experience_research_mode_principles()
+  hypotheses <- product_experience_experience_hypotheses()
+  prototypes <- product_experience_prototype_modes()
+  comparison <- product_experience_prototype_comparison()
+  inventory <- product_experience_visible_element_inventory()
+  exposure <- product_experience_information_exposure_taxonomy()
+  disclosure <- product_experience_progressive_disclosure_strategy()
+  ai_roles <- product_experience_ai_role_assessment()
+  campaigns <- product_experience_research_campaigns()
+  questions <- product_experience_research_open_questions()
+
+  add_check("research_principles", nrow(principles) >= 6L && any(grepl("Explore", principles$principle)), "Research mode principles make exploration explicit.")
+  add_check("hypothesis_contract", all(c("hypothesis_id", "opening_prompt", "flow", "learning_value", "primary_risk") %in% names(hypotheses)) && nrow(hypotheses) >= 6L, "Experience hypotheses contain prompts, flows, learning value, and risk.")
+  add_check("prototype_contract", all(c("prototype_id", "entry_surface", "default_visible_level", "success_metric") %in% names(prototypes)) && all(lengths(prototypes$immediate_visible_elements) > 0L), "Prototype modes define entry, default disclosure, visible elements, and success metric.")
+  add_check("prototype_ranking", any(comparison$prototype_status == "prototype_next") && any(comparison$prototype_status == "baseline") && "learning_score" %in% names(comparison), "Prototype comparison ranks next candidates against the baseline.")
+  add_check("developer_visibility", any(inventory$surface == "Product Experience Lab" & inventory$exposure_class == "Developer" & inventory$investor_workflow_visibility == "hide"), "Product Experience Lab is classified as developer-only for investor workflows.")
+  add_check("exposure_classes", all(c("Essential", "Helpful", "Contextual", "Advanced", "Architectural", "Developer") %in% exposure$exposure_class), "Exposure classes cover all intended visibility levels.")
+  add_check("disclosure_levels", identical(disclosure$level, paste("Level", 0:4)), "Progressive disclosure levels are ordered from orientation through architecture.")
+  add_check("ai_invisibility", any(ai_roles$preferred_owner == "deterministic UI") && any(ai_roles$preferred_owner == "AI-assisted reasoning"), "AI role assessment says where AI should disappear and where it adds value.")
+  add_check("campaign_mapping", nrow(campaigns) >= 2L && all(nzchar(campaigns$minimum_prototype)) && all(campaigns$prototype_id %in% comparison$prototype_id), "Research campaigns map to prototype candidates.")
+  add_check("open_questions", nrow(questions) >= 8L && any(grepl("expose too much", questions$question, ignore.case = TRUE)) && any(grepl("AI", questions$question)), "Open questions include exposure and AI invisibility questions.")
 
   do.call(rbind, checks)
 }
@@ -1934,6 +2600,41 @@ qa_product_experience_media_governance <- function() {
   add_check("candidate_ranking", nrow(product_experience_showcase_candidate_ranking()) >= 5L, "Showcase candidates are rankable for review.")
   gate <- product_experience_assess_investor_candidate(run, founder_approved = FALSE, developer_content_visible = TRUE)
   add_check("promotion_gate_blocks_unreviewed", identical(attr(gate, "promotion_state"), "awaiting_review"), "Promotion gate blocks unreviewed generated media from investor_candidate status.")
+
+  do.call(rbind, checks)
+}
+
+qa_product_experience_ux_hardening <- function() {
+  checks <- list()
+  add_check <- function(check, ok, message) {
+    checks[[length(checks) + 1L]] <<- data.frame(
+      check = check,
+      status = if (isTRUE(ok)) "PASS" else "FAIL",
+      message = message,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  workflow <- product_experience_golden_workflow()
+  review <- product_experience_golden_workflow_review()
+  schema <- product_experience_founder_review_schema()
+  findings <- product_experience_founder_review_template()
+  campaigns <- product_experience_prioritize_ux_campaigns(findings)
+  run <- product_experience_run_golden_workflow(automation = "fixture", ai_mode = "fixture")$value
+  metrics <- product_experience_replay_metrics_summary(run)
+  comparison <- product_experience_compare_replay_runs(run)
+  assessment <- product_experience_final_assessment(run, founder_approved = FALSE, developer_content_visible = TRUE)
+
+  add_check("workflow_review_step_coverage", nrow(review) == nrow(workflow$steps), "Every Golden Workflow step has a UX review row.")
+  add_check("review_understanding_action", all(nzchar(review$expected_understanding)) && all(nzchar(review$expected_action)), "Every step declares expected understanding and action.")
+  add_check("founder_schema_required_fields", all(schema$required[schema$field %in% c("timestamp", "workflow_step", "finding", "severity", "recommendation", "campaign_id")]), "Founder review required fields are enforced by contract.")
+  add_check("founder_findings_structured", all(c("finding", "category", "severity", "recommendation", "campaign_id") %in% names(findings)) && nrow(findings) >= 8L, "Founder review template emits structured findings.")
+  add_check("campaign_priority_transparent", all(c("user_impact", "commercial_impact", "scientific_impact", "implementation_effort", "risk", "priority_score") %in% names(campaigns)), "Campaign ranking exposes impact, effort, risk, and score.")
+  add_check("developer_surface_campaign", any(grepl("developer", campaigns$finding, ignore.case = TRUE) | grepl("developer", campaigns$recommendation, ignore.case = TRUE)), "Current campaigns explicitly identify developer-surface leakage.")
+  add_check("metrics_contract", all(c("clicks", "navigation_depth", "ai_interactions", "mission_control_visits", "review_completion") %in% metrics$metric), "UX metrics cover clicks, navigation, AI, Mission Control, and review completion.")
+  add_check("comparison_contract", all(comparison$semantic_change %in% c("baseline", "improved", "regressed", "unchanged")), "Replay comparison uses semantic status labels.")
+  add_check("assessment_contract", all(c("classification", "largest_ux_weakness", "promotion_state", "blockers") %in% names(assessment)), "Final assessment answers classification and largest weakness.")
+  add_check("not_investor_candidate_yet", !identical(assessment$classification, "Investor Candidate") && identical(assessment$promotion_state, "awaiting_review"), "Current workflow is not promoted before founder approval and developer-surface removal.")
 
   do.call(rbind, checks)
 }

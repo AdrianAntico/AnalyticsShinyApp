@@ -313,6 +313,107 @@ No recording may be marked `investor_candidate` until all criteria pass:
 
 Intermediate recordings stay outside Git. Their manifests, scorecards, findings, traces, and review packages may be retained. Most bulky videos should be discarded or archived. Only isolated best recordings should be promoted.
 
+## Phase 5 Founder Review and UX Campaign Loop
+
+Phase 5 treats the Golden Workflow as the product benchmark.
+
+The optimization target is:
+
+```text
+Understanding
+-> Confidence
+-> Flow
+-> Decision
+```
+
+The anti-target is:
+
+```text
+Features
+-> Complexity
+-> Power
+```
+
+The software should explain itself. Every screen in the Golden Workflow should answer:
+
+- Where am I?
+- Why am I here?
+- What just happened?
+- What happens next?
+
+### Founder Review Contract
+
+Founder observations are structured evidence. Each observation records:
+
+- timestamp
+- workflow step
+- finding
+- category
+- severity
+- screenshot path
+- video timestamp
+- recommendation
+- campaign id
+- status
+
+Allowed categories:
+
+- Navigation
+- Visual
+- Terminology
+- AI
+- Evidence
+- Decision
+- Workflow
+- Mission Control
+- Performance
+- Loading
+- Hierarchy
+
+### Campaign Prioritization
+
+Every founder observation becomes a UX campaign candidate. Campaigns are ranked by:
+
+- user impact
+- commercial impact
+- scientific impact
+- implementation effort
+- risk
+- dependencies
+- expected UX improvement
+
+The ranking is intentionally transparent. It should be clear why a campaign is first, and it should be possible to disagree with the weights without losing the evidence trail.
+
+### Current Bottleneck
+
+The current canonical replay is useful for internal review, but it is not yet investor-ready.
+
+Largest blocker:
+
+> The Golden Workflow still contains product-experience/developer scaffolding in the recording path.
+
+The next UX campaign should remove developer-only Product Experience Lab surfaces from investor-facing capture while preserving the deterministic replay and review machinery.
+
+### Final Assessment Classes
+
+Product-experience recordings may be classified as:
+
+- `Internal`
+- `Beta`
+- `Investor Candidate`
+- `Public Candidate`
+- `Approved`
+
+The current deterministic assessment should remain conservative. A recording with visible developer-only content or without founder approval must not be marked `Investor Candidate`.
+
+### Completion Question
+
+Continuously ask:
+
+> If this were the only workflow a first-time user ever experienced, would they understand why Analytics Workstation exists?
+
+Every UX decision should increase the probability that the answer becomes "yes."
+
 ## Canonical Worlds
 
 The canonical world registry currently defines ten product-experience worlds:
@@ -602,3 +703,146 @@ This creates product-experience regression evidence.
 ## Maintenance Rule
 
 Do not optimize for a beautiful demo. Optimize for a truthful, repeatable, measurable product experience. If the recorded workflow exposes friction, preserve that friction in the review artifact rather than hiding it. The objective is continuous product learning, not presentation.
+
+## Phase 6: Exploratory UX Research
+
+Phase 6 changes the product-experience stance from refinement to exploration. The current Golden Workflow remains the benchmark, but it is not treated as the final canonical user journey.
+
+The research principle is:
+
+```text
+Do not optimize for consensus.
+Optimize for learning.
+```
+
+The current product architecture is capability-rich and module-aware. That is useful for implementation and power users, but it may expose too much too early for first-time users, executives, and investor reviewers. Phase 6 therefore tests whether the visible product should open from user intent rather than from system modules.
+
+## Competing Experience Hypotheses
+
+The Product Experience Lab now records competing information architectures:
+
+- Intent-first: What are you trying to accomplish?
+- Mission Control first: What needs attention?
+- Business Question first: What question are we trying to answer?
+- Decision-first: What decision needs to be made?
+- Analyst Workspace: What workspace do you want to use?
+- Evidence Gallery first: What evidence already exists?
+
+The Analyst Workspace pattern is the current baseline. Intent-first and Business Question first are the next lightweight prototype candidates.
+
+## Prototype Modes
+
+Prototype modes are not permanent navigation redesigns. They are experimental shells used to compare entry surface, default disclosure level, initially visible elements, hidden elements, and success metrics.
+
+The next prototype pair should compare:
+
+- an intent-first Guide variant that unfolds only relevant workflow paths;
+- a business-question-first Guide variant that anchors on the flagship business question, then reveals evidence and action.
+
+The Golden Workflow remains the replayable benchmark for comparison until an alternative clearly improves understanding, confidence, and flow.
+
+## Information Exposure Taxonomy
+
+Visible surfaces are classified as:
+
+- Essential: required to understand or advance the current intent.
+- Helpful: useful but not required for the next action.
+- Contextual: useful only in the current project/module state.
+- Advanced: power-user controls or deeper diagnostics.
+- Architectural: explains how the system is built or governed.
+- Developer: implementation, QA, replay, runtime, or debug details.
+
+Developer and architectural surfaces should be hidden from normal investor workflows unless their appearance is the object of the demo.
+
+## Progressive Disclosure
+
+The proposed disclosure ladder is:
+
+1. Level 0 Orientation: What is this and where should I start?
+2. Level 1 Workflow: What am I doing next?
+3. Level 2 Evidence: What do we know?
+4. Level 3 Diagnostics: Can I trust this?
+5. Level 4 Architecture: How is this system built?
+
+The UI should not force Level 4 concepts into Level 0 or Level 1 moments. Architecture is important, but it should appear when the user asks for it or enters advanced/developer surfaces.
+
+## AI Visibility
+
+AI should disappear anywhere deterministic UX can provide a better answer.
+
+Examples:
+
+- Basic navigation should be deterministic.
+- Obvious next actions should be visible UI.
+- Short deterministic reasons should replace generic AI prose where the reason is known.
+- AI should remain visible for cross-artifact synthesis, uncertainty explanation, guardrail interpretation, and evidence sufficiency reasoning.
+
+The test is simple:
+
+```text
+If the application already knows the answer, do not spend AI on it.
+```
+
+## Current Research Answers
+
+These are provisional answers, not final decisions:
+
+- The current architecture probably exposes too much too early.
+- First-time users probably think in intent, question, evidence, and decision language before they think in modules.
+- Expert users still need module and developer access, but this should unfold progressively.
+- The Golden Workflow should remain the current benchmark, not the final canonical journey.
+- Developer replay controls, generated code, internal IDs, provider minutiae, and raw architecture labels should disappear from normal first-run and investor surfaces.
+- Diagnostics, architecture, sidecars, full tables, QA, runtime status, and provider details should unfold progressively.
+- AI should become invisible for basic navigation and obvious interface operation.
+- The largest unanswered UX question is the entry model: intent, business question, mission control, decision, evidence, or workspace.
+
+## Research Campaigns
+
+The next research campaigns are:
+
+- compare an Intent-first prototype against the current Golden Workflow;
+- compare a Business Question first prototype against the current Golden Workflow;
+- retain the current Analyst Workspace as the baseline.
+
+Each campaign should generate replay evidence, structured founder review, friction findings, and a comparison against the existing benchmark. This phase does not declare an investor-ready navigation model.
+
+## Phase 7 Product Philosophy Research
+
+Phase 7 consolidates the product-experience findings into a product philosophy and canonical experience recommendation.
+
+The research conclusion is:
+
+```text
+Intent before capability.
+Evidence before recommendation.
+Progressive mastery before full exposure.
+```
+
+The working philosophy is:
+
+```text
+Intent unfolds into evidence.
+```
+
+The detailed product philosophy, entry-model analysis, information-architecture recommendation, AI-visibility policy, progressive experience model, and final Phase 7 assessment live in:
+
+```text
+docs/research/product_experience_phase7_product_philosophy.md
+```
+
+## Phase 8 Prototype Experiment Plan
+
+Phase 8 should compare two competing product philosophies over the same product, same Golden Workflow, same synthetic world, same evidence, same artifacts, same AI, and same decision.
+
+The prototypes are:
+
+- Prototype A: Intent-first
+- Prototype B: Business Question first
+
+Only entry, navigation, and information hierarchy may differ.
+
+The Phase 8 experiment plan lives in:
+
+```text
+docs/research/product_experience_phase8_prototype_experiment_plan.md
+```
