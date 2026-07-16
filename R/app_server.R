@@ -123,6 +123,7 @@ server <- function(input, output, session) {
   ctx$source_project_data_info <- reactiveVal(list(path = NULL, name = NULL, source = "source_dataset"))
   ctx$active_modeling_context <- reactiveVal(modeling_context_from_source())
   ctx$artifact_studio_selected_artifact_id <- reactiveVal(NULL)
+  ctx$evidence_review_context_state <- reactiveVal(evidence_review_context_state())
   ctx$selected_report_plan_id <- reactiveVal(NULL)
   ctx$selected_persisted_result_id <- reactiveVal(NULL)
   ctx$genai_config <- reactiveVal(genai_default_config(auto_detect_local = TRUE))
@@ -1231,6 +1232,7 @@ server <- function(input, output, session) {
       semantic_decision_state = ctx$semantic_decision_state(),
       decision_valuation_state = ctx$decision_valuation_state(),
       decision_workflow_state = ctx$decision_workflow_state(),
+      evidence_review_context_state = ctx$evidence_review_context_state(),
       causal_intelligence_state = ctx$causal_intelligence_state(),
       causal_experiment_state = ctx$causal_experiment_state(),
       causal_completed_experiment_state = ctx$causal_completed_experiment_state(),
@@ -1389,6 +1391,7 @@ server <- function(input, output, session) {
     ctx$semantic_decision_state(semantic_decision_normalize(project_state$semantic_decision_state %||% semantic_decision_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
     ctx$decision_valuation_state(decision_valuation_normalize(project_state$decision_valuation_state %||% decision_valuation_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
     ctx$decision_workflow_state(decision_workflow_normalize(project_state$decision_workflow_state %||% decision_workflow_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
+    ctx$evidence_review_context_state(project_state$evidence_review_context_state %||% evidence_review_context_state((ctx$current_project() %||% list())$project_id %||% NA_character_))
     ctx$causal_intelligence_state(causal_intelligence_normalize(project_state$causal_intelligence_state %||% causal_intelligence_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
     ctx$causal_experiment_state(causal_experiment_normalize(project_state$causal_experiment_state %||% causal_experiment_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
     ctx$causal_completed_experiment_state(causal_completed_experiment_normalize(project_state$causal_completed_experiment_state %||% causal_completed_experiment_empty((ctx$current_project() %||% list())$project_id %||% NA_character_)))
@@ -1495,6 +1498,7 @@ server <- function(input, output, session) {
   global_ai_assistant_server("global_ai", ctx)
   page_guide_server("guide", ctx)
   page_evidence_review_server("evidence_review", ctx)
+  page_decision_management_server("decision_management", ctx)
   page_knowledge_library_server("knowledge_library", ctx)
   page_mission_control_server("mission_control", ctx)
   page_ai_runtime_server("ai_runtime", ctx)

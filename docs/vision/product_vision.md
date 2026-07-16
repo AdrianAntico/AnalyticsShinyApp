@@ -82,6 +82,16 @@ The product vision reinforces the implemented architecture:
 10. Every important action should be inspectable, replayable, and reversible where practical.
 11. Failures should become diagnostics, not dead ends.
 12. The system should help users understand the modeling landscape.
+13. Maximize semantic cognition.
+14. Minimize syntactic cognition.
+
+The governing UX filter is:
+
+```text
+Spend the user's brainpower on the problem, not on the product.
+```
+
+The workstation should ask users to think about questions, evidence, uncertainty, tradeoffs, decisions, and learning. It should ask them to think as little as possible about navigation, implementation labels, configuration mechanics, workflow plumbing, and where features live.
 
 ## Non-Goals
 

@@ -841,3 +841,87 @@ Details live in:
 ```text
 docs/working_context_architecture.md
 ```
+
+## Product Geography Laboratory Phase 1
+
+Product Geography Laboratory Phase 1 adds a spatial information architecture research layer.
+
+Relationship Runtime asks:
+
+```text
+How should the product begin?
+```
+
+Working Context Runtime asks:
+
+```text
+How should meaningful work occur?
+```
+
+Product Geography asks:
+
+```text
+Where should product concepts live so the user can form a durable mental map?
+```
+
+The lab compares several candidate geographies without selecting a final winner:
+
+- Common Geography;
+- Working Context House;
+- Evidence-Centered Studio;
+- Mission Control Hallway;
+- Decision Theater.
+
+All candidates preserve the same underlying architecture, services, evidence contracts, runtime contracts, workflows, and AI governance. They change only organization, visibility, navigation hierarchy, grouping, and progressive disclosure.
+
+The Product Experience Lab now exposes:
+
+- geography selector;
+- prototype summary;
+- layout zones;
+- navigation map;
+- comparison metrics;
+- founder review prompts;
+- geography campaigns;
+- direct preliminary assessment.
+
+Details live in:
+
+```text
+docs/product_geography_lab.md
+```
+
+## Spatial Information Architecture Phase 2
+
+Phase 2 makes the leading product geographies clickable inside the Product Experience Lab.
+
+The phase compares:
+
+- Working Context House;
+- Evidence-Centered Studio;
+- Mission Control Hallway.
+
+Each prototype uses identical fixture state. The prototypes differ in spatial organization, focal object, action placement, Guide/help placement, navigation, progressive disclosure, and developer-surface treatment.
+
+The lab now includes:
+
+- clickable route buttons;
+- representative page selector;
+- primary-action placement selector;
+- Guide/help placement selector;
+- page layout previews;
+- layout-zone system;
+- screenshot-based layout audit;
+- Product Geography Constitution;
+- founder resonance framework;
+- synthesis candidate;
+- rejected-layout log;
+- Phase 2 campaigns.
+
+Phase 2 still does not replace the production shell or choose a final geography.
+
+Details live in:
+
+```text
+docs/product_geography_phase2.md
+```

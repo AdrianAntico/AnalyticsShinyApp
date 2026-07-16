@@ -3852,6 +3852,1189 @@ relationship_runtime_comparison <- function() {
   }))
 }
 
+product_geography_principles <- function() {
+  data.frame(
+    principle_id = c(
+      "intent_before_capability",
+      "task_before_tool",
+      "orientation_before_exploration",
+      "working_set_before_catalog",
+      "evidence_as_center",
+      "utility_rooms_stay_quiet",
+      "developer_space_is_backstage",
+      "ai_is_mentor_not_room",
+      "progressive_mastery",
+      "founder_rejection_is_evidence"
+    ),
+    principle = c(
+      "Intent before capability",
+      "Task before tool",
+      "Orientation before exploration",
+      "Working set before capability catalog",
+      "Evidence is the center of the product geography",
+      "Utility rooms stay out of the living space",
+      "Developer space is backstage",
+      "AI is a mentor, not a destination",
+      "Progressive mastery",
+      "Founder rejection is product evidence"
+    ),
+    rule = c(
+      "The first visible structure should ask what the user is trying to accomplish before exposing modules.",
+      "Navigation should map to analyst work, not implementation components.",
+      "A user should know where they are, why they are there, and what to do next before browsing.",
+      "Current work deserves more surface area than the full list of possible features.",
+      "Artifacts, findings, contradictions, sufficiency, and recommendations should be spatially adjacent.",
+      "Settings, QA, runtime internals, replay, and package diagnostics remain reachable but not primary.",
+      "Developer and product-research surfaces support the product without defining the user's mental map.",
+      "AI follows the work, explains it, and helps reason over it; it should not become another page to manage.",
+      "Power appears as the user moves deeper, not as a first-screen wall of options.",
+      "A prototype that feels wrong is a useful result if it narrows the product geography."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_mental_models <- function() {
+  data.frame(
+    mental_model = c("Home", "Professional Kitchen", "Workshop", "Library", "Gallery", "Control Room", "IDE", "Studio"),
+    product_translation = c(
+      "Entry hall, work rooms, storage rooms, and utility rooms.",
+      "Prep bench, active station, pantry, pass, and sanitation area.",
+      "Workbench, tools, materials, plans, inspection bench, and storage.",
+      "Catalog, reading room, references, archives, and research desk.",
+      "Evidence walls, selected object, curator notes, and guided path.",
+      "Status wall, alerts, active operations, escalation, and logs.",
+      "Explorer, editor, inspector, terminal, problems, and command palette.",
+      "Canvas, assets, inspector, timeline, export, and modes."
+    ),
+    strength = c(
+      "Easy to understand and good for hiding utilities.",
+      "Strong metaphor for preparation, execution, review, and delivery.",
+      "Good fit for analytical construction and iterative refinement.",
+      "Excellent for knowledge, book, ontology, and learning surfaces.",
+      "Strong fit for Artifact Studio and evidence-centered review.",
+      "Strong fit for Mission Control and operational status.",
+      "Powerful for technical users and command-driven workflows.",
+      "Good for creative exploration, artifacts, and progressive inspection."
+    ),
+    risk = c(
+      "Can become cute if taken literally.",
+      "May overfit to process rather than evidence.",
+      "Can feel too technical for business users.",
+      "Can become passive reading instead of action.",
+      "Can underemphasize execution and transformation.",
+      "Can feel alarming or operationally heavy.",
+      "Can expose too much machinery too soon.",
+      "Can over-prioritize visual polish over decision readiness."
+    ),
+    fit_score = c(4L, 4L, 5L, 4L, 5L, 4L, 4L, 5L),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_rooms <- function() {
+  data.frame(
+    room_id = c("entry_hall", "current_workbench", "evidence_gallery", "decision_table", "preparation_bench", "delivery_room", "library", "control_room", "utility_room", "developer_backstage"),
+    room_name = c("Guide Hall", "Current Workbench", "Evidence Gallery", "Decision Table", "Preparation Bench", "Delivery Room", "Knowledge Library", "Mission Control", "Utility Room", "Developer Backstage"),
+    metaphor = c("front door", "workbench", "gallery", "decision table", "prep bench", "publishing room", "library", "control room", "mechanical room", "backstage"),
+    purpose = c(
+      "Orient the user and ask what decision, question, or work state matters now.",
+      "Keep the active Working Context in one focused place.",
+      "Browse, inspect, compare, and reason over artifacts as evidence.",
+      "Evaluate readiness, alternatives, claims, valuations, and next actions.",
+      "Prepare data and features without mutating original project data.",
+      "Create reports, exports, collector documents, and presentation-ready outputs.",
+      "Read product knowledge, ontology, architecture, and source chapters.",
+      "Inspect project health, jobs, alerts, approvals, and operational risk.",
+      "Configure providers, storage, execution, themes, and other system utilities.",
+      "Run QA, product replay, code runner, package validation, and developer diagnostics."
+    ),
+    should_contain = c(
+      "intent prompt; project summary; recommendation; entry paths",
+      "business question; working set; evidence binder; inline actions; AI guidance",
+      "artifact cards; thumbnails; inspector; quality; diagnostics; recommendations",
+      "decision context; sufficiency; contradictions; valuation; approval status",
+      "dataset source; transformation spec; before/after summaries; lineage",
+      "report plans; collector output; exports; delivery status",
+      "book; concepts; architecture; research; open questions",
+      "alerts; async jobs; health; failures; approvals; run status",
+      "configuration; provider diagnostics; storage status; environment checks",
+      "QA; replay; generated code; implementation diagnostics; product experiments"
+    ),
+    should_not_contain = c(
+      "full module catalog; generated code; runtime internals",
+      "unrelated module settings; deep architecture docs; package QA",
+      "raw configuration forms; developer diagnostics",
+      "plot builder controls; unrelated data-loading machinery",
+      "artifact gallery browsing; report authoring",
+      "data cleaning controls; causal estimand authoring",
+      "run buttons; production execution controls",
+      "book reading; broad artifact exploration",
+      "primary analytical workflow",
+      "first-hour user orientation"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_prototypes <- function() {
+  data.frame(
+    prototype_id = c("common_geography", "working_context_house", "evidence_centered_studio", "mission_control_hallway", "decision_theater"),
+    prototype_name = c("Common Geography", "Working Context House", "Evidence-Centered Studio", "Mission Control Hallway", "Decision Theater"),
+    mental_model = c("familiar product map", "home plus focused rooms", "Lightroom evidence studio", "operations hallway", "decision-first war room"),
+    primary_object = c("workflow stage", "current working context", "artifact/evidence", "project status", "decision"),
+    navigation_model = c(
+      "Guide, Data, Prepare, Analyze, Evidence, Decide, Deliver, Learn, Developer",
+      "Entry Hall, Current Workbench, Evidence Gallery, Decision Table, Delivery, Library, Utility",
+      "Evidence Gallery is central; side modes orbit the selected evidence set.",
+      "Mission Control is the hallway; users enter rooms from operational status.",
+      "The decision/question is the room; artifacts and analyses are invited in as needed."
+    ),
+    working_context_placement = c(
+      "One tab within Analyze/Evidence",
+      "Primary room after Guide Hall",
+      "Right-sized studio mode when evidence exists",
+      "Opened from Mission Control attention items",
+      "Default workspace after a business question is declared"
+    ),
+    evidence_placement = c(
+      "Evidence tab after analysis",
+      "Evidence Gallery adjacent to Current Workbench",
+      "Central object of the whole layout",
+      "One operational room off the hallway",
+      "Evidence is subordinate to decision readiness"
+    ),
+    ai_placement = c(
+      "Persistent mentor dock",
+      "Contextual mentor in each room",
+      "Inspector assistant attached to selected evidence",
+      "Alert explainer and next-action mentor",
+      "Decision challenger and evidence sufficiency critic"
+    ),
+    developer_placement = c(
+      "Developer section at far end",
+      "Backstage utility room",
+      "Hidden backstage",
+      "Operations utility panel",
+      "Hidden unless decision evidence needs traceability"
+    ),
+    status = "candidate_not_selected",
+    architecture_changed = FALSE,
+    expected_resonance = c(
+      "High familiarity but may undersell the invention.",
+      "Likely strongest balance of orientation, focus, and depth.",
+      "Likely most memorable for artifact-centered value.",
+      "Strong for returning users and operational confidence.",
+      "Strong for executives and high-stakes use, riskier for exploration."
+    ),
+    primary_risk = c(
+      "Can remain too close to a normal app.",
+      "May require careful naming so rooms do not feel whimsical.",
+      "May hide preparation and execution too much.",
+      "May make the product feel like monitoring rather than analysis.",
+      "May feel too narrow before a project has a clear decision."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_layout_zones <- function() {
+  zones <- list(
+    common_geography = list(
+      c("top_nav", "Familiar stage navigation", "Guide, Data, Prepare, Analyze, Evidence, Decide, Deliver, Learn, Developer", "QA, runtime, internal providers", "Make the product legible quickly."),
+      c("center", "Stage workspace", "The selected stage and its next action", "Unrelated tools", "Keep the current stage obvious."),
+      c("right_panel", "Guide/inspector", "Recommendation, status, and explanation", "Developer logs", "Reduce uncertainty about what to do next.")
+    ),
+    working_context_house = list(
+      c("entry", "Guide Hall", "Intent prompt, current project, one next action", "Module catalog", "Orient before feature exposure."),
+      c("center", "Current Workbench", "Working Context, active evidence set, inline operations", "Unrelated settings", "Let users stay inside the work."),
+      c("side_rooms", "Adjacent rooms", "Evidence Gallery, Decision Table, Delivery, Library", "Developer backstage", "Preserve power without crowding the work.")
+    ),
+    evidence_centered_studio = list(
+      c("center", "Evidence wall", "Artifact cards, selected evidence, thumbnails, quality", "Configuration forms", "Make evidence feel tangible."),
+      c("right_panel", "Evidence inspector", "Preview, summary, caveats, recommendations, backing assets", "Raw system internals", "Turn browsing into investigation."),
+      c("bottom", "Evidence filmstrip", "Recent and important artifacts", "Full history", "Support fast evidence switching.")
+    ),
+    mission_control_hallway = list(
+      c("center", "Status hallway", "Project health, alerts, running jobs, approvals, next rooms", "Deep evidence details", "Make state and risk immediately visible."),
+      c("room_links", "Operational doors", "Open Workbench, Evidence, Decision, Delivery, Utility", "Broad module catalog", "Route by attention and status."),
+      c("right_panel", "Guide explainer", "Why this status matters and what to do next", "Long reports", "Turn alerts into action.")
+    ),
+    decision_theater = list(
+      c("center", "Decision board", "Question, alternatives, evidence sufficiency, recommendation", "General exploration", "Anchor everything to a decision."),
+      c("left_panel", "Evidence docket", "Artifacts supporting or contradicting the decision", "All unrelated artifacts", "Keep evidence bounded."),
+      c("right_panel", "Risk and review", "Assumptions, uncertainty, claims, approvals, valuation", "Plot controls", "Keep judgment and governance visible.")
+    )
+  )
+  do.call(rbind, lapply(names(zones), function(id) {
+    rows <- do.call(rbind, zones[[id]])
+    data.frame(
+      prototype_id = id,
+      zone = rows[, 1],
+      role = rows[, 2],
+      visible_elements = rows[, 3],
+      hidden_elements = rows[, 4],
+      attention_goal = rows[, 5],
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+product_geography_navigation_map <- function() {
+  data.frame(
+    prototype_id = c(
+      "common_geography", "common_geography", "working_context_house", "working_context_house",
+      "evidence_centered_studio", "evidence_centered_studio", "mission_control_hallway",
+      "mission_control_hallway", "decision_theater", "decision_theater"
+    ),
+    from_space = c(
+      "Guide", "Analyze", "Guide Hall", "Current Workbench", "Evidence Wall", "Evidence Inspector",
+      "Mission Control", "Alert", "Decision Board", "Evidence Docket"
+    ),
+    to_space = c(
+      "Data or Analyze", "Evidence", "Current Workbench", "Evidence Gallery", "Evidence Inspector",
+      "Decision Table", "Room opened by status", "Current Workbench", "Evidence Docket", "Analysis Room"
+    ),
+    transition_reason = c(
+      "Intent declares the next workflow stage.",
+      "Analysis produced artifacts that should become evidence.",
+      "The user has a current question or task.",
+      "The workbench needs evidence inspection.",
+      "The user selects an artifact.",
+      "Evidence should inform readiness and action.",
+      "Project status identifies the next meaningful room.",
+      "A status item needs focused work.",
+      "Decision requires supporting and contradicting evidence.",
+      "Missing evidence requires additional analysis."
+    ),
+    return_path = c(
+      "Back to Guide summary",
+      "Back to Analyze stage",
+      "Back to Guide Hall",
+      "Back to Current Workbench",
+      "Back to Evidence Wall",
+      "Back to selected artifact",
+      "Back to Mission Control",
+      "Back to alert list",
+      "Back to Decision Board",
+      "Back to Evidence Docket"
+    ),
+    preserves_context = TRUE,
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_comparison <- function() {
+  data.frame(
+    prototype_id = c("common_geography", "working_context_house", "evidence_centered_studio", "mission_control_hallway", "decision_theater"),
+    prototype_name = c("Common Geography", "Working Context House", "Evidence-Centered Studio", "Mission Control Hallway", "Decision Theater"),
+    naturalness = c(8L, 9L, 8L, 7L, 7L),
+    overwhelm_reduction = c(7L, 9L, 8L, 8L, 8L),
+    power_preservation = c(8L, 9L, 8L, 8L, 7L),
+    orientation_strength = c(8L, 8L, 7L, 9L, 7L),
+    working_context_support = c(7L, 10L, 8L, 7L, 9L),
+    architecture_hidden = c(8L, 9L, 9L, 8L, 8L),
+    exploration_value = c(7L, 8L, 10L, 7L, 8L),
+    overall_resonance = c(7.6, 8.9, 8.3, 7.7, 7.7),
+    evidence_status = "deterministic_pre_founder_review",
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_founder_review_template <- function() {
+  prototypes <- product_geography_prototypes()
+  prompts <- c(
+    "Where did you feel oriented fastest?",
+    "Where did the product feel least like a normal Shiny app?",
+    "Where did you want to click next?",
+    "Where did the architecture disappear?",
+    "Where did power remain discoverable?",
+    "What definitely should not survive?"
+  )
+  do.call(rbind, lapply(prototypes$prototype_id, function(id) {
+    data.frame(
+      prototype_id = id,
+      review_question = prompts,
+      score_scale = "1-5 plus notes",
+      founder_notes = "",
+      required = TRUE,
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+product_geography_campaigns <- function() {
+  data.frame(
+    campaign_id = c(
+      "geo_compare_working_context_house",
+      "geo_artifact_studio_as_center",
+      "geo_mission_control_hallway",
+      "geo_decision_theater_fit",
+      "geo_developer_backstage"
+    ),
+    prototype_id = c("working_context_house", "evidence_centered_studio", "mission_control_hallway", "decision_theater", "cross_prototype"),
+    question = c(
+      "Does a room-based Working Context geography reduce navigation and preserve depth?",
+      "Does making artifacts central communicate value faster than a workflow-stage map?",
+      "Does Mission Control work better as a hallway than as the front door?",
+      "Does a decision-first room help or constrain users before enough evidence exists?",
+      "Which developer and architecture surfaces should move backstage without harming founder/developer workflows?"
+    ),
+    suggested_experiment = c(
+      "Create a low-fidelity Product Experience replay package with Guide Hall -> Current Workbench -> Evidence Gallery transitions.",
+      "Replay the Golden Workflow with Artifact Studio as the main workspace after first evidence appears.",
+      "Replay returning-user flow where alerts route users into rooms.",
+      "Test a business-question-first run where the Decision Board owns evidence requirements.",
+      "Inventory normal-user navigation and hide Product Experience Lab, QA, generated code, and runtime diagnostics behind Developer."
+    ),
+    expected_learning = c(
+      "Whether users can stay in one coherent working environment.",
+      "Whether evidence becomes more memorable than module execution.",
+      "Whether status-based routing feels helpful or heavy.",
+      "Whether decisions should be the initial container or an advanced state.",
+      "Whether architecture can be hidden while preserving power."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_open_questions <- function() {
+  data.frame(
+    question = c(
+      "Should the primary geography be organized by rooms, workflow stages, or selected evidence?",
+      "Should Mission Control be a hallway, a room, or a compact status layer?",
+      "Should Artifact Studio be the center of everyday work or only appear after evidence exists?",
+      "Does Decision Theater resonate for exploratory users, or only for decision-ready projects?",
+      "How much spatial metaphor helps before it becomes cute or distracting?",
+      "What should the top navigation become if Product Geography wins over tab geography?"
+    ),
+    why_it_matters = c(
+      "This determines whether the product feels like a workstation or a traditional app.",
+      "Mission Control can orient users or overwhelm them depending on placement.",
+      "Artifacts are the philosophical center, but users may need orientation first.",
+      "Decision-first design may be powerful but premature for open exploration.",
+      "The metaphor must organize the product without becoming decorative.",
+      "Navigation is the visible contract between architecture and user attention."
+    ),
+    next_experiment = c(
+      "Compare Common Geography, Working Context House, and Evidence-Centered Studio in Product Experience replay.",
+      "Run returning-user replay with Mission Control summary versus full-page entry.",
+      "Run Golden Workflow variants where Artifact Studio becomes central at different moments.",
+      "Run the same business question through Decision Theater and Working Context House.",
+      "Founder review using screenshots/wireframes without changing production UI.",
+      "Prototype a nav shell where primary labels are rooms and utilities are backstage."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_final_assessment <- function() {
+  data.frame(
+    question = c(
+      "Which prototype felt most natural?",
+      "Which best reduced overwhelm?",
+      "Which best preserved power?",
+      "Which had the strongest orientation?",
+      "Which best supported Working Contexts?",
+      "Which best hid architecture?",
+      "What should definitely not survive?",
+      "What unexpectedly resonated?",
+      "What should be explored next?"
+    ),
+    preliminary_answer = c(
+      "Working Context House. It maps to how people actually work: enter, focus, inspect evidence, decide, deliver.",
+      "Working Context House, with Common Geography as the safer fallback for first-time familiarity.",
+      "Working Context House. It keeps adjacent rooms available while making the current task primary.",
+      "Mission Control Hallway for returning users; Common Geography or Guide Hall for new users.",
+      "Working Context House. It treats contexts as rooms rather than tabs or modules.",
+      "Evidence-Centered Studio and Working Context House both hide architecture well; Studio hides it most aggressively.",
+      "A top-level geography made from implementation sequence, developer tools in normal navigation, AI as a standalone destination, and module catalogs as the main mental model.",
+      "Mission Control as a hallway rather than the house; Developer as backstage; Artifact Studio as a gallery/studio rather than a report preview.",
+      "A clickable low-fidelity geography selector comparing Working Context House, Evidence-Centered Studio, and Mission Control Hallway against the same Golden Workflow."
+    ),
+    confidence = c("medium", "medium", "medium", "medium", "high", "medium", "high", "medium", "high"),
+    evidence_status = "pre_founder_review_product_hypothesis",
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_screenshot_layout_audit <- function() {
+  data.frame(
+    page = c(
+      "Guide",
+      "Evidence Review",
+      "Knowledge Library",
+      "Mission Control",
+      "AI Runtime",
+      "Product Experience",
+      "Project",
+      "Data Workspace",
+      "Plots",
+      "Analysis Modules",
+      "Workflow",
+      "Semantic Intelligence",
+      "Causal Intelligence",
+      "Artifact Studio",
+      "Decision Surfaces",
+      "Developer-Oriented Pages"
+    ),
+    current_primary_object = c(
+      "orientation and next-step cards",
+      "evidence review context",
+      "current document plus navigator",
+      "project health/status",
+      "provider/status/action controls",
+      "product research tables",
+      "project summary and collector status",
+      "dataset preview",
+      "plot configuration and preview",
+      "selected analysis module",
+      "workflow stage cards",
+      "business intent and semantic records",
+      "causal question/study records",
+      "selected artifact/evidence object",
+      "decision context, alternatives, and review state",
+      "QA, replay, runtime, code, diagnostics"
+    ),
+    actual_primary_task = c(
+      "understand what to do next",
+      "evaluate evidence and sufficiency",
+      "read and navigate knowledge",
+      "notice what needs attention",
+      "understand GenAI availability and bounded actions",
+      "compare product experience prototypes",
+      "load/save project and inspect state",
+      "load data and inspect readiness",
+      "build or update a plot",
+      "configure and run a module",
+      "select the next workflow stage",
+      "author business intent and variable semantics",
+      "author causal study setup or inspect causal evidence",
+      "inspect artifacts and backing evidence",
+      "decide, review, approve, or defer",
+      "validate and debug the product"
+    ),
+    visual_focal_point = c(
+      "large action cards compete with health/status blocks",
+      "many peer panels dilute the conclusion",
+      "reader competes with navigator and context panel",
+      "status cards and alerts share weight",
+      "assistant response area competes with provider warning",
+      "dense tables dominate before prototype purpose is felt",
+      "summary tiles precede detailed status",
+      "preview table dominates but source controls occupy a side column",
+      "left configuration column and generated code compete with preview",
+      "module settings and generated code compete with status",
+      "stage grid is visible before current task is emphasized",
+      "forms and registries can feel equally weighted",
+      "study setup, diagnostics, and outputs compete",
+      "hero preview is focal, but scrollbars and embedded widget chrome can distract",
+      "review state can compete with evidence and valuation",
+      "developer controls are sometimes presented like ordinary work"
+    ),
+    first_actionable_control = c(
+      "primary action card or Guide panel",
+      "binder/inspect/synthesis actions",
+      "section and document selectors",
+      "alert or navigation link",
+      "Explain Alerts or Suggest Next Action",
+      "run/replay buttons and selectors",
+      "Save/Load Project",
+      "file upload",
+      "Build / Refresh Plot",
+      "Run selected module",
+      "stage/module action",
+      "create/edit semantic object",
+      "create/edit causal object",
+      "artifact card or filter",
+      "approve/review/persist action",
+      "run QA/replay/code action"
+    ),
+    placement_observation = c(
+      "Guide should be a front-door orientation space, not a floating help destination competing with primary work.",
+      "Evidence conclusion and current question should dominate before diagnostics and supporting panels.",
+      "The reader should own the center; navigation and context should be scrollable support, not equal visual peers.",
+      "Mission Control should function as a hallway: status first, then routes into rooms.",
+      "Provider state and trust cue should be compact; the read-only mentor action should follow the current page uncertainty.",
+      "Product Experience is developer backstage; dense comparison is appropriate but should not leak into ordinary navigation.",
+      "Project summary is useful, but project work should route to current context rather than become a generic dashboard.",
+      "Loader should sit above preview; the dataset preview should use available width and become the primary object.",
+      "Run actions should remain reachable during long configuration; generated code is supporting depth, not a peer of the preview.",
+      "Run action should sit near readiness/config summary; generated code should be progressive depth.",
+      "Workflow should recommend one next stage instead of showing all stages as equal boxes.",
+      "Semantic authoring needs a current object and next action; registries belong below or beside that object.",
+      "Causal setup should distinguish question, design, assumptions, evidence, and diagnostics by hierarchy.",
+      "Artifact preview and interpretation are right as dominant objects; embedded widget chrome and scrollbars should be managed.",
+      "Decision surfaces should separate conclusion, uncertainty, evidence, valuation, and governance.",
+      "Developer surfaces belong in Backstage/Develop and should not share primary geography with normal users."
+    ),
+    principle = c(
+      "Help and Guide rule",
+      "Primary-object rule",
+      "Primary-object rule",
+      "Stable-landmark rule",
+      "Help and Guide rule",
+      "Developer-space rule",
+      "Context-preservation rule",
+      "Primary-object rule",
+      "Primary-action rule",
+      "Primary-action rule",
+      "Attention hierarchy rule",
+      "Working-set rule",
+      "Attention hierarchy rule",
+      "Visual-awe rule",
+      "Attention hierarchy rule",
+      "Developer-space rule"
+    ),
+    recommended_phase2_experiment = c(
+      "Compare front-door Guide against hallway and room-entry variants.",
+      "Render Evidence Review in Working Context House and Evidence Studio layouts.",
+      "Use Studio layout with document canvas, navigator, context inspector, and sticky reading header.",
+      "Prototype Mission Control Hallway as compact entry that routes to rooms.",
+      "Test persistent contextual help versus page-level guide card.",
+      "Keep Product Experience as Backstage and use it to switch prototypes.",
+      "Route project state into Home/Hallway and Current Workbench previews.",
+      "Use Data as the analytical entry representative page.",
+      "Test sticky action bar, header action, and configuration-summary action.",
+      "Test primary action placement beside module readiness summary.",
+      "Represent workflow as room/context routing rather than peer stage cards.",
+      "Use Decision Theater style hierarchy for authored objects.",
+      "Use inspector/depth separation for causal diagnostics.",
+      "Use Evidence Studio canvas with artifact inspector and filmstrip.",
+      "Use Decision Theater as a representative decision page.",
+      "Move runtime, QA, replay, and code into Develop/Backstage."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_constitution <- function() {
+  data.frame(
+    rule_id = c(
+      "primary_object",
+      "primary_action",
+      "help_where_uncertain",
+      "attention_hierarchy",
+      "working_set",
+      "stable_landmark",
+      "context_preservation",
+      "visual_awe",
+      "developer_backstage"
+    ),
+    rule = c(
+      "Every task surface has one visually dominant object.",
+      "Primary actions are obvious, adjacent to readiness/configuration, and persistently reachable for long tasks.",
+      "Help appears where uncertainty occurs.",
+      "Current state, primary task, next action, evidence, optional depth, and diagnostics are not peer cards.",
+      "Show the tools and outputs required for the current task; keep adjacent tools discoverable and unrelated tools quiet.",
+      "Prototype-specific layouts may vary, but common landmarks remain intelligible.",
+      "Deep tools preserve originating task, selected object, return path, and workflow stage.",
+      "Progressive disclosure should remain visually compelling, not sterile.",
+      "Developer, QA, replay, generated code, provider diagnostics, and architecture tools belong backstage."
+    ),
+    placement_test = c(
+      "Can the founder name the main thing on the screen within three seconds?",
+      "Can the founder run or understand why run is disabled without scrolling to the bottom?",
+      "Does the help affordance explain the user's current uncertainty rather than generic product help?",
+      "Can the founder distinguish conclusion, action, evidence, diagnostics, and architecture?",
+      "Does the surface show current work before the whole tool cabinet?",
+      "Can the founder predict where adjacent work lives across prototypes?",
+      "Can the founder go deeper and return without losing the task?",
+      "Does the screen create curiosity and trust while staying bounded?",
+      "Can a normal user avoid developer surfaces while a developer can still reach them quickly?"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_phase2_prototypes <- function() {
+  data.frame(
+    prototype_id = c("working_context_house", "evidence_centered_studio", "mission_control_hallway"),
+    prototype_name = c("Working Context House", "Evidence-Centered Studio", "Mission Control Hallway"),
+    top_level_geography = c(
+      "Home, Analyze, Decide, Monitor, Learn, Create, Develop",
+      "Studio, Evidence, Inspector, Timeline, Deliver, Learn, Backstage",
+      "Today, Attention, Current Work, Rooms, History, Learn, Backstage"
+    ),
+    primary_focal_object = c(
+      "current Working Context",
+      "selected evidence/work product canvas",
+      "highest-priority unresolved project condition"
+    ),
+    guide_placement = c(
+      "front-door room plus contextual room mentor",
+      "compact inspector mentor attached to selected object",
+      "hallway explainer for what changed and why it matters"
+    ),
+    run_action_placement = c(
+      "context header or sticky room action bar",
+      "compact top action bar over the canvas",
+      "action appears only after routing into the task room"
+    ),
+    developer_treatment = c(
+      "Develop room / backstage",
+      "Backstage drawer",
+      "Backstage utility corridor"
+    ),
+    material_difference = c(
+      "Task rooms own the experience; modules become tools inside rooms.",
+      "The work product owns the experience; navigation orbits the selected evidence.",
+      "Status and resumability own the entry; execution happens after room selection."
+    ),
+    status = "clickable_research_candidate",
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_fixture_state <- function() {
+  list(
+    fixture_id = "geo_phase2_shared_fixture",
+    project = "Creative Attribute Testing Demo",
+    business_question = "Which creative attributes should we test next?",
+    current_stage = "Evidence Review",
+    selected_artifact = "SHAP Dependence: Creative A",
+    evidence_sufficiency = "Reasonable, not high confidence",
+    highest_priority_signal = "Contradictory evidence between importance and segment stability",
+    recommended_next_action = "Review contradiction and generate segment stability evidence",
+    artifact_count = 74L,
+    unresolved_alerts = 3L,
+    developer_mode = FALSE,
+    architecture_changed = FALSE
+  )
+}
+
+product_geography_representative_pages <- function() {
+  data.frame(
+    page_id = c("home", "evidence_review", "mission_control", "data_entry", "developer_backstage"),
+    page_name = c("Guide / Home", "Evidence Review", "Mission Control", "Data or Analyze Entry", "Developer Backstage"),
+    test_dimension = c("orientation", "task execution", "monitoring", "analytical entry", "backstage isolation"),
+    required_answer = c(
+      "What should I do first?",
+      "What evidence do I have and what does it imply?",
+      "What changed and what needs attention?",
+      "How do I start analytical work from data?",
+      "Where do product machinery and diagnostics live?"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_layout_zone_system <- function() {
+  data.frame(
+    zone_id = c("global_orientation", "room_navigation", "task_header", "primary_canvas", "primary_action", "contextual_actions", "supporting_evidence", "inspector", "progressive_depth", "status_audit", "developer_debug"),
+    zone_name = c("Global Orientation", "Room / Context Navigation", "Task Header", "Primary Canvas", "Primary Action", "Contextual Actions", "Supporting Evidence", "Inspector", "Progressive Depth", "Status and Audit", "Developer / Debug"),
+    purpose = c(
+      "Tell the user where they are in the product geography.",
+      "Move between rooms, contexts, or adjacent work without exposing the whole app.",
+      "State the current task, selected object, readiness, and return path.",
+      "Show the dominant object of work.",
+      "Execute, continue, or explain why execution is unavailable.",
+      "Offer secondary operations related to the selected object.",
+      "Show evidence that supports current interpretation.",
+      "Expose details, caveats, metadata, and backing assets.",
+      "Reveal advanced, diagnostic, or architectural depth.",
+      "Show state, audit, warnings, jobs, and traceability.",
+      "Expose QA, replay, generated code, provider diagnostics, and implementation internals."
+    ),
+    visibility_rule = c("always compact", "always contextual", "always", "dominant", "always or sticky when task is actionable", "contextual", "visible when evidence exists", "visible beside selected object", "collapsed by semantic type", "compact unless urgent", "developer mode only"),
+    priority = c(1L, 2L, 1L, 1L, 1L, 3L, 2L, 2L, 4L, 3L, 5L),
+    responsive_behavior = c(
+      "compress to breadcrumb or room chip",
+      "top rooms become side drawer on narrow screens",
+      "sticky compact header",
+      "fills available width/height",
+      "sticky footer or header action",
+      "wrap into overflow menu",
+      "move below canvas on narrow screens",
+      "dock below canvas on narrow screens",
+      "accordion or tabs by depth type",
+      "collapse to status ribbon",
+      "hidden behind Develop/Backstage"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_page_layouts <- function(prototype_id = "working_context_house", page_id = "evidence_review", action_pattern = "sticky_task_action_bar", help_pattern = "contextual_explain") {
+  prototypes <- product_geography_phase2_prototypes()
+  pages <- product_geography_representative_pages()
+  if (!prototype_id %in% prototypes$prototype_id) prototype_id <- "working_context_house"
+  if (!page_id %in% pages$page_id) page_id <- "evidence_review"
+
+  page_title <- pages$page_name[pages$page_id == page_id][[1]]
+  prototype_title <- prototypes$prototype_name[prototypes$prototype_id == prototype_id][[1]]
+  primary_object <- switch(page_id,
+    home = "recommended next action and current project question",
+    evidence_review = "current question, evidence conclusion, and contradiction",
+    mission_control = "highest-priority unresolved condition",
+    data_entry = "current dataset and immediate preparation step",
+    developer_backstage = "diagnostic surface selected by developer intent",
+    "current work object"
+  )
+  canvas <- switch(prototype_id,
+    working_context_house = paste("Room-centered layout for", page_title),
+    evidence_centered_studio = paste("Canvas-centered studio layout for", page_title),
+    mission_control_hallway = paste("Hallway-routed layout for", page_title),
+    paste("Layout for", page_title)
+  )
+  data.frame(
+    prototype_id = prototype_id,
+    prototype_name = prototype_title,
+    page_id = page_id,
+    page_name = page_title,
+    zone = c("global_orientation", "room_navigation", "task_header", "primary_canvas", "primary_action", "contextual_actions", "supporting_evidence", "inspector", "progressive_depth", "status_audit", "developer_debug"),
+    visible_content = c(
+      prototypes$top_level_geography[prototypes$prototype_id == prototype_id][[1]],
+      switch(prototype_id,
+        working_context_house = "rooms and adjacent contexts",
+        evidence_centered_studio = "object browser and studio modes",
+        mission_control_hallway = "attention hallway and resumable rooms"
+      ),
+      paste("Current:", page_title, "| Return path preserved"),
+      paste(canvas, "| Primary object:", primary_object),
+      paste(action_pattern, "for", page_title),
+      "Inspect, explain, compare, continue, or defer based on selected object",
+      "only evidence relevant to the page task",
+      paste(help_pattern, "plus selected-object details"),
+      "summary -> evidence -> diagnostics -> architecture",
+      "compact health, audit, jobs, warnings, and trace",
+      if (identical(page_id, "developer_backstage")) "QA, replay, generated code, provider diagnostics" else "hidden behind Develop / Backstage"
+    ),
+    placement_rationale = c(
+      "Stable landmark keeps prototype legible.",
+      "Adjacent functionality stays discoverable without becoming the main object.",
+      "Task header protects context and return path.",
+      "Primary-object rule gives the page one dominant object.",
+      "Primary-action rule keeps execution understandable and reachable.",
+      "Secondary actions remain adjacent to the selected work.",
+      "Evidence supports interpretation without flooding the page.",
+      "Help appears where uncertainty and selected-object detail live.",
+      "Depth is semantic rather than a uniform accordion sea.",
+      "Status remains visible without monopolizing execution.",
+      "Developer machinery is accessible but not normal geography."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_action_placement_patterns <- function() {
+  data.frame(
+    pattern_id = c("sticky_task_action_bar", "context_header_action", "configuration_summary_action"),
+    pattern_name = c("Sticky Task Action Bar", "Context Header Action", "Configuration Summary Action"),
+    description = c(
+      "Primary action remains visible while configuration scrolls.",
+      "Primary action sits beside task title and readiness state.",
+      "Primary action sits beside a compact summary of what will run."
+    ),
+    best_for = c(
+      "long configuration workflows and expert iteration",
+      "short tasks with obvious readiness state",
+      "analysis modules, model runs, plot builds, and anything validation-sensitive"
+    ),
+    risk = c(
+      "can consume space and invite execution before review",
+      "can detach action from detailed settings on long forms",
+      "requires a trustworthy compact summary"
+    ),
+    rule = c(
+      "Use when users scroll through long configuration but need persistent action access.",
+      "Use when the task object and readiness state fit in a compact header.",
+      "Use when execution depends on many settings and the user needs confidence in what will happen."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_help_placement_patterns <- function() {
+  data.frame(
+    pattern_id = c("global_guide_destination", "page_level_explain", "contextual_explain", "guided_mode", "persistent_help_affordance"),
+    pattern_name = c("Global Guide Destination", "Page-Level Explain This", "Contextual Explanation", "Guided Mode", "Persistent Help Affordance"),
+    uncertainty_resolved = c(
+      "What is this product and where do I begin?",
+      "What is this page for?",
+      "What does this control, warning, or evidence mean?",
+      "How do I complete this workflow step by step?",
+      "How do I ask for help from anywhere without losing context?"
+    ),
+    placement_rule = c(
+      "Use as front-door orientation and learning space.",
+      "Place near page title or task header.",
+      "Place next to complex controls, warnings, evidence, or claims.",
+      "Use for first-run or high-risk workflows.",
+      "Keep compact and context-aware; do not compete with primary action."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_progressive_disclosure_patterns <- function() {
+  data.frame(
+    pattern = c("summary_to_expand", "primary_to_advanced", "current_to_history", "conclusion_to_evidence", "result_to_diagnostics", "task_to_architecture", "normal_to_developer"),
+    semantic_purpose = c(
+      "Show the gist before details.",
+      "Protect novice flow while preserving expert depth.",
+      "Keep current work primary and history available.",
+      "Let conclusions be evaluated through backing evidence.",
+      "Reveal diagnostic depth when needed.",
+      "Teach the system only when architecture is the task.",
+      "Keep product machinery out of normal use."
+    ),
+    preferred_mechanism = c(
+      "inline disclosure with count/status",
+      "advanced drawer or mode",
+      "timeline panel",
+      "evidence docket or inspector section",
+      "diagnostic panel with severity",
+      "Knowledge Library link or learning mode",
+      "Develop/Backstage room"
+    ),
+    avoid = c(
+      "all content hidden behind identical accordions",
+      "advanced options mixed into basic controls",
+      "history above current work",
+      "conclusions without evidence access",
+      "warnings buried below aesthetic content",
+      "architecture jargon in normal task labels",
+      "developer pages in primary navigation"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_navigation_alternatives <- function() {
+  data.frame(
+    navigation_pattern = c("full_top_tab_strip", "compact_room_navigation", "sidebar_rooms", "current_room_plus_command_palette", "more_backstage", "task_breadcrumbs", "recent_pinned_contexts"),
+    best_for = c(
+      "small stable applications",
+      "spatial geography with a few durable rooms",
+      "workstation layouts with many adjacent rooms",
+      "expert workflows where current context is primary",
+      "developer and utility surfaces",
+      "deep tools that need return path clarity",
+      "resume and continuity"
+    ),
+    risk = c(
+      "exposes implementation sequence and grows horizontally",
+      "can hide power if room names are vague",
+      "can feel heavy on small screens",
+      "command palette cannot be sole discoverability mechanism",
+      "can make developer tools feel hidden to maintainers",
+      "can become noisy if every panel adds a crumb",
+      "can become a stale-history pile"
+    ),
+    phase2_use = c(FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_clickable_route_map <- function(prototype_id = "working_context_house") {
+  prototype_id <- match.arg(prototype_id, c("working_context_house", "evidence_centered_studio", "mission_control_hallway"))
+  routes <- switch(prototype_id,
+    working_context_house = data.frame(
+      route_label = c("Home", "Analyze", "Decide", "Monitor", "Learn", "Create", "Develop"),
+      target_page_id = c("home", "data_entry", "evidence_review", "mission_control", "home", "evidence_review", "developer_backstage"),
+      route_role = c("front door", "preparation room", "task room", "hallway", "library", "creation room", "backstage"),
+      stringsAsFactors = FALSE
+    ),
+    evidence_centered_studio = data.frame(
+      route_label = c("Studio", "Evidence", "Inspector", "Timeline", "Deliver", "Learn", "Backstage"),
+      target_page_id = c("evidence_review", "evidence_review", "evidence_review", "mission_control", "home", "home", "developer_backstage"),
+      route_role = c("canvas", "object browser", "right inspector", "bottom timeline", "delivery route", "knowledge route", "developer drawer"),
+      stringsAsFactors = FALSE
+    ),
+    mission_control_hallway = data.frame(
+      route_label = c("Today", "Attention", "Current Work", "Rooms", "History", "Learn", "Backstage"),
+      target_page_id = c("mission_control", "mission_control", "evidence_review", "data_entry", "mission_control", "home", "developer_backstage"),
+      route_role = c("hallway", "alerts", "resumable task", "room directory", "audit/history", "orientation", "developer corridor"),
+      stringsAsFactors = FALSE
+    )
+  )
+  routes$prototype_id <- prototype_id
+  routes
+}
+
+product_geography_founder_resonance_framework <- function() {
+  data.frame(
+    dimension = c("immediate_reaction", "first_focal_point", "perceived_purpose", "expected_next_action", "adjacent_work_location", "overwhelm", "obscurity", "elegance", "visual_interest", "friction", "trust", "inevitability", "artificiality", "steal", "discard"),
+    prompt = c(
+      "What did this space feel like before reading any table?",
+      "What did your eye go to first?",
+      "What did you think this space was for?",
+      "What did you want to do next?",
+      "Where would you expect related work to live?",
+      "What felt like too much?",
+      "What felt hidden or unclear?",
+      "What felt clean without feeling empty?",
+      "What made you curious?",
+      "What slowed you down?",
+      "What made the product feel credible?",
+      "What made the product feel inevitable?",
+      "What felt forced or theatrical?",
+      "What should another prototype steal?",
+      "What should be killed?"
+    ),
+    response_type = c(rep("free_text_plus_1_to_5", 12), "free_text", "free_text", "free_text"),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_synthesis_candidate <- function() {
+  data.frame(
+    synthesis_layer = c("front_door", "hallway", "rooms", "studio", "backstage"),
+    borrowed_from = c("Guide / Common Geography", "Mission Control Hallway", "Working Context House", "Evidence-Centered Studio", "Developer Backstage"),
+    candidate_role = c(
+      "new-user orientation and intent capture",
+      "returning-user status, changes, resumable work, and next action",
+      "task-centered Working Contexts such as Evidence Review, Model Development, and Decision Management",
+      "artifact, report, evidence, and output inspection inside contexts",
+      "AI Runtime, Product Experience Lab, Code Runner, QA, replay, provider diagnostics, and architecture tools"
+    ),
+    compatibility = c("high", "high", "high", "medium_high", "high"),
+    unresolved_risk = c(
+      "front door may become another page if it does not route quickly",
+      "hallway may feel like dashboard if too dense",
+      "room names must remain professional and predictable",
+      "studio cannot absorb all tasks literally",
+      "developer access must remain fast for builders"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_phase2_campaigns <- function() {
+  data.frame(
+    campaign_id = c("room_structure", "hallway_design", "evidence_studio_canvas", "top_navigation_reduction", "developer_backstage", "guide_help_relocation", "action_placement", "card_reduction", "hierarchy_improvement", "responsive_layout", "context_return_paths", "visual_awe"),
+    prototype_id = c("working_context_house", "mission_control_hallway", "evidence_centered_studio", "cross_prototype", "cross_prototype", "cross_prototype", "cross_prototype", "cross_prototype", "cross_prototype", "cross_prototype", "cross_prototype", "cross_prototype"),
+    page_id = c("evidence_review", "mission_control", "evidence_review", "home", "developer_backstage", "home", "data_entry", "evidence_review", "evidence_review", "data_entry", "evidence_review", "home"),
+    layout_zone = c("room_navigation", "global_orientation", "primary_canvas", "room_navigation", "developer_debug", "inspector", "primary_action", "progressive_depth", "task_header", "primary_canvas", "task_header", "primary_canvas"),
+    founder_finding_placeholder = c(
+      "Do rooms feel natural?",
+      "Does hallway orient without becoming dashboard?",
+      "Does canvas make evidence feel tangible?",
+      "Which tabs should leave primary navigation?",
+      "Can developers still reach tools quickly?",
+      "Does help resolve uncertainty where it occurs?",
+      "Which run placement feels clearest?",
+      "Which cards can become open spatial sections?",
+      "Does hierarchy identify conclusion and action first?",
+      "Does the layout fill wide screens without bloating?",
+      "Can users return to the originating task?",
+      "Does bounded visual interest increase trust?"
+    ),
+    expected_improvement = c(
+      "better shared orientation",
+      "better returning-user momentum",
+      "stronger evidence communication",
+      "less architecture leakage",
+      "cleaner normal-user geography",
+      "less help-as-floating-widget confusion",
+      "less scrolling and clearer execution",
+      "calmer surfaces",
+      "faster comprehension",
+      "better use of screen space",
+      "less disorientation",
+      "more memorable product identity"
+    ),
+    unresolved_risk = c(
+      "room metaphor could feel cute",
+      "hallway could overemphasize status",
+      "studio may not fit setup tasks",
+      "hidden nav may hurt discoverability",
+      "backstage may hide needed tools",
+      "too many help surfaces can compete",
+      "sticky actions may invite premature execution",
+      "too few boundaries can reduce scanability",
+      "strong hierarchy may hide useful detail",
+      "wide layouts can become sparse",
+      "breadcrumbs can become noisy",
+      "visual awe can become decoration"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_rejected_layout_log <- function() {
+  data.frame(
+    rejected_pattern = c("implementation_sequence_nav", "ai_as_primary_room", "developer_tools_in_normal_nav", "run_button_after_long_form_only", "uniform_card_wall", "generic_accordion_depth"),
+    reason = c(
+      "It teaches construction order instead of product geography.",
+      "AI should mentor the work, not become a destination that competes with it.",
+      "It leaks product machinery into ordinary user geography.",
+      "It breaks the primary-action rule for long configurations.",
+      "It gives equal weight to state, task, evidence, diagnostics, and architecture.",
+      "It hides semantically different depth behind identical controls."
+    ),
+    can_return_if = c(
+      "used only in developer mode",
+      "AI becomes an explicitly requested reasoning workspace later",
+      "developer mode is active",
+      "the form is short or action is duplicated through a canonical sticky action",
+      "cards are reserved for repeated objects or true summaries",
+      "disclosure labels communicate the kind of depth below"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_phase2_final_assessment <- function() {
+  data.frame(
+    question = c(
+      "Which prototype gives the clearest common geography?",
+      "Which prototype provides the strongest task flow?",
+      "Which prototype best balances discoverability and calm?",
+      "Which layout makes the primary action easiest to understand?",
+      "Where should primary Run actions live for long configuration workflows?",
+      "What role should Guide/help play, and where should it appear?",
+      "Which current page patterns should be retired?",
+      "Which current visual strengths should be preserved?",
+      "Does a hybrid synthesis now feel more promising than any pure prototype?",
+      "What should be implemented in the next iteration?",
+      "What remains unresolved and requires founder judgment?"
+    ),
+    answer = c(
+      "Working Context House currently gives the clearest shared geography because rooms map to task-centered work while preserving adjacent power.",
+      "Working Context House provides the strongest task flow; Evidence-Centered Studio provides the strongest task presentation once evidence exists.",
+      "The hybrid of Working Context House plus Mission Control Hallway best balances discoverability and calm.",
+      "Configuration Summary Action is clearest for analysis execution; Context Header Action is clearest for short tasks; Sticky Task Action Bar is best for long forms.",
+      "Beside a compact configuration/readiness summary, with a sticky task action bar for long forms and a disabled explanation when unavailable.",
+      "Guide should orient at the front door, explain pages near task headers, answer control-level uncertainty inline, and remain available as a compact contextual mentor.",
+      "Implementation-sequence top nav, AI as a standalone room, developer tools in normal navigation, run buttons only at the bottom of long forms, uniform card walls, and generic accordions.",
+      "Dark-first theme, Artifact Studio evidence preview, command palette, strong status badges, readable tables, and the emerging Guide/Working Context philosophy.",
+      "Yes. The most promising product is Guide/Common front door -> Mission Control hallway -> Working Context rooms -> Evidence Studio within contexts -> Developer Backstage.",
+      "Build one clickable synthesis preview and one concrete representative page pass for Evidence Review or Plot/Analysis action placement.",
+      "Founder must judge whether room language feels natural, whether Evidence Studio should become central, how much Mission Control belongs up front, and how much visual awe is productive."
+    ),
+    confidence = c("medium", "medium", "medium", "medium_high", "high", "medium_high", "high", "high", "medium_high", "medium_high", "requires_founder_review"),
+    stringsAsFactors = FALSE
+  )
+}
+
+product_geography_phase2_lab <- function() {
+  list(
+    lab_id = "product_geography_lab_phase2",
+    status = "clickable_research_no_production_replacement",
+    audit = product_geography_screenshot_layout_audit(),
+    constitution = product_geography_constitution(),
+    prototypes = product_geography_phase2_prototypes(),
+    fixture_state = product_geography_fixture_state(),
+    representative_pages = product_geography_representative_pages(),
+    layout_zones = product_geography_layout_zone_system(),
+    action_patterns = product_geography_action_placement_patterns(),
+    help_patterns = product_geography_help_placement_patterns(),
+    disclosure_patterns = product_geography_progressive_disclosure_patterns(),
+    navigation_alternatives = product_geography_navigation_alternatives(),
+    founder_resonance = product_geography_founder_resonance_framework(),
+    synthesis_candidate = product_geography_synthesis_candidate(),
+    campaigns = product_geography_phase2_campaigns(),
+    rejected_layouts = product_geography_rejected_layout_log(),
+    final_assessment = product_geography_phase2_final_assessment()
+  )
+}
+
+product_geography_lab <- function() {
+  list(
+    lab_id = "product_geography_lab_phase1",
+    status = "exploratory_no_winner",
+    principles = product_geography_principles(),
+    mental_models = product_geography_mental_models(),
+    rooms = product_geography_rooms(),
+    prototypes = product_geography_prototypes(),
+    layout_zones = product_geography_layout_zones(),
+    navigation_map = product_geography_navigation_map(),
+    comparison = product_geography_comparison(),
+    founder_review = product_geography_founder_review_template(),
+    campaigns = product_geography_campaigns(),
+    open_questions = product_geography_open_questions(),
+    final_assessment = product_geography_final_assessment(),
+    phase2 = product_geography_phase2_lab()
+  )
+}
+
+qa_product_geography_phase2_lab <- function() {
+  checks <- list()
+  add_check <- function(check, ok, message) {
+    checks[[length(checks) + 1L]] <<- data.frame(
+      check = check,
+      status = if (isTRUE(ok)) "PASS" else "FAIL",
+      message = message,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  lab <- product_geography_phase2_lab()
+  prototypes <- lab$prototypes
+  pages <- lab$representative_pages
+  zones <- lab$layout_zones
+  fixture <- lab$fixture_state
+  audit <- lab$audit
+
+  add_check("phase2_status", identical(lab$status, "clickable_research_no_production_replacement"), "Phase 2 is clickable research and does not replace production shell.")
+  add_check("prototype_registry", identical(prototypes$prototype_id, c("working_context_house", "evidence_centered_studio", "mission_control_hallway")), "Phase 2 compares the three leading geographies.")
+  add_check("fixture_equivalence", identical(fixture$architecture_changed, FALSE) && nzchar(fixture$business_question), "All prototypes operate over the same fixture state.")
+  add_check("representative_pages", all(c("home", "evidence_review", "mission_control", "data_entry", "developer_backstage") %in% pages$page_id), "Representative pages cover orientation, task execution, monitoring, analytical entry, and backstage isolation.")
+  add_check("layout_zones", all(c("primary_canvas", "primary_action", "inspector", "developer_debug") %in% zones$zone_id), "Layout-zone system includes canvas, primary action, inspector, and developer/debug zones.")
+  add_check("primary_action_patterns", nrow(lab$action_patterns) >= 3L && "configuration_summary_action" %in% lab$action_patterns$pattern_id, "Action-placement experiment includes sticky, header, and configuration-summary patterns.")
+  add_check("help_patterns", nrow(lab$help_patterns) >= 5L && "contextual_explain" %in% lab$help_patterns$pattern_id, "Guide/help experiment includes global, page-level, contextual, guided, and persistent patterns.")
+  add_check("progressive_disclosure", all(c("conclusion_to_evidence", "task_to_architecture", "normal_to_developer") %in% lab$disclosure_patterns$pattern), "Progressive disclosure is semantic, not a uniform accordion pattern.")
+  add_check("navigation_alternatives", any(lab$navigation_alternatives$navigation_pattern == "more_backstage" & lab$navigation_alternatives$phase2_use), "Navigation alternatives include backstage/developer access.")
+  add_check("layout_generation", nrow(product_geography_page_layouts("working_context_house", "evidence_review")) >= 10L, "Representative page layouts can be generated for a selected prototype and page.")
+  add_check("clickable_routes", all(vapply(prototypes$prototype_id, function(id) nrow(product_geography_clickable_route_map(id)) >= 5L, logical(1))), "Each prototype has clickable route metadata.")
+  add_check("developer_isolation", all(grepl("Backstage|Develop|developer", prototypes$developer_treatment, ignore.case = TRUE)), "Developer surfaces are isolated behind Develop/Backstage treatments.")
+  add_check("stable_landmarks", all(nzchar(prototypes$top_level_geography)) && all(nzchar(prototypes$primary_focal_object)), "Each prototype has stable landmarks and a primary focal object.")
+  add_check("context_return_paths", any(grepl("return path", product_geography_page_layouts("working_context_house", "evidence_review")$placement_rationale, ignore.case = TRUE)), "Generated page layouts preserve context and return paths.")
+  add_check("audit_concrete", nrow(audit) >= 15L && all(nzchar(audit$placement_observation)) && any(audit$page == "Plots"), "Screenshot-based layout audit includes concrete page placement observations.")
+  add_check("founder_resonance", nrow(lab$founder_resonance) >= 12L && any(lab$founder_resonance$dimension == "inevitability"), "Founder resonance framework preserves qualitative taste-discovery signals.")
+  add_check("campaigns", nrow(lab$campaigns) >= 10L && all(nzchar(lab$campaigns$layout_zone)), "Phase 2 campaigns link prototype, page, layout zone, finding, expected improvement, and risk.")
+  add_check("rejected_layouts", nrow(lab$rejected_layouts) >= 5L && any(grepl("run", lab$rejected_layouts$rejected_pattern)), "Rejected-layout log records patterns that should not survive.")
+  add_check("final_assessment", nrow(lab$final_assessment) == 11L && any(grepl("hybrid synthesis", lab$final_assessment$question, ignore.case = TRUE)), "Phase 2 final assessment directly answers required questions.")
+  add_check("documentation", file.exists(file.path("docs", "product_geography_phase2.md")), "Phase 2 Product Geography documentation exists.")
+
+  do.call(rbind, checks)
+}
+
+qa_product_geography_lab <- function() {
+  checks <- list()
+  add_check <- function(check, ok, message) {
+    checks[[length(checks) + 1L]] <<- data.frame(
+      check = check,
+      status = if (isTRUE(ok)) "PASS" else "FAIL",
+      message = message,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  lab <- product_geography_lab()
+  principles <- lab$principles
+  prototypes <- lab$prototypes
+  zones <- lab$layout_zones
+  nav <- lab$navigation_map
+  comparison <- lab$comparison
+  review <- lab$founder_review
+  campaigns <- lab$campaigns
+  final <- lab$final_assessment
+
+  add_check("exploratory_status", identical(lab$status, "exploratory_no_winner"), "Product Geography Lab is exploratory and does not select a final winner.")
+  add_check("prototype_count", nrow(prototypes) >= 5L, "At least five spatial information architecture prototypes are available for comparison.")
+  add_check("architecture_preserved", all(!prototypes$architecture_changed), "All prototypes preserve the same services, workflows, evidence, AI, and runtime architecture.")
+  add_check("working_context_placement", all(nzchar(prototypes$working_context_placement)) && "working_context_house" %in% prototypes$prototype_id, "Every prototype declares Working Context placement.")
+  add_check("developer_backstage", any(grepl("backstage|utility", prototypes$developer_placement, ignore.case = TRUE)), "Developer and architecture surfaces are treated as backstage or utility spaces.")
+  add_check("principles_cover_core", all(c("intent_before_capability", "task_before_tool", "evidence_as_center", "developer_space_is_backstage") %in% principles$principle_id), "Principles cover intent, task, evidence, and developer-space separation.")
+  add_check("zones_for_each_prototype", all(prototypes$prototype_id %in% unique(zones$prototype_id)) && all(table(zones$prototype_id) >= 3L), "Every prototype has at least three layout zones.")
+  add_check("navigation_contract", all(c("from_space", "to_space", "transition_reason", "return_path", "preserves_context") %in% names(nav)) && all(nav$preserves_context), "Navigation maps preserve context and declare return paths.")
+  add_check("comparison_metrics", all(c("naturalness", "overwhelm_reduction", "power_preservation", "orientation_strength", "working_context_support", "architecture_hidden", "overall_resonance") %in% names(comparison)), "Comparison includes resonance, overwhelm, power, orientation, context, and architecture-hiding metrics.")
+  add_check("founder_review", nrow(review) >= nrow(prototypes) * 5L && all(review$required), "Founder review template exists for every prototype.")
+  add_check("campaigns", nrow(campaigns) >= 5L && all(nzchar(campaigns$suggested_experiment)), "Product geography campaigns are prototype-scoped and experiment-oriented.")
+  add_check("final_questions", nrow(final) == 9L && any(grepl("not survive", final$question, ignore.case = TRUE)), "Final assessment directly answers required product geography questions.")
+  add_check("documentation", file.exists(file.path("docs", "product_geography_lab.md")), "Product Geography Lab documentation exists.")
+
+  working_context_qa <- qa_working_context_framework()
+  add_check("working_context_framework_still_green", all(working_context_qa$status == "PASS"), "Working Context Framework remains green while geography experiments change only organization.")
+  phase2_qa <- qa_product_geography_phase2_lab()
+  add_check("phase2_lab", all(phase2_qa$status == "PASS"), "Product Geography Phase 2 adds clickable prototype, layout, action, help, disclosure, navigation, and founder-review support.")
+
+  do.call(rbind, checks)
+}
+
 qa_product_experience_relationship_runtime <- function() {
   checks <- list()
   add_check <- function(check, ok, message) {
@@ -4039,8 +5222,14 @@ qa_product_experience_intelligence <- function() {
   add_check("experience_runtime_phase3_qa", all(phase3_qa$status == "PASS"), "Product Experience Runtime Phase 3 defines browser-recorded prototype trial contracts and comparison outputs.")
   relationship_qa <- qa_product_experience_relationship_runtime()
   add_check("relationship_runtime_qa", all(relationship_qa$status == "PASS"), "Product Experience Runtime Phase 4 defines relationship states, progressive shells, review, campaigns, and deterministic visibility.")
+  working_context_framework_qa <- qa_working_context_framework()
+  add_check("working_context_framework_qa", all(working_context_framework_qa$status == "PASS"), "Product Experience Runtime recognizes Working Contexts as a reusable framework with registry, contract, composition, replay, review, and campaigns.")
   working_context_qa <- qa_working_contexts()
-  add_check("working_context_qa", all(working_context_qa$status == "PASS"), "Product Experience Runtime Phase 5 defines the Evidence Review Working Context, capability exposure, replay, review, campaigns, and documentation.")
+  add_check("working_context_qa", all(working_context_qa$status == "PASS"), "Evidence Review remains the reference implementation of the reusable Working Context Framework.")
+  product_geography_qa <- qa_product_geography_lab()
+  add_check("product_geography_lab_qa", all(product_geography_qa$status == "PASS"), "Product Geography Lab compares spatial IA prototypes without selecting a final winner or changing product architecture.")
+  product_geography_phase2_qa <- qa_product_geography_phase2_lab()
+  add_check("product_geography_phase2_qa", all(product_geography_phase2_qa$status == "PASS"), "Product Geography Phase 2 adds clickable prototypes, layout experiments, founder resonance review, and synthesis support.")
 
   doc_path <- file.path("docs", "product_experience_intelligence_architecture.md")
   add_check("documentation", file.exists(doc_path), "Architecture documentation exists.")

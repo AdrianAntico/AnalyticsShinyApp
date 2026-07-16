@@ -261,6 +261,26 @@ page_product_experience_ui <- function(id) {
             uiOutput(ns("relationship_campaigns"))
           ),
           ui_card(
+            title = "Geography Comparison",
+            subtitle = "Compares naturalness, overwhelm reduction, power preservation, orientation, Working Context support, and architecture hiding.",
+            uiOutput(ns("product_geography_comparison"))
+          ),
+          ui_card(
+            title = "Geography Founder Review",
+            subtitle = "Prompt set for deciding what resonates, what confuses, and what should be rejected.",
+            uiOutput(ns("product_geography_founder_review"))
+          ),
+          ui_card(
+            title = "Geography Campaigns",
+            subtitle = "Prototype-scoped experiments for the next spatial iteration.",
+            uiOutput(ns("product_geography_campaigns"))
+          ),
+          ui_card(
+            title = "Geography Assessment",
+            subtitle = "Direct answers are preliminary product hypotheses, not final design decisions.",
+            uiOutput(ns("product_geography_assessment"))
+          ),
+          ui_card(
             title = "Working Context Capability Map",
             subtitle = "Primary and adjacent capabilities appear first; contextual, advanced, architectural, and developer surfaces stay quiet.",
             uiOutput(ns("working_context_capability_map"))
@@ -274,6 +294,38 @@ page_product_experience_ui <- function(id) {
             title = "Working Context Campaigns",
             subtitle = "Campaigns target flow-breaking exposure, transitions, hierarchy, and navigation.",
             uiOutput(ns("working_context_campaigns"))
+          ),
+          ui_card(
+            title = "Product Geography Laboratory",
+            subtitle = "Spatial IA prototypes treat the workstation as rooms, workbenches, galleries, hallways, and utility spaces.",
+            selectInput(
+              ns("product_geography_id"),
+              "Geography Prototype",
+              choices = stats::setNames(product_geography_phase2_prototypes()$prototype_id, product_geography_phase2_prototypes()$prototype_name),
+              selected = "working_context_house"
+            ),
+            selectInput(
+              ns("product_geography_page_id"),
+              "Representative Page",
+              choices = stats::setNames(product_geography_representative_pages()$page_id, product_geography_representative_pages()$page_name),
+              selected = "evidence_review"
+            ),
+            selectInput(
+              ns("product_geography_action_pattern"),
+              "Primary Action Pattern",
+              choices = stats::setNames(product_geography_action_placement_patterns()$pattern_id, product_geography_action_placement_patterns()$pattern_name),
+              selected = "configuration_summary_action"
+            ),
+            selectInput(
+              ns("product_geography_help_pattern"),
+              "Guide / Help Pattern",
+              choices = stats::setNames(product_geography_help_placement_patterns()$pattern_id, product_geography_help_placement_patterns()$pattern_name),
+              selected = "contextual_explain"
+            ),
+            uiOutput(ns("product_geography_clickable_routes")),
+            uiOutput(ns("product_geography_summary")),
+            uiOutput(ns("product_geography_layout")),
+            uiOutput(ns("product_geography_page_preview"))
           ),
           ui_card(
             title = "Prototype Replay Comparison",
@@ -1009,6 +1061,199 @@ page_product_experience_server <- function(id, ctx) {
         ui_disclosure(
           "Final Assessment",
           render_table(working_context_final_assessment(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        )
+      )
+    })
+
+    lapply(seq_len(7), function(i) {
+      observeEvent(input[[paste0("geo_route_", i)]], {
+        routes <- product_geography_clickable_route_map(input$product_geography_id %||% "working_context_house")
+        if (i <= nrow(routes)) {
+          updateSelectInput(session, "product_geography_page_id", selected = routes$target_page_id[[i]])
+        }
+      }, ignoreInit = TRUE)
+    })
+
+    output$product_geography_clickable_routes <- renderUI({
+      routes <- product_geography_clickable_route_map(input$product_geography_id %||% "working_context_house")
+      tags$div(
+        class = "aq-action-row",
+        lapply(seq_len(nrow(routes)), function(i) {
+          actionButton(
+            session$ns(paste0("geo_route_", i)),
+            routes$route_label[[i]],
+            class = if (identical(routes$target_page_id[[i]], input$product_geography_page_id %||% "evidence_review")) "btn-primary" else NULL
+          )
+        })
+      )
+    })
+
+    output$product_geography_summary <- renderUI({
+      id <- input$product_geography_id %||% "working_context_house"
+      prototypes <- product_geography_phase2_prototypes()
+      selected <- prototypes[prototypes$prototype_id == id, , drop = FALSE]
+      if (!nrow(selected)) {
+        return(ui_empty_state("Geography prototype unavailable.", "Select another prototype."))
+      }
+      summary <- data.frame(
+        item = c("Prototype", "Top Geography", "Primary Object", "Guide", "Run Actions", "Developer Space", "Status"),
+        value = c(
+          selected$prototype_name[[1]],
+          selected$top_level_geography[[1]],
+          selected$primary_focal_object[[1]],
+          selected$guide_placement[[1]],
+          selected$run_action_placement[[1]],
+          selected$developer_treatment[[1]],
+          selected$status[[1]]
+        ),
+        stringsAsFactors = FALSE
+      )
+      tags$div(
+        class = "aq-status-list",
+        render_table(summary, engine = "html", searchable = FALSE, sortable = FALSE),
+        ui_section_header("Material Difference", selected$material_difference[[1]])
+      )
+    })
+
+    output$product_geography_layout <- renderUI({
+      id <- input$product_geography_id %||% "working_context_house"
+      page_id <- input$product_geography_page_id %||% "evidence_review"
+      action_pattern <- input$product_geography_action_pattern %||% "configuration_summary_action"
+      help_pattern <- input$product_geography_help_pattern %||% "contextual_explain"
+      zones <- product_geography_page_layouts(id, page_id, action_pattern, help_pattern)
+      tags$div(
+        class = "aq-status-list",
+        ui_disclosure(
+          "Visible Layout Zones",
+          render_table(zones[, c("zone", "visible_content", "placement_rationale"), drop = FALSE], engine = "html", searchable = FALSE, sortable = FALSE),
+          open = TRUE
+        ),
+        ui_disclosure(
+          "Layout-Zone System",
+          render_table(product_geography_layout_zone_system(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        )
+      )
+    })
+
+    output$product_geography_page_preview <- renderUI({
+      id <- input$product_geography_id %||% "working_context_house"
+      page_id <- input$product_geography_page_id %||% "evidence_review"
+      action_pattern <- input$product_geography_action_pattern %||% "configuration_summary_action"
+      help_pattern <- input$product_geography_help_pattern %||% "contextual_explain"
+      layout <- product_geography_page_layouts(id, page_id, action_pattern, help_pattern)
+      fixture <- product_geography_fixture_state()
+      primary <- layout$visible_content[layout$zone == "primary_canvas"][[1]]
+      action <- layout$visible_content[layout$zone == "primary_action"][[1]]
+      inspector <- layout$visible_content[layout$zone == "inspector"][[1]]
+      tags$div(
+        class = "aq-status-list",
+        tags$div(
+          class = "aq-empty-state",
+          tags$h3(layout$page_name[[1]]),
+          tags$p(primary),
+          tags$p(tags$strong("Shared fixture: "), fixture$business_question),
+          tags$p(tags$strong("Recommended next action: "), fixture$recommended_next_action)
+        ),
+        ui_section_header("Primary Action Placement", action),
+        ui_section_header("Guide / Help Placement", inspector),
+        ui_disclosure(
+          "Synthesis Candidate",
+          render_table(product_geography_synthesis_candidate(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        )
+      )
+    })
+
+    output$product_geography_comparison <- renderUI({
+      tags$div(
+        class = "aq-status-list",
+        render_table(
+          product_geography_comparison()[, c("prototype_name", "naturalness", "overwhelm_reduction", "power_preservation", "orientation_strength", "working_context_support", "architecture_hidden", "overall_resonance"), drop = FALSE],
+          engine = "html",
+          searchable = FALSE,
+          sortable = FALSE
+        ),
+        ui_disclosure(
+          "Product Geography Constitution",
+          render_table(product_geography_constitution(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        ),
+        ui_disclosure(
+          "Screenshot-Based Layout Audit",
+          render_table(product_geography_screenshot_layout_audit()[, c("page", "current_primary_object", "actual_primary_task", "placement_observation", "principle"), drop = FALSE], engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        )
+      )
+    })
+
+    output$product_geography_founder_review <- renderUI({
+      tags$div(
+        class = "aq-status-list",
+        render_table(
+          product_geography_founder_review_template()[, c("prototype_id", "review_question", "score_scale"), drop = FALSE],
+          engine = "html",
+          searchable = FALSE,
+          sortable = FALSE
+        ),
+        ui_disclosure(
+          "Open Questions",
+          render_table(product_geography_open_questions(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        ),
+        ui_disclosure(
+          "Founder Resonance Framework",
+          render_table(product_geography_founder_resonance_framework(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        )
+      )
+    })
+
+    output$product_geography_campaigns <- renderUI({
+      tags$div(
+        class = "aq-status-list",
+        render_table(
+          product_geography_phase2_campaigns(),
+          engine = "html",
+          searchable = FALSE,
+          sortable = FALSE
+        ),
+        ui_disclosure(
+          "Action Placement Patterns",
+          render_table(product_geography_action_placement_patterns(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        ),
+        ui_disclosure(
+          "Guide / Help Placement Patterns",
+          render_table(product_geography_help_placement_patterns(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        ),
+        ui_disclosure(
+          "Progressive Disclosure Patterns",
+          render_table(product_geography_progressive_disclosure_patterns(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        ),
+        ui_disclosure(
+          "Rejected Layout Log",
+          render_table(product_geography_rejected_layout_log(), engine = "html", searchable = FALSE, sortable = FALSE),
+          open = FALSE
+        )
+      )
+    })
+
+    output$product_geography_assessment <- renderUI({
+      tags$div(
+        class = "aq-status-list",
+        render_table(
+          product_geography_phase2_final_assessment(),
+          engine = "html",
+          searchable = FALSE,
+          sortable = FALSE
+        ),
+        ui_disclosure(
+          "Phase 1 Assessment",
+          render_table(product_geography_final_assessment(), engine = "html", searchable = FALSE, sortable = FALSE),
           open = FALSE
         )
       )

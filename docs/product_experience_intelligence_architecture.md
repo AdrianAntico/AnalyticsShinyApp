@@ -932,3 +932,61 @@ Users should work inside contexts, not modules.
 Evidence Review composes question, evidence, sufficiency, valuation, workflow, draft, mission summary, and next action into one focused workspace. It preserves access to advanced capability through adjacent and contextual transitions, but does not expose the whole application as the initial working set.
 
 The Product Experience Lab now includes Working Context previews, progressive depth, capability exposure maps, founder review, replay contract, campaigns, and final assessment.
+
+## Spatial Information Architecture Phase 1
+
+Spatial Information Architecture Phase 1 adds the Product Geography Laboratory.
+
+The product-experience question changes from "which page should contain this?" to:
+
+```text
+Where should this kind of work live?
+```
+
+The lab treats Analytics Workstation as a spatial environment with entry halls, current workbenches, evidence galleries, decision tables, preparation benches, delivery rooms, libraries, control rooms, utility rooms, and developer backstage areas.
+
+Initial geography prototypes:
+
+- Common Geography;
+- Working Context House;
+- Evidence-Centered Studio;
+- Mission Control Hallway;
+- Decision Theater.
+
+This phase intentionally does not choose a final product geography. It creates a controlled laboratory for comparison, founder review, resonance scoring, campaigns, and rejection. All prototypes preserve the same architecture, services, runtime, evidence contracts, workflows, and AI governance.
+
+The Product Experience Lab now includes geography prototype selection, prototype summaries, layout zones, navigation maps, comparison metrics, founder review prompts, geography campaigns, and direct preliminary assessment.
+
+Detailed documentation:
+
+```text
+docs/product_geography_lab.md
+```
+
+## Spatial Information Architecture Phase 2
+
+Phase 2 makes the leading geographies clickable and comparable in the Product Experience Lab.
+
+The phase focuses on:
+
+- Working Context House;
+- Evidence-Centered Studio;
+- Mission Control Hallway.
+
+The representative pages are:
+
+- Guide / Home;
+- Evidence Review;
+- Mission Control;
+- Data or Analyze Entry;
+- Developer Backstage.
+
+The lab now supports prototype routes, layout-zone previews, primary-action placement experiments, Guide/help placement experiments, progressive-disclosure patterns, navigation alternatives, founder resonance review, synthesis candidate support, campaigns, and rejected-layout logging.
+
+This remains private product research. Production navigation is unchanged.
+
+Detailed documentation:
+
+```text
+docs/product_geography_phase2.md
+```
