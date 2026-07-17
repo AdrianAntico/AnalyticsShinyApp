@@ -74,9 +74,17 @@ semantic_intelligence_demo_context <- function() {
 }
 
 semantic_intelligence_status <- function(ctx) {
-  artifacts <- ctx$all_artifacts()
-  collector <- ctx$project_collector_summary()
-  data <- ctx$data()
+  artifacts <- tryCatch(ctx$all_artifacts(), error = function(e) list())
+  collector <- tryCatch(ctx$project_collector_summary(), error = function(e) data.table::data.table())
+  data <- tryCatch({
+    if (is.function(ctx$uploaded_data)) {
+      ctx$uploaded_data()
+    } else if (is.function(ctx$project_data)) {
+      ctx$project_data()
+    } else {
+      NULL
+    }
+  }, error = function(e) NULL)
   workspace <- tryCatch(ctx$semantic_workspace(), error = function(e) semantic_workspace_empty())
   workspace_objects <- semantic_workspace_objects_table(workspace)
   list(
@@ -334,6 +342,13 @@ page_semantic_intelligence_ui <- function(id) {
       "Semantic Intelligence",
       "Connect business intent, variable semantics, evidence, alternatives, and governed decisions.",
       eyebrow = "DECISIONS",
+      ui_object_spine(
+        object = "Decision Context",
+        intent = "Author the business meaning around evidence so alternatives, levers, assumptions, and outcomes remain traceable.",
+        state = "Project-authored semantic objects stay in draft, review, approved, or archived states.",
+        next_action = "Define the business object or decision context before assessing alternatives.",
+        depth = "Valuation, workflow, and lifecycle panels stay available below the business context."
+      ),
       ui_workspace_grid(
         columns = "two",
         ui_card(
@@ -371,78 +386,106 @@ page_semantic_intelligence_ui <- function(id) {
           uiOutput(ns("relationship_map"))
         )
       ),
-      semantic_decision_lifecycle_authoring_ui(ns),
-      decision_valuation_authoring_ui(ns),
-      decision_workflow_authoring_ui(ns),
-      ui_workspace_grid(
-        columns = "two",
-        ui_card(
-          "Decision Workbench",
-          "A governed decision is an alternative set, not just a model recommendation.",
-          uiOutput(ns("decision_status")),
-          uiOutput(ns("decision_recommendation")),
-          ui_callout("Authored lifecycle", "Use the Authored Decision Lifecycle section to assess alternatives, record recommendations and decisions, attach outcomes, and register memory artifacts.", status = "info"),
-          uiOutput(ns("decision_memory_status"))
+      tags$section(
+        class = "aq-semantic-depth",
+        ui_disclosure(
+          "Decision Lifecycle",
+          semantic_decision_lifecycle_authoring_ui(ns),
+          level = "common",
+          open = FALSE
         ),
-        ui_card(
-          "Semantic Signals",
-          "Current project evidence that can feed decision context.",
-          uiOutput(ns("semantic_signals"))
-        )
-      ),
-      ui_workspace_grid(
-        columns = "two",
-        ui_card(
-          "Integrity Validation",
-          "Actionable diagnostics for missing links, broken references, orphaned objects, and draft governance.",
-          uiOutput(ns("workspace_validation"))
-        ),
-        ui_card(
-          "Search",
-          "Deterministic search over authored organizational knowledge.",
-          tags$div(
-            class = "aq-form-grid",
-            textInput(ns("search_query"), "Query", placeholder = "objective, owner, status, tag..."),
-            selectInput(ns("search_type"), "Type", choices = c("all", semantic_object_types()), selected = "all"),
-            selectInput(ns("search_status"), "Status", choices = c("all", semantic_object_statuses()), selected = "all")
+        ui_disclosure(
+          "Valuation and Workflow",
+          ui_workspace_grid(
+            columns = "two",
+            decision_valuation_authoring_ui(ns),
+            decision_workflow_authoring_ui(ns)
           ),
-          uiOutput(ns("search_results"))
-        )
-      ),
-      ui_workspace_grid(
-        columns = "two",
-        ui_card(
-          "Alternative Assessment",
-          "Deterministic tradeoff evidence from the canonical AutoQuant contract.",
-          uiOutput(ns("alternative_assessment"))
+          level = "common",
+          open = FALSE
         ),
-        ui_card(
-          "Optionality",
-          "Future choices created, preserved, constrained, or foreclosed.",
-          uiOutput(ns("optionality_assessment"))
-        )
-      ),
-      ui_card(
-        "Version History",
-        "Created, modified, approved, archived, restored, superseded, and relationship-change events.",
-        uiOutput(ns("version_history"))
-      ),
-      ui_card(
-        "Decision Artifact Contract",
-        "Canonical artifact metadata available to reports, collectors, campaigns, and GenAI context.",
-        uiOutput(ns("decision_artifact"))
-      ),
-      ui_workspace_grid(
-        columns = "two",
-        ui_card(
-          "Decision Timeline",
-          "Durable context, recommendation, decision, outcome, and learning events.",
-          uiOutput(ns("decision_timeline"))
+        ui_disclosure(
+          "Decision Readout",
+          ui_workspace_grid(
+            columns = "two",
+            ui_card(
+              "Decision Workbench",
+              "A governed decision is an alternative set, not just a model recommendation.",
+              uiOutput(ns("decision_status")),
+              uiOutput(ns("decision_recommendation")),
+              ui_callout("Authored lifecycle", "Use the Decision Lifecycle section to assess alternatives, record recommendations and decisions, attach outcomes, and register memory artifacts.", status = "info"),
+              uiOutput(ns("decision_memory_status"))
+            ),
+            ui_card(
+              "Semantic Signals",
+              "Current project evidence that can feed decision context.",
+              uiOutput(ns("semantic_signals"))
+            )
+          ),
+          level = "artifact",
+          open = TRUE
         ),
-        ui_card(
-          "Learning Summary",
-          "Outcome evidence that can later inform campaigns, reports, and bounded GenAI context.",
-          uiOutput(ns("decision_learning"))
+        ui_disclosure(
+          "Integrity and Search",
+          ui_workspace_grid(
+            columns = "two",
+            ui_card(
+              "Integrity Validation",
+              "Actionable diagnostics for missing links, broken references, orphaned objects, and draft governance.",
+              uiOutput(ns("workspace_validation"))
+            ),
+            ui_card(
+              "Search",
+              "Deterministic search over authored organizational knowledge.",
+              tags$div(
+                class = "aq-form-grid",
+                textInput(ns("search_query"), "Query", placeholder = "objective, owner, status, tag..."),
+                selectInput(ns("search_type"), "Type", choices = c("all", semantic_object_types()), selected = "all"),
+                selectInput(ns("search_status"), "Status", choices = c("all", semantic_object_statuses()), selected = "all")
+              ),
+              uiOutput(ns("search_results"))
+            )
+          ),
+          level = "common",
+          open = FALSE
+        ),
+        ui_disclosure(
+          "Assessment and Memory",
+          ui_workspace_grid(
+            columns = "two",
+            ui_card(
+              "Alternative Assessment",
+              "Deterministic tradeoff evidence from the canonical AutoQuant contract.",
+              uiOutput(ns("alternative_assessment"))
+            ),
+            ui_card(
+              "Optionality",
+              "Future choices created, preserved, constrained, or foreclosed.",
+              uiOutput(ns("optionality_assessment"))
+            ),
+            ui_card(
+              "Version History",
+              "Created, modified, approved, archived, restored, superseded, and relationship-change events.",
+              uiOutput(ns("version_history"))
+            ),
+            ui_card(
+              "Decision Artifact Contract",
+              "Canonical artifact metadata available to reports, collectors, campaigns, and GenAI context.",
+              uiOutput(ns("decision_artifact"))
+            ),
+            ui_card(
+              "Decision Timeline",
+              "Durable context, recommendation, decision, outcome, and learning events.",
+              uiOutput(ns("decision_timeline"))
+            ),
+            ui_card(
+              "Learning Summary",
+              "Outcome evidence that can later inform campaigns, reports, and bounded GenAI context.",
+              uiOutput(ns("decision_learning"))
+            )
+          ),
+          level = "artifact",
+          open = FALSE
         )
       )
     )
@@ -588,7 +631,7 @@ page_semantic_intelligence_server <- function(id, ctx) {
           paste0("Reviews: ", memory$reviews[[1]], "."),
           paste0("Memory artifacts: ", memory$memory_artifacts[[1]], ".")
         ),
-        status = if (memory$memory_artifacts[[1]] > 0L) "success" else if (memory$reviews[[1]] > 0L) "info" else "neutral"
+        status = if (memory$memory_artifacts[[1]] > 0L) "success" else "info"
       )
     })
 
@@ -887,6 +930,13 @@ page_semantic_intelligence_server <- function(id, ctx) {
 
 qa_semantic_intelligence_page <- function() {
   page_text <- paste(readLines(file.path("R", "page_semantic_intelligence.R"), warn = FALSE), collapse = "\n")
+  mock_ctx <- list(
+    all_artifacts = function() list(),
+    project_collector_summary = function() data.table::data.table(),
+    project_data = function() NULL,
+    semantic_workspace = function() semantic_workspace_empty()
+  )
+  status_check <- tryCatch(semantic_intelligence_status(mock_ctx), error = function(e) e)
   rows <- list(
     data.table::data.table(suite = "semantic_intelligence_page", check = "page_defines_ui", status = if (grepl("page_semantic_intelligence_ui", page_text, fixed = TRUE)) "success" else "error", message = "Semantic Intelligence UI is defined."),
     data.table::data.table(suite = "semantic_intelligence_page", check = "page_defines_server", status = if (grepl("page_semantic_intelligence_server", page_text, fixed = TRUE)) "success" else "error", message = "Semantic Intelligence server is defined."),
@@ -899,7 +949,8 @@ qa_semantic_intelligence_page <- function() {
     data.table::data.table(suite = "semantic_intelligence_page", check = "authored_decision_lifecycle", status = if (grepl("semantic_decision_lifecycle_authoring_ui", page_text, fixed = TRUE) && grepl("assess_authored_decision", page_text, fixed = TRUE) && grepl("semantic_decision_build_autoquant", page_text, fixed = TRUE)) "success" else "error", message = "Page exposes the authored decision lifecycle and AutoQuant assessment path."),
     data.table::data.table(suite = "semantic_intelligence_page", check = "decision_workflow_workbench", status = if (grepl("decision_workflow_authoring_ui", page_text, fixed = TRUE) && grepl("decision_workflow_bind_server", page_text, fixed = TRUE)) "success" else "error", message = "Page exposes the governed decision workflow workbench."),
     data.table::data.table(suite = "semantic_intelligence_page", check = "no_production_demo_fallback", status = if (!grepl("actionButton\\(ns\\(\"save_demo_decision\"", page_text) && !grepl("observeEvent\\(input\\$save_demo_decision", page_text) && !grepl("observeEvent\\(input\\$attach_outcome_review", page_text) && !grepl("observeEvent\\(input\\$register_memory_artifact", page_text)) "success" else "error", message = "Production page no longer wires demo decision lifecycle fallbacks."),
-    data.table::data.table(suite = "semantic_intelligence_page", check = "qa_autoquant_available", status = if (semantic_intelligence_available()) "success" else "warning", message = "Installed AutoQuant exposes decision-management exports.")
+    data.table::data.table(suite = "semantic_intelligence_page", check = "qa_autoquant_available", status = if (semantic_intelligence_available()) "success" else "warning", message = "Installed AutoQuant exposes decision-management exports."),
+    data.table::data.table(suite = "semantic_intelligence_page", check = "status_context_contract", status = if (!inherits(status_check, "error") && is.list(status_check) && identical(status_check$has_data, FALSE)) "success" else "error", message = "Semantic status handles app contexts that expose project_data/uploaded_data instead of ctx$data().")
   )
   data.table::rbindlist(rows, use.names = TRUE, fill = TRUE)
 }

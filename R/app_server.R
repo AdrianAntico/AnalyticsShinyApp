@@ -177,7 +177,7 @@ server <- function(input, output, session) {
     }
     result
   }
-  ctx$create_project <- function(project_name = "Analytics Project") {
+  ctx$create_project <- function(project_name = "Analytics Project", project_id = NULL, project_root = NULL) {
     if (!ctx$workspace_ready()) {
       return(storage_error_result(
         "workspace_unconfigured",
@@ -187,7 +187,7 @@ server <- function(input, output, session) {
         requested_resource_type = "project"
       ))
     }
-    result <- create_project_in_workspace(ctx$current_workspace(), project_name)
+    result <- create_project_in_workspace(ctx$current_workspace(), project_name, project_id = project_id, project_root = project_root)
     if (identical(result$status, "success")) {
       ctx$active_project(result$value)
       ctx$project_lifecycle_state("project_ready")

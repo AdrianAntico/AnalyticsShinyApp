@@ -311,7 +311,7 @@ storage_provider_registry <- function(settings = read_workspace_settings()) {
   providers$managed_workspace <- storage_provider(
     provider_id = "managed_workspace",
     provider_type = "managed_workspace",
-    display_name = "Managed Workspace",
+    display_name = "App-Managed Folder",
     root_path = if (nzchar(managed_root)) managed_root else NULL,
     available = nzchar(managed_root),
     selection_supported = FALSE,
@@ -323,13 +323,13 @@ storage_provider_registry <- function(settings = read_workspace_settings()) {
       can_browse_server_directories = FALSE
     ),
     validation_status = if (nzchar(managed_root)) "configured" else "unavailable",
-    safe_display_label = "Managed server workspace"
+    safe_display_label = "App-managed project folder"
   )
 
   providers$configured_workspace <- storage_provider(
     provider_id = "configured_workspace",
     provider_type = "configured_workspace",
-    display_name = "Configured Workspace",
+    display_name = "Saved Workspace",
     root_path = if (nzchar(configured_root)) configured_root else NULL,
     available = nzchar(configured_root),
     selection_supported = TRUE,
@@ -340,13 +340,13 @@ storage_provider_registry <- function(settings = read_workspace_settings()) {
       supports_external_projects = TRUE
     ),
     validation_status = if (nzchar(configured_root)) "configured" else "unconfigured",
-    safe_display_label = "Configured local/server workspace"
+    safe_display_label = "Saved workspace folder"
   )
 
   providers$local_server_directory <- storage_provider(
     provider_id = "local_server_directory",
     provider_type = "local_server_directory",
-    display_name = "Local Server Directory",
+    display_name = "Local Folder",
     root_path = NULL,
     available = TRUE,
     selection_supported = TRUE,
@@ -357,13 +357,13 @@ storage_provider_registry <- function(settings = read_workspace_settings()) {
       supports_external_projects = TRUE
     ),
     validation_status = "available",
-    safe_display_label = "Typed local/server path"
+    safe_display_label = "Typed local folder"
   )
 
   providers$native_host_directory <- storage_provider(
     provider_id = "native_host_directory",
     provider_type = "native_host_directory",
-    display_name = "Native Host Directory",
+    display_name = "Choose Folder",
     root_path = NULL,
     available = identical(Sys.getenv("ANALYTICS_WORKSTATION_NATIVE_PICKER", unset = "false"), "true"),
     selection_supported = identical(Sys.getenv("ANALYTICS_WORKSTATION_NATIVE_PICKER", unset = "false"), "true"),
@@ -374,7 +374,7 @@ storage_provider_registry <- function(settings = read_workspace_settings()) {
       supports_external_projects = TRUE
     ),
     validation_status = if (identical(Sys.getenv("ANALYTICS_WORKSTATION_NATIVE_PICKER", unset = "false"), "true")) "available" else "unavailable",
-    safe_display_label = "Native host picker"
+    safe_display_label = "System folder picker"
   )
 
   providers
@@ -608,7 +608,7 @@ new_project_metadata <- function(project_name, project_root, workspace_root = NU
   if (!nzchar(project_name)) {
     project_name <- "Analytics Project"
   }
-  project_id <- project_id %||% paste0(safe_path_component(project_name, "project"), "_", format(Sys.time(), "%Y%m%d%H%M%S"))
+  project_id <- project_id %||% paste0(safe_path_component(project_name, "project"), "_", format(Sys.time(), "%Y%m%d_%H%M"))
   project_root <- storage_normalize_path(project_root, must_work = FALSE)
   list(
     project_id = project_id,
@@ -679,7 +679,7 @@ ensure_project_structure <- function(project_root) {
   invisible(file.path(project_root, dirs))
 }
 
-create_project_in_workspace <- function(workspace, project_name = "Analytics Project", project_id = NULL) {
+create_project_in_workspace <- function(workspace, project_name = "Analytics Project", project_id = NULL, project_root = NULL) {
   validation <- validate_workspace_root(
     workspace$workspace_root %||% workspace,
     create = TRUE,
@@ -689,8 +689,11 @@ create_project_in_workspace <- function(workspace, project_name = "Analytics Pro
     return(validation)
   }
   workspace <- validation$value
-  project_id <- project_id %||% paste0(safe_path_component(project_name, "project"), "_", format(Sys.time(), "%Y%m%d%H%M%S"))
-  project_root <- workspace_path(workspace, "projects", project_id)
+  project_id <- project_id %||% paste0(safe_path_component(project_name, "project"), "_", format(Sys.time(), "%Y%m%d_%H%M"))
+  project_root <- project_root %||% workspace_path(workspace, "projects", project_id)
+  if (!path_within_root(project_root, workspace$workspace_root)) {
+    return(storage_error_result("project_outside_location", "Project destination must stay inside the selected project location.", project_state = "project_error"))
+  }
   root_validation <- validate_project_root(project_root, workspace = workspace, create = TRUE)
   if (!identical(root_validation$status, "success")) {
     return(root_validation)

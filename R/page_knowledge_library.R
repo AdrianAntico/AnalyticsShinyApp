@@ -290,6 +290,13 @@ page_knowledge_library_ui <- function(id) {
           downloadButton(ns("download_markdown"), "Download Markdown", class = "btn-secondary")
         )
       ),
+      ui_object_spine(
+        object = "Knowledge Source",
+        intent = "Read the evolving book, architecture, research, and ontology from inside the workstation.",
+        state = "Repository-backed markdown reader with deterministic navigation.",
+        next_action = "Choose a section and document, then use the table of contents to move through the source.",
+        depth = "Cross-links and author actions support review without turning this into an editor."
+      ),
       tags$div(
         class = "aq-library-page",
         tags$aside(

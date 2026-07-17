@@ -7,6 +7,13 @@ page_causal_intelligence_ui <- function(id) {
       title = "Causal Intelligence",
       subtitle = "Author causal questions, estimands, variable roles, and identification plans before estimating anything.",
       eyebrow = "Causal Planning",
+      ui_object_spine(
+        object = "Causal Question",
+        intent = "Turn an intervention question into explicit roles, assumptions, design readiness, and governed estimation evidence.",
+        state = "Planning precedes estimation; unsupported causal claims remain prohibited.",
+        next_action = "Save the causal question, then assess identification before registering artifacts.",
+        depth = "Experiment, completed-evidence, ITT, and observational estimators stay in downstream sections."
+      ),
       tags$div(
         class = "aq-grid aq-grid-2-1",
         tags$div(

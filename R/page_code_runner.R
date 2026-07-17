@@ -6,10 +6,20 @@ page_code_runner_ui <- function(id) {
     ui_page(
       title = "Code Runner",
       subtitle = "Trusted local execution prototype for manually entered R code.",
-      tags$div(
-        class = "aq-export-layout",
+      eyebrow = "Developer",
+      ui_object_spine(
+        object = "Code Run",
+        intent = "Capture, review, and optionally execute trusted local R code while keeping policy and history visible.",
+        state = "Execution is disabled until the policy explicitly allows trusted local runs.",
+        next_action = "Save a draft first, then enable execution only when the code and policy are intentional.",
+        depth = "This is a developer surface; generated artifacts are explicit, not automatic."
+      ),
+      tags$section(
+        class = "aq-code-workbench",
         ui_card(
-          title = "Code Workspace",
+          title = "Draft a Trusted Code Run",
+          subtitle = "Save first. Execute only when local trusted execution is deliberately enabled.",
+          class = "aq-code-editor-card",
           ui_empty_state(
             "Trusted local execution is off by default.",
             "Enable trusted local execution in the policy panel to run code. This is not sandboxed."
@@ -42,45 +52,63 @@ page_code_runner_ui <- function(id) {
           textOutput(ns("code_runner_message"))
         ),
         ui_card(
-          title = "Execution Policy",
-          checkboxInput(ns("policy_enabled"), "Code Execution Enabled", value = FALSE),
-          selectInput(
-            ns("policy_mode"),
-            "Execution Mode",
-            choices = code_execution_modes(),
-            selected = "disabled"
+          title = "Execution Gate",
+          subtitle = "Local execution is blocked until the policy says exactly what is allowed.",
+          class = "aq-code-policy-card",
+          uiOutput(ns("policy_status")),
+          ui_disclosure(
+            "Change Execution Policy",
+            checkboxInput(ns("policy_enabled"), "Code Execution Enabled", value = FALSE),
+            selectInput(
+              ns("policy_mode"),
+              "Execution Mode",
+              choices = code_execution_modes(),
+              selected = "disabled"
+            ),
+            checkboxInput(ns("policy_allow_manual"), "Allow Manual Code", value = FALSE),
+            checkboxInput(ns("policy_allow_genai"), "Allow GenAI Code", value = FALSE),
+            checkboxInput(ns("policy_require_genai_approval"), "Require Approval For GenAI Code", value = TRUE),
+            checkboxInput(ns("policy_file_read"), "Allow File Read", value = FALSE),
+            checkboxInput(ns("policy_file_write"), "Allow File Write", value = FALSE),
+            checkboxInput(ns("policy_network"), "Allow Network", value = FALSE),
+            checkboxInput(ns("policy_package_install"), "Allow Package Install", value = FALSE),
+            checkboxInput(ns("policy_system_calls"), "Allow System Calls", value = FALSE),
+            numericInput(ns("policy_max_runtime"), "Max Runtime Seconds", value = 30, min = 1, step = 1),
+            numericInput(ns("policy_max_memory"), "Max Memory MB", value = 1024, min = 1, step = 1),
+            ui_action_row(
+              actionButton(ns("update_policy"), "Update Policy", class = "btn-secondary")
+            ),
+            level = "advanced",
+            open = FALSE
           ),
-          checkboxInput(ns("policy_allow_manual"), "Allow Manual Code", value = FALSE),
-          checkboxInput(ns("policy_allow_genai"), "Allow GenAI Code", value = FALSE),
-          checkboxInput(ns("policy_require_genai_approval"), "Require Approval For GenAI Code", value = TRUE),
-          checkboxInput(ns("policy_file_read"), "Allow File Read", value = FALSE),
-          checkboxInput(ns("policy_file_write"), "Allow File Write", value = FALSE),
-          checkboxInput(ns("policy_network"), "Allow Network", value = FALSE),
-          checkboxInput(ns("policy_package_install"), "Allow Package Install", value = FALSE),
-          checkboxInput(ns("policy_system_calls"), "Allow System Calls", value = FALSE),
-          numericInput(ns("policy_max_runtime"), "Max Runtime Seconds", value = 30, min = 1, step = 1),
-          numericInput(ns("policy_max_memory"), "Max Memory MB", value = 1024, min = 1, step = 1),
-          ui_action_row(
-            actionButton(ns("update_policy"), "Update Policy", class = "btn-secondary")
-          ),
-          uiOutput(ns("policy_status"))
+          ui_callout(
+            "Policy first",
+            "Runs are tracked requests. Execution remains unavailable until the policy is explicit.",
+            status = "warning"
+          )
         )
       ),
-      ui_card(
-        title = "Code History",
-        uiOutput(ns("code_history"))
-      ),
-      ui_card(
-        title = "Run Details",
-        textInput(ns("selected_run_label"), "Run Label", value = ""),
-        textAreaInput(ns("selected_run_notes"), "Notes", value = "", rows = 3, width = "100%"),
-        ui_action_row(
-          actionButton(ns("update_run_metadata"), "Update Run Label / Notes", class = "btn-secondary")
-        ),
-        uiOutput(ns("run_details")),
-        ui_action_row(
-          actionButton(ns("preview_run_details"), "Preview Run Details", class = "btn-secondary"),
-          actionButton(ns("create_artifact_from_output"), "Create Artifact from Output", class = "btn-primary")
+      tags$section(
+        class = "aq-code-depth",
+        ui_workspace_grid(
+          columns = "two",
+          ui_card(
+            title = "Run History",
+            uiOutput(ns("code_history"))
+          ),
+          ui_card(
+            title = "Selected Run",
+            textInput(ns("selected_run_label"), "Run Label", value = ""),
+            textAreaInput(ns("selected_run_notes"), "Notes", value = "", rows = 3, width = "100%"),
+            ui_action_row(
+              actionButton(ns("update_run_metadata"), "Update Label / Notes", class = "btn-secondary")
+            ),
+            uiOutput(ns("run_details")),
+            ui_action_row(
+              actionButton(ns("preview_run_details"), "Preview Details", class = "btn-secondary"),
+              actionButton(ns("create_artifact_from_output"), "Create Artifact", class = "btn-primary")
+            )
+          )
         )
       )
     )

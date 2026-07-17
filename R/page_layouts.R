@@ -7,11 +7,20 @@ page_layouts_ui <- function(id) {
       title = "Layout Studio",
       subtitle = "Compose artifacts, text blocks, table blocks, and report plans into reusable report structures.",
       eyebrow = "Reports",
-      ui_split_panel(
-        side = "left",
-        side_content = tagList(
+      ui_object_spine(
+        object = "Report Plan",
+        intent = "Curate saved artifacts into a coherent report structure without changing the evidence itself.",
+        state = "Plans are assembled from saved plots, text blocks, and table blocks.",
+        next_action = "Preview the plan, apply it, then export through the Export page.",
+        depth = "Plan editing and generated code stay in progressive depth."
+      ),
+      tags$section(
+        class = "aq-layout-studio",
+        tags$aside(
+          class = "aq-layout-control-dock",
           ui_card(
-            title = "Layout Controls",
+            title = "Compose the Report",
+            subtitle = "Set the report structure, assign artifacts, then preview the plan.",
             selectInput(ns("layout_type"), "Layout", choices = c("Grid", "Sections"), selected = "Grid"),
             numericInput(ns("layout_cols"), "Columns", value = 2, min = 1, max = 4, step = 1),
             textInput(ns("section_name"), "Section Name", value = "Analysis"),
@@ -37,11 +46,12 @@ page_layouts_ui <- function(id) {
               width = "100%"
             ),
             ui_action_row(
-              actionButton(ns("add_text_artifact"), "Add Text Artifact", class = "btn-primary"),
-              actionButton(ns("preview_text_artifact"), "Preview Text Artifact", class = "btn-secondary")
+              actionButton(ns("add_text_artifact"), "Add Text", class = "btn-primary"),
+              actionButton(ns("preview_text_artifact"), "Preview", class = "btn-secondary")
             ),
             textOutput(ns("text_artifact_message")),
-            level = "common"
+            level = "common",
+            open = FALSE
           ),
           ui_disclosure(
             "Add Table Block",
@@ -74,7 +84,8 @@ page_layouts_ui <- function(id) {
               actionButton(ns("export_all_tables_xlsx"), "Export All Tables XLSX", class = "btn-success")
             ),
             textOutput(ns("table_artifact_message")),
-            level = "artifact"
+            level = "artifact",
+            open = FALSE
           ),
           ui_disclosure(
             "Report Plans",
@@ -96,7 +107,8 @@ page_layouts_ui <- function(id) {
             level = "advanced"
           )
         ),
-        main = tagList(
+        tags$main(
+          class = "aq-layout-stage",
           ui_workspace_grid(
             columns = "two",
             ui_preview_panel(
@@ -125,11 +137,12 @@ page_layouts_ui <- function(id) {
             ui_code_panel(
               "Layout Code",
               verbatimTextOutput(ns("layout_code")),
-              collapsed = FALSE
+              collapsed = TRUE
             ),
             ui_code_panel(
               "Report Code",
-              verbatimTextOutput(ns("report_code"))
+              verbatimTextOutput(ns("report_code")),
+              collapsed = TRUE
             )
           )
         )

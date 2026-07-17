@@ -308,21 +308,32 @@ page_workflow_ui <- function(id) {
   tabPanel(
     "Workflow",
     ui_page(
-      title = "Workflow",
-      subtitle = "A flexible analytical lifecycle. Nothing auto-runs; modules and custom code remain user-triggered.",
-      ui_card(
-        title = "Workflow Summary",
-        uiOutput(ns("workflow_message")),
-        uiOutput(ns("workflow_summary")),
-        uiOutput(ns("workflow_next_step")),
-        ui_disclosure(
-          "Project Artifact Collector",
-          uiOutput(ns("collector_summary")),
-          level = "artifact",
-          open = TRUE
+      title = "Next Best Move",
+      subtitle = "The workstation route from current evidence to the next useful analytical action.",
+      eyebrow = "Lifecycle",
+      tags$section(
+        class = "aq-workflow-room",
+        uiOutput(ns("workflow_hero")),
+        tags$div(
+          class = "aq-workflow-room-grid",
+          tags$main(
+            class = "aq-workflow-main",
+            uiOutput(ns("workflow_pathway")),
+            uiOutput(ns("workflow_evidence_strip")),
+            uiOutput(ns("workflow_backstage"))
+          ),
+          tags$aside(
+            class = "aq-workflow-next-panel",
+            uiOutput(ns("workflow_action_panel")),
+            ui_disclosure(
+              "Project Evidence Memory",
+              uiOutput(ns("collector_summary")),
+              level = "artifact",
+              open = FALSE
+            )
+          )
         )
-      ),
-      uiOutput(ns("workflow_stages"))
+      )
     )
   )
 }
@@ -335,13 +346,202 @@ page_workflow_server <- function(id, ctx) {
       workflow_state_summary(ctx)
     })
 
+    next_stage_reactive <- reactive({
+      summary <- summary_reactive()
+      next_stage <- summary[status %in% c("implemented", "experimental") & artifact_count == 0L][order(order)][1]
+      if (nrow(next_stage)) {
+        return(next_stage)
+      }
+      summary[order(-artifact_count, order)][1]
+    })
+
+    output$workflow_hero <- renderUI({
+      summary <- summary_reactive()
+      next_stage <- next_stage_reactive()
+      completed <- summary[artifact_count > 0L, .N]
+      evidence_count <- sum(summary$artifact_count, na.rm = TRUE)
+      plan_count <- sum(summary$report_plan_count, na.rm = TRUE)
+      if (!nrow(next_stage)) {
+        next_label <- "Start the analytical route"
+        next_reason <- "No workflow stage could be selected from the current project state."
+        next_state <- "Not Started"
+      } else if (evidence_count == 0L) {
+        next_label <- next_stage$label[[1]]
+        next_reason <- paste("No foundational evidence exists yet.", next_stage$purpose[[1]])
+        next_state <- "First Move"
+      } else if (next_stage$artifact_count[[1]] == 0L) {
+        next_label <- next_stage$label[[1]]
+        next_reason <- paste("This is the earliest evidence gap in the current route.", next_stage$purpose[[1]])
+        next_state <- "Evidence Gap"
+      } else {
+        next_label <- "Review Evidence"
+        next_reason <- "The implemented route has evidence. Review Artifact Studio, Mission Control, or Delivery next."
+        next_state <- "Review"
+      }
+
+      tags$section(
+        class = "aq-workflow-hero",
+        tags$div(
+          class = "aq-workflow-hero-copy",
+          tags$p(class = "aq-workflow-kicker", "What should happen next?"),
+          tags$h2(next_label),
+          tags$p(next_reason),
+          tags$div(
+            class = "aq-workflow-hero-actions",
+            ui_status_badge(next_state, status = if (identical(next_state, "Review")) "success" else "info"),
+            tags$span(paste(completed, "of", nrow(summary), "stages have evidence")),
+            tags$span(paste(evidence_count, "artifact(s)")),
+            tags$span(paste(plan_count, "report plan(s)"))
+          )
+        ),
+        tags$div(
+          class = "aq-workflow-current-position",
+          tags$span("Current position"),
+          tags$strong(if (nrow(next_stage)) next_stage$label[[1]] else "Unknown"),
+          tags$p(if (nrow(next_stage)) next_stage$recommended_next_stage[[1]] %||% "Review and deliver evidence." else "Load or open a project to begin.")
+        )
+      )
+    })
+
+    output$workflow_pathway <- renderUI({
+      summary <- summary_reactive()
+      next_stage <- next_stage_reactive()
+      current_id <- if (nrow(next_stage)) next_stage$stage_id[[1]] else NA_character_
+      tags$section(
+        class = "aq-workflow-route",
+        tags$div(
+          class = "aq-workflow-route-header",
+          tags$p(class = "aq-workflow-kicker", "Route"),
+          tags$h3("Business question to exportable evidence"),
+          tags$p("Follow the route left to right. Completed stages become evidence; the highlighted stage is the next useful move.")
+        ),
+        tags$ol(
+          class = "aq-workflow-timeline",
+          lapply(seq_len(nrow(summary)), function(i) {
+            row <- summary[i]
+            state <- if (row$artifact_count[[1]] > 0L) {
+              "complete"
+            } else if (identical(row$stage_id[[1]], current_id)) {
+              "current"
+            } else if (row$status[[1]] %in% c("planned", "deferred")) {
+              "planned"
+            } else {
+              "pending"
+            }
+            tags$li(
+              class = paste("aq-workflow-step", paste0("aq-workflow-step-", state)),
+              tags$span(class = "aq-workflow-step-index", row$order[[1]]),
+              tags$div(
+                class = "aq-workflow-step-body",
+                tags$strong(row$label[[1]]),
+                tags$p(row$purpose[[1]]),
+                tags$div(
+                  class = "aq-workflow-step-facts",
+                  ui_status_badge(if (state == "complete") "Evidence exists" else if (state == "current") "Next move" else workflow_status_label(row$status[[1]]), status = if (state == "complete") "success" else if (state == "current") "info" else workflow_status_badge_status(row$status[[1]])),
+                  tags$span(paste(row$artifact_count[[1]], "artifact(s)"))
+                )
+              )
+            )
+          })
+        )
+      )
+    })
+
+    output$workflow_evidence_strip <- renderUI({
+      summary <- summary_reactive()
+      tags$section(
+        class = "aq-workflow-evidence-strip",
+        tags$div(
+          tags$p(class = "aq-workflow-kicker", "Evidence"),
+          tags$h3("What already exists")
+        ),
+        tags$div(
+          class = "aq-workflow-evidence-grid",
+          lapply(seq_len(nrow(summary)), function(i) {
+            row <- summary[i]
+            tags$article(
+              class = "aq-workflow-evidence-tile",
+              tags$span(row$label[[1]]),
+              tags$strong(row$artifact_count[[1]]),
+              tags$p(paste(row$report_plan_count[[1]], "report plan(s)"))
+            )
+          })
+        )
+      )
+    })
+
+    output$workflow_action_panel <- renderUI({
+      next_stage <- next_stage_reactive()
+      if (!nrow(next_stage)) {
+        return(ui_empty_state("No next move detected.", "Load data or open a project, then return to Workflow."))
+      }
+      stage <- workflow_stage_registry()[[which(vapply(workflow_stage_registry(), function(x) identical(x$stage_id, next_stage$stage_id[[1]]), logical(1)))[[1]]]]
+      module_ids <- workflow_stage_module_ids(stage)
+      actions <- list()
+      if (length(module_ids)) {
+        actions <- lapply(module_ids, function(module_id) {
+          module <- get_module_definition(module_id)
+          actionButton(
+            session$ns(paste0("open_module_", stage$stage_id, "_", module_id)),
+            paste("Open", module$label %||% module_id),
+            class = "btn-primary btn-block"
+          )
+        })
+      }
+
+      tags$section(
+        class = "aq-workflow-action-card",
+        tags$p(class = "aq-workflow-kicker", "Next action"),
+        tags$h3(stage$label),
+        tags$p(stage$purpose),
+        if (length(actions)) do.call(tagList, actions) else ui_empty_state("No native module yet.", "Use a governed Code Runner hook or external tool for this stage."),
+        tags$div(
+          class = "aq-workflow-action-secondary",
+          tags$p("Need custom support?"),
+          ui_action_row(
+            actionButton(session$ns(paste0("hook_pre_", stage$stage_id)), "Draft pre-stage code", class = "btn-secondary btn-sm"),
+            actionButton(session$ns(paste0("hook_post_", stage$stage_id)), "Draft post-stage code", class = "btn-secondary btn-sm"),
+            actionButton(session$ns(paste0("hook_standalone_", stage$stage_id)), "Draft standalone code", class = "btn-secondary btn-sm")
+          )
+        ),
+        uiOutput(session$ns("workflow_message"))
+      )
+    })
+
+    output$workflow_backstage <- renderUI({
+      summary <- data.table::copy(summary_reactive())
+      summary[, `:=`(
+        status = vapply(status, workflow_status_label, character(1)),
+        latest_run_status = vapply(latest_run_status, ui_status_label, character(1)),
+        catboost_handoff_available = data.table::fifelse(catboost_handoff_available, "Available", "Not Detected")
+      )]
+      ui_disclosure(
+        "Route Details",
+        render_table(
+          summary[, list(
+            order,
+            stage = label,
+            status,
+            artifacts = artifact_count,
+            report_plans = report_plan_count,
+            code_drafts = custom_code_hook_count,
+            latest_run = latest_run_status,
+            handoff = catboost_handoff_available
+          )],
+          title = NULL,
+          page_size = 9,
+          searchable = FALSE,
+          filterable = FALSE
+        ),
+        level = "advanced",
+        open = FALSE
+      )
+    })
+
     output$workflow_message <- renderUI({
       message <- workflow_message()
       if (is.null(message) || !nzchar(message)) {
-        return(ui_empty_state(
-          "Use Workflow as a launchpad.",
-          "Open existing modules or draft Code Runner hooks for each stage."
-        ))
+        return(tags$p(class = "aq-workflow-message", "No workflow action has been taken from this route yet."))
       }
       tags$p(class = "aq-workflow-message", message)
     })

@@ -7,37 +7,47 @@ page_data_ui <- function(id) {
       title = "Data Workspace",
       subtitle = "Load the project dataset and inspect the working preview before running modules.",
       eyebrow = "Data",
-      ui_workspace_grid(
-        columns = "two",
-        class = "aq-data-loader-grid",
+      ui_object_spine(
+        object = "Dataset",
+        intent = "Bring one working dataset into the project, verify its shape, and make it available to downstream analysis.",
+        state = "Waiting for uploaded or project-loaded data",
+        next_action = "Load CSV, Excel, or Parquet data, then inspect the preview.",
+        depth = "Source and preview only; transformation belongs in Feature Engineering."
+      ),
+      tags$section(
+        class = "aq-data-workbench",
         ui_card(
-          title = "Dataset Source",
-          subtitle = "Upload CSV, Excel, Parquet, or use project-loaded data.",
-          fileInput(ns("csv_file"), "Dataset File", accept = supported_data_accept_types()),
-          ui_callout(
-            "Supported formats",
-            "CSV, XLSX, XLSM, and Parquet. Excel workbooks load the first worksheet.",
-            status = "info"
+          title = "Load the Working Dataset",
+          subtitle = "One source file becomes the project dataset for analysis.",
+          class = "aq-data-loader-band",
+          tags$div(
+            class = "aq-data-loader-row",
+            tags$div(
+              class = "aq-data-loader-upload",
+              fileInput(ns("csv_file"), "Dataset File", accept = supported_data_accept_types())
+            ),
+            tags$div(
+              class = "aq-data-loader-status",
+              tags$span(class = "aq-field-label", "Current dataset"),
+              textOutput(ns("data_summary")),
+              tags$span(
+                class = "aq-muted-note",
+                "CSV, XLSX, XLSM, and Parquet are supported. Excel workbooks load the first worksheet."
+              )
+            ),
+            tags$div(
+              class = "aq-data-loader-actions",
+              actionButton(ns("open_analysis_modules"), "Analyze Dataset", class = "btn-primary"),
+              actionButton(ns("open_workflow"), "Open Workflow", class = "btn-secondary")
+            )
           )
         ),
         ui_card(
-          title = "Dataset Status",
-          textOutput(ns("data_summary")),
-          ui_callout(
-            "Next",
-            "After data loads, use Workflow or Analysis Modules to generate artifacts.",
-            status = "info",
-            actions = ui_action_row(
-              actionButton(ns("open_analysis_modules"), "Open Analysis Modules", class = "btn-primary btn-sm"),
-              actionButton(ns("open_workflow"), "Open Workflow", class = "btn-secondary btn-sm")
-            )
-          )
+          title = "Preview the Data",
+          subtitle = "Confirm that columns, dates, categories, and numeric fields loaded correctly.",
+          class = "aq-data-preview-card aq-data-preview-wide",
+          uiOutput(ns("data_preview"))
         )
-      ),
-      ui_card(
-        title = "Data Preview",
-        class = "aq-data-preview-card",
-        uiOutput(ns("data_preview"))
       )
     )
   )

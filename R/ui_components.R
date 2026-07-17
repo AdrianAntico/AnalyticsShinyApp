@@ -91,6 +91,24 @@ ui_page <- function(title, subtitle = NULL, ..., actions = NULL, eyebrow = NULL)
   )
 }
 
+ui_object_spine <- function(object, intent, state = NULL, next_action = NULL, depth = NULL, class = NULL) {
+  tags$section(
+    class = .aq_class("aq-object-spine", class),
+    tags$div(
+      class = "aq-object-spine-primary",
+      tags$p(class = "aq-object-spine-label", "Dominant object"),
+      tags$h3(class = "aq-object-spine-object", object),
+      tags$p(class = "aq-object-spine-intent", intent)
+    ),
+    tags$dl(
+      class = "aq-object-spine-facts",
+      if (!is.null(state)) tagList(tags$dt("State"), tags$dd(state)),
+      if (!is.null(next_action)) tagList(tags$dt("Next"), tags$dd(next_action)),
+      if (!is.null(depth)) tagList(tags$dt("Depth"), tags$dd(depth))
+    )
+  )
+}
+
 ui_section_header <- function(title, subtitle = NULL, actions = NULL, eyebrow = NULL) {
   tags$header(
     class = "aq-section-header",
@@ -151,10 +169,10 @@ ui_display_label <- function(value) {
     project_closing = "Closing",
     workspace_ready = "Ready",
     workspace_unconfigured = "Not Configured",
-    configured_workspace = "Configured Workspace",
-    local_server_directory = "Local Directory",
-    managed_workspace = "Managed Workspace",
-    native_host_directory = "Native Host Directory",
+    configured_workspace = "Saved Workspace",
+    local_server_directory = "Local Folder",
+    managed_workspace = "App-Managed Folder",
+    native_host_directory = "Choose Folder",
     llm_docx = "LLM DOCX",
     human_report = "Human Report",
     artifact_studio = "Artifact Studio",
@@ -181,6 +199,15 @@ ui_display_label <- function(value) {
 
 ui_status_label <- function(value) {
   ui_display_label(value)
+}
+
+ui_project_safe_id_label <- function(value) {
+  value <- as.character(value %||% "")
+  if (!length(value) || is.na(value[[1]]) || !nzchar(value[[1]])) {
+    return("Not Created")
+  }
+  value <- value[[1]]
+  gsub("_(20[0-9]{6})([0-9]{6})$", " (created \\1)", value)
 }
 
 ui_action_row <- function(...) {
@@ -734,7 +761,7 @@ artifact_studio_safe_id <- function(value) {
 
 ui_collector_status_panel <- function(summary) {
   if (is.null(summary) || !nrow(summary)) {
-    return(ui_empty_state("Collector not created.", "Run an analysis module to initialize the Project Artifact Collector."))
+    return(ui_empty_state("Project evidence memory not created.", "Run an analysis module to start preserving generated evidence for this project."))
   }
   summary_value <- function(name, default = NULL) {
     if (!name %in% names(summary)) {
@@ -744,17 +771,17 @@ ui_collector_status_panel <- function(summary) {
   }
   status <- summary$collector_status[[1]] %||% "not_created"
   ui_card(
-    title = "Project Artifact Collector",
-    subtitle = "AI-ready project evidence bundle.",
+    title = "Project Evidence Memory",
+    subtitle = "Generated evidence preserved for reports, review, and AI-ready project context.",
     ui_stat_grid(
       ui_stat_tile("Status", ui_status_label(status), status = if (status %in% c("success", "created")) "success" else "neutral"),
       ui_stat_tile("Run", summary_value("current_run_id", "-"), detail = "current run"),
       ui_stat_tile("Artifacts", summary_value("artifact_count", 0L), detail = paste(summary_value("bundle_count", 0L), "bundles")),
-      ui_stat_tile("Render Target", ui_display_label(summary_value("render_target", "llm_docx"))),
-      ui_stat_tile("Manifest", ui_status_label(summary_value("manifest_status", "not_written")))
+      ui_stat_tile("AI Context", ui_display_label(summary_value("render_target", "llm_docx"))),
+      ui_stat_tile("Index", ui_status_label(summary_value("manifest_status", "not_written")))
     ),
     ui_disclosure(
-      "Collector Paths",
+      "Technical Files",
       render_table(
         summary[, list(collector_docx, manifest_file)],
         engine = "html",
@@ -783,6 +810,56 @@ ui_activity_list <- function(items = character()) {
   tags$ol(
     class = "aq-activity-list",
     lapply(items, function(item) tags$li(item))
+  )
+}
+
+ui_choice_explainer <- function(input_id, label, choices, selected = NULL) {
+  enabled_values <- vapply(choices, function(choice) {
+    !isFALSE(choice$enabled %||% TRUE)
+  }, logical(1))
+  first_enabled <- which(enabled_values)[1]
+  default_index <- if (is.na(first_enabled)) 1L else first_enabled
+  selected <- selected %||% choices[[default_index]]$value
+  if (!selected %in% vapply(choices[enabled_values], `[[`, character(1), "value")) {
+    selected <- choices[[default_index]]$value
+  }
+  tags$div(
+    class = "aq-choice-explainer",
+    tags$div(class = "aq-choice-explainer-label", label),
+    tags$div(
+      id = input_id,
+      class = "aq-choice-explainer-grid shiny-input-radiogroup",
+      lapply(choices, function(choice) {
+        value <- choice$value
+        input_id_safe <- paste0(gsub("[^A-Za-z0-9_-]", "_", input_id), "_", gsub("[^A-Za-z0-9_-]", "_", value))
+        enabled <- !isFALSE(choice$enabled %||% TRUE)
+        tags$label(
+          class = .aq_class(
+            "aq-choice-explainer-card",
+            if (!enabled) "aq-choice-explainer-card-disabled" else NULL
+          ),
+          `for` = input_id_safe,
+          title = if (!enabled) choice$unavailable_reason %||% choice$description else NULL,
+          tags$input(
+            id = input_id_safe,
+            type = "radio",
+            name = input_id,
+            value = value,
+            checked = if (enabled && identical(value, selected)) "checked" else NULL,
+            disabled = if (!enabled) "disabled" else NULL,
+            `aria-disabled` = if (!enabled) "true" else NULL
+          ),
+          tags$span(
+            class = "aq-choice-explainer-copy",
+            tags$strong(choice$title),
+            tags$p(choice$description),
+            if (isTRUE(choice$recommended %||% FALSE) && enabled) ui_status_badge("Recommended", status = "success") else NULL,
+            if (!enabled) ui_status_badge("Unavailable", status = "warning") else NULL,
+            if (!enabled && nzchar(choice$unavailable_reason %||% "")) tags$p(class = "aq-choice-unavailable-reason", choice$unavailable_reason) else NULL
+          )
+        )
+      })
+    )
   )
 }
 
@@ -849,6 +926,7 @@ qa_ui_consistency <- function() {
   page_text <- paste(vapply(page_files, read_file, character(1)), collapse = "\n")
   component_names <- c(
     "ui_page",
+    "ui_object_spine",
     "ui_card",
     "ui_empty_state",
     "ui_status_badge",
@@ -913,13 +991,13 @@ qa_ui_consistency <- function() {
     ),
     status = c(
       if (all(vapply(component_names, function(name) exists(name, envir = environment(), mode = "function"), logical(1)))) "success" else "error",
-      if (has_patterns(c(".aq-action-bar", ".aq-split-panel", ".aq-callout", ".aq-progress-steps", ".aq-artifact-preview-card"), css)) "success" else "error",
+      if (has_patterns(c(".aq-object-spine", ".aq-action-bar", ".aq-split-panel", ".aq-callout", ".aq-progress-steps", ".aq-artifact-preview-card"), css)) "success" else "error",
       if (has_patterns(c("--aq-radius", "--aq-border", "--aq-surface", "--aq-space-4", ".aq-workspace-grid", ".aq-stat-grid"), css)) "success" else "error",
       if (grepl("aq-section-actions", css, fixed = TRUE) && grepl("actions = ui_action_row", project_page, fixed = TRUE)) "success" else "error",
       if (grepl("ui_disclosure", project_page, fixed = TRUE) && grepl(".aq-disclosure", css, fixed = TRUE)) "success" else "error",
-      if (grepl("Project Workspace", project_page, fixed = TRUE) && grepl("workspace_overview", project_page, fixed = TRUE)) "success" else "error",
-      if (grepl("Artifacts", project_page, fixed = TRUE) && grepl("Report Plans", project_page, fixed = TRUE)) "success" else "error",
-      if (grepl("project_collector_summary", project_page, fixed = TRUE) && grepl("Project Artifact Collector", workflow_page, fixed = TRUE)) "success" else "error",
+      if (grepl("Project Workspace", project_page, fixed = TRUE) && grepl("project_persistent_context", project_page, fixed = TRUE) && grepl("project_chapter_surface", project_page, fixed = TRUE)) "success" else "error",
+      if (grepl("Project Location", project_page, fixed = TRUE) && grepl("Evidence", project_page, fixed = TRUE) && grepl("Next Action", project_page, fixed = TRUE)) "success" else "error",
+      if (grepl("project_collector_summary", project_page, fixed = TRUE) && (grepl("Project Evidence Memory", workflow_page, fixed = TRUE) || grepl("Project Artifact Collector", workflow_page, fixed = TRUE))) "success" else "error",
       if (grepl("render_target", workflow_page, fixed = TRUE) || grepl("render target", app_ui, ignore.case = TRUE)) "success" else "warning",
       if (grepl("workflow_stage_registry", workflow_page, fixed = TRUE) && grepl("workflow_stage_card", workflow_page, fixed = TRUE)) "success" else "error",
       if (grepl("ui_empty_state", project_page, fixed = TRUE) && grepl("ui_empty_state", workflow_page, fixed = TRUE)) "success" else "error",
@@ -929,7 +1007,7 @@ qa_ui_consistency <- function() {
           has_patterns(c("aq-workstation-header", "aq-workstation-utilities", "ui_theme_switcher(theme = \"dark\")"), app_ui)) "success" else "error",
       if (has_patterns(c("body.aq-theme-cyberpunk", "#00f5ff", "#ff2bd6", ".aq-theme-switcher"), css) && has_patterns(c("cyberpunk", "reactable_theme_cyberpunk"), table_theme)) "success" else "error",
       if (has_patterns(c("body.aq-theme-dark", "body:not(.aq-theme-light):not(.aq-theme-pimp):not(.aq-theme-cyberpunk)", "--aq-bg-base", "--aq-focus-ring", "--aq-secondary"), css)) "success" else "error",
-      if (has_patterns(c("Data Workspace", "supported_data_accept_types", "aq-data-loader-grid", "aq-data-preview-card"), data_page)) "success" else "error",
+      if (has_patterns(c("Data Workspace", "supported_data_accept_types", "aq-data-workbench", "aq-data-loader-band", "aq-data-preview-wide"), data_page)) "success" else "error",
       if (grepl("Plot Builder", plot_builder_page, fixed = TRUE) &&
           grepl("ui_preview_panel", plot_builder_page, fixed = TRUE) &&
           grepl("ui_code_panel", plot_builder_page, fixed = TRUE) &&
@@ -937,11 +1015,11 @@ qa_ui_consistency <- function() {
           grepl(".aq-plot-builder-primary-actions", css, fixed = TRUE) &&
           grepl("aq-plot-mapping-controls", plot_builder_page, fixed = TRUE) &&
           grepl(".aq-plot-mapping-controls", css, fixed = TRUE)) "success" else "error",
-      if (grepl("Layout Studio", layouts_page, fixed = TRUE) && grepl("ui_split_panel", layouts_page, fixed = TRUE) && grepl("ui_code_panel", layouts_page, fixed = TRUE)) "success" else "error",
+      if (grepl("Layout Studio", layouts_page, fixed = TRUE) && grepl("aq-layout-studio", layouts_page, fixed = TRUE) && grepl("ui_code_panel", layouts_page, fixed = TRUE)) "success" else "error",
       if (grepl("Artifact Studio", artifact_library_page, fixed = TRUE) && grepl("ui_artifact_filmstrip", artifact_library_page, fixed = TRUE) && grepl("artifact_studio_overview", artifact_library_page, fixed = TRUE)) "success" else "error",
       if (grepl("ui_code_panel", analysis_modules_page, fixed = TRUE)) "success" else "error",
       if (grepl("subtitle = \"Write human-facing report outputs", export_page, fixed = TRUE)) "success" else "error",
-      if (has_patterns(c(".aq-loading-state", ".aq-quality-panel", ".aq-ai-readiness-panel"), css) && grepl("ui_ai_readiness_panel", project_page, fixed = TRUE)) "success" else "error",
+      if (has_patterns(c(".aq-loading-state", ".aq-quality-panel", ".aq-ai-readiness-panel"), css) && grepl("ui_ai_readiness_panel", ui_components, fixed = TRUE)) "success" else "error",
       if (has_patterns(c(".aq-app-shell input", ".aq-app-shell textarea", ".aq-app-shell select", ".aq-app-shell .form-control:focus", "--aq-input-bg"), css)) "success" else "error",
       if (has_patterns(c("input[type=\"number\"]", "color-scheme: dark", "::-webkit-inner-spin-button", "::-webkit-outer-spin-button"), css)) "success" else "error",
       if (has_patterns(c(".aq-app-shell .selectize-input", ".aq-app-shell .selectize-dropdown", ".aq-app-shell .selectize-dropdown .active", ".aq-app-shell .selectize-control.multi"), css)) "success" else "error",
@@ -989,7 +1067,7 @@ qa_ui_consistency <- function() {
       "Dark-first tokens include base surfaces, focus states, and secondary accent.",
       "Data page uses a top dataset loader/status band with a full-width preview.",
       "Plot Builder uses shared preview/code panels and keeps primary plot actions sticky.",
-      "Layout Studio uses shared split-panel, disclosure, preview, and code panels.",
+      "Layout Studio uses a dedicated composition stage, disclosure, preview, and code panels.",
       "Artifact Studio surfaces evidence gallery, inspector, and filmstrip.",
       "Analysis Modules uses the shared code panel.",
       "Export page is framed as a report/export workspace.",

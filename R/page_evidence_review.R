@@ -12,6 +12,13 @@ page_evidence_review_ui <- function(id) {
         actionButton(ns("open_artifacts"), "Artifact Studio", class = "btn-secondary"),
         actionButton(ns("open_decisions"), "Continue to Decision", class = "btn-secondary")
       ),
+      ui_object_spine(
+        object = "Evidence Claim",
+        intent = "Separate supported claims, gaps, contradictions, and justified actions before a decision is made.",
+        state = "Evidence is reviewed before recommendation language becomes decision language.",
+        next_action = "Select the proposed action, review sufficiency, then continue only when the evidence can support it.",
+        depth = "Provenance, contradictions, valuation, and metadata stay inspectable inside the room."
+      ),
       tags$section(
         class = "aq-evidence-room",
         `data-testid` = "evidence-review-production-candidate",

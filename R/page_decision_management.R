@@ -294,6 +294,13 @@ page_decision_management_ui <- function(id) {
         actionButton(ns("open_semantic"), "Edit Decision", class = "btn-secondary"),
         actionButton(ns("open_mission"), "Project Health", class = "btn-secondary")
       ),
+      ui_object_spine(
+        object = "Governed Decision",
+        intent = "Convert evidence into an accountable decision by keeping alternatives, tradeoffs, authority, and follow-through visible.",
+        state = "Decision readiness depends on evidence sufficiency and governance state.",
+        next_action = "Review alternatives and readiness before accepting, deferring, or requesting more evidence.",
+        depth = "Detailed economics, governance, and provenance stay available below the decision canvas."
+      ),
       tags$section(
         class = "aq-evidence-room aq-decision-room",
         `data-testid` = "decision-management-production-candidate",

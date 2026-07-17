@@ -7,6 +7,13 @@ page_artifact_library_ui <- function(id) {
       title = "Artifact Studio",
       subtitle = "Explore project evidence through filters, gallery cards, a persistent inspector, and the artifact filmstrip.",
       eyebrow = "Evidence",
+      ui_object_spine(
+        object = "Evidence Object",
+        intent = "Browse, select, and inspect project artifacts as durable analytical evidence rather than transient outputs.",
+        state = "Gallery selection drives the inspector and filmstrip.",
+        next_action = "Select an artifact card to open its evidence dossier.",
+        depth = "Filters narrow the evidence field; backing assets remain in the inspector."
+      ),
       uiOutput(ns("artifact_studio_overview")),
       tags$div(
         class = "aq-artifact-studio",

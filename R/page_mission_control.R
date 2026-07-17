@@ -519,6 +519,13 @@ page_mission_control_ui <- function(id) {
         actionButton(ns("open_artifacts"), "Open Artifact Studio", class = "btn-primary"),
         actionButton(ns("open_modules"), "Run Analysis", class = "btn-secondary")
       ),
+      ui_object_spine(
+        object = "Operational State",
+        intent = "Summarize the project health, open risks, running work, and next visible action from one command surface.",
+        state = "Live readout from project, collector, workflow, QA, async, and GenAI state.",
+        next_action = "Resolve the highest-priority alert or open Artifact Studio to inspect evidence.",
+        depth = "Detailed queues stay below the health and priority summary."
+      ),
       tags$div(
         class = "aq-mission-control",
         uiOutput(ns("project_health")),

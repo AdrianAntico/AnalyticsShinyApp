@@ -19,6 +19,13 @@ page_product_experience_ui <- function(id) {
         actionButton(ns("run_fixture"), "Run Fixture Scenario", class = "btn-primary"),
         actionButton(ns("refresh"), "Refresh")
       ),
+      ui_object_spine(
+        object = "Product Experience Runtime",
+        intent = "Evaluate the workstation through deterministic worlds, replay evidence, and founder-review findings.",
+        state = "Research and validation surface; not part of the analyst's everyday workflow.",
+        next_action = "Run or inspect the Golden Workflow package before promoting recordings.",
+        depth = "Generated media and detailed replay artifacts remain governed below the runtime summary."
+      ),
       ui_workspace_grid(
         columns = "main-sidebar",
         tagList(

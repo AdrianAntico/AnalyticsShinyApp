@@ -5,98 +5,24 @@ page_project_ui <- function(id) {
     "Project",
     ui_page(
       title = "Project Workspace",
-      subtitle = "Create, load, save, and inspect the active analytical project.",
+      subtitle = "Create, open, save, and understand the active analytical project.",
       eyebrow = "Project",
-      actions = ui_action_row(
-        actionButton(ns("save_project"), "Save Project", class = "btn-primary"),
-        actionButton(ns("load_project"), "Load Project", class = "btn-secondary")
-      ),
-      uiOutput(ns("workspace_overview")),
-      uiOutput(ns("workspace_progress")),
-      ui_workspace_grid(
-        columns = "main-sidebar",
-        tagList(
-          ui_card(
-            title = "Workspace",
-            subtitle = "Where projects and runtime data may live. This is stored outside the source repository.",
-            selectInput(
-              ns("workspace_provider"),
-              "Storage Provider",
-              choices = c(
-                "Configured Workspace" = "configured_workspace",
-                "Local / Server Directory" = "local_server_directory",
-                "Managed Workspace" = "managed_workspace",
-                "Native Host Directory" = "native_host_directory"
-              ),
-              selected = "configured_workspace"
-            ),
-            textInput(ns("workspace_root"), "Workspace Directory", value = ""),
-            ui_action_row(
-              actionButton(ns("configure_workspace"), "Use Workspace", class = "btn-primary btn-sm")
-            ),
-            uiOutput(ns("workspace_provider_details")),
-            uiOutput(ns("workspace_guard"))
+      div(
+        class = "aq-project-reference aq-project-object",
+        uiOutput(ns("project_persistent_context")),
+        ui_choice_explainer(
+          ns("project_chapter"),
+          "Project Chapters",
+          choices = list(
+            list(value = "lifecycle", title = "Lifecycle", description = "Create, open, save, close, and choose where this project lives.", recommended = TRUE),
+            list(value = "current", title = "Current Project", description = "Inspect what the open project currently contains."),
+            list(value = "activity", title = "Activity", description = "Review what changed and where work should resume."),
+            list(value = "administration", title = "Administration", description = "Open advanced project systems only when needed.")
           ),
-          ui_card(
-            title = "Project",
-            subtitle = "The active analytical workspace that owns persistent artifacts, reports, layouts, and results.",
-            textInput(ns("project_name"), "New Project Name", value = "Analytics Project"),
-            ui_action_row(
-              actionButton(ns("create_project"), "Create Project", class = "btn-primary btn-sm"),
-              actionButton(ns("close_project"), "Close Project", class = "btn-secondary btn-sm")
-            ),
-            uiOutput(ns("project_guard"))
-          ),
-          ui_card(
-            title = "Workspace Status",
-            subtitle = "A compact readout of the current analytical run.",
-            uiOutput(ns("project_message_panel")),
-            uiOutput(ns("workspace_status")),
-            uiOutput(ns("modeling_context_panel")),
-            ui_disclosure(
-              "Recent Activity",
-              uiOutput(ns("recent_activity")),
-              level = "common",
-              open = TRUE
-            )
-          ),
-          uiOutput(ns("ai_readiness_panel")),
-          uiOutput(ns("genai_provider_panel")),
-          uiOutput(ns("collector_panel"))
+          selected = "lifecycle"
         ),
-        ui_card(
-          title = "Project Files",
-          subtitle = "Save or reload the project state and portable bundle.",
-          textInput(
-            ns("project_path"),
-            "Project File",
-            value = ""
-          ),
-          ui_action_row(
-            actionButton(ns("save_project_secondary"), "Save", class = "btn-primary btn-sm"),
-            actionButton(ns("load_project_secondary"), "Load", class = "btn-secondary btn-sm")
-          ),
-          ui_disclosure(
-            "Bundle Options",
-            textInput(
-              ns("bundle_dir"),
-              "Project Bundle Directory",
-              value = ""
-            ),
-            ui_action_row(
-              actionButton(ns("save_bundle"), "Save Bundle", class = "btn-primary btn-sm"),
-              actionButton(ns("load_bundle"), "Load Bundle", class = "btn-secondary btn-sm")
-            ),
-            level = "advanced"
-          )
-        )
-      ),
-      uiOutput(ns("persisted_results_browser")),
-      uiOutput(ns("feature_experiment_browser")),
-      uiOutput(ns("genai_job_monitor")),
-      uiOutput(ns("improvement_ledger_browser")),
-      uiOutput(ns("remediation_plan_browser")),
-      uiOutput(ns("genai_audit_ledger_browser"))
+        uiOutput(ns("project_chapter_surface"))
+      )
     )
   )
 }
@@ -105,6 +31,11 @@ page_project_server <- function(id, ctx) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     project_actions <- reactiveVal(character())
+    project_lifecycle_busy <- reactiveVal(FALSE)
+    project_location_confirmed <- reactiveVal(NULL)
+    genai_project_busy <- reactiveVal(FALSE)
+    genai_project_action <- reactiveVal(NULL)
+    genai_last_request <- reactiveVal(list(action = NULL, completed_at = as.POSIXct(NA)))
 
     add_activity <- function(message) {
       existing <- project_actions()
@@ -168,11 +99,6 @@ page_project_server <- function(id, ctx) {
     })
 
     observe({
-      workspace <- tryCatch(ctx$current_workspace(), error = function(e) list())
-      workspace_root <- workspace$workspace_root %||% ""
-      if (nzchar(workspace_root) && !identical(input$workspace_root, workspace_root)) {
-        updateTextInput(session, "workspace_root", value = workspace_root)
-      }
       project <- tryCatch(ctx$current_project(), error = function(e) NULL)
       if (is.list(project) && identical(project$project_state %||% "", "project_ready")) {
         project_file <- project_path(project, "project.rds")
@@ -190,30 +116,34 @@ page_project_server <- function(id, ctx) {
       result <- tryCatch(ctx$workspace_status_result(), error = function(e) NULL)
       workspace <- tryCatch(ctx$current_workspace(), error = function(e) list())
       if (identical(result$status %||% "", "success")) {
-        return(ui_callout("Workspace ready", workspace$workspace_root %||% "", status = "success"))
+        return(ui_callout("Project Location ready", workspace$workspace_root %||% "", status = "success"))
       }
       ui_callout(
-        "Workspace required",
-        paste(result$errors %||% "Choose a workspace directory before saving artifacts, reports, layouts, or project results.", collapse = " "),
+        "Project Location required",
+        paste(result$errors %||% "Choose a Project Location before saving artifacts, reports, layouts, or project results.", collapse = " "),
         status = "warning"
       )
     })
 
     output$workspace_provider_details <- renderUI({
       providers <- storage_provider_registry()
-      provider <- providers[[input$workspace_provider %||% "configured_workspace"]] %||% providers$configured_workspace
+      provider <- providers[[lifecycle_provider_selection()]] %||% providers$local_server_directory
       caps <- provider$capabilities %||% list()
       cap_text <- paste(names(caps)[vapply(caps, isTRUE, logical(1))], collapse = ", ")
       if (!nzchar(cap_text)) cap_text <- "No interactive selection capabilities."
       ui_callout(
-        paste("Provider:", provider$display_name),
+        paste("Selected option:", provider$display_name),
         paste(
-          "Type:", provider$provider_type,
-          "| Available:", provider$available,
-          "| Managed:", provider$managed,
-          "| Capabilities:", cap_text
+          if (lifecycle_provider_available(provider)) "Available." else lifecycle_provider_unavailable_reason(provider),
+          if (isTRUE(provider$managed)) "The app controls this location." else "You control this location.",
+          if (!is.null(provider$root_path) && nzchar(provider$root_path %||% "")) {
+            paste("Location:", provider$root_path)
+          } else {
+            "No real location value has been provided."
+          },
+          "Capabilities:", cap_text
         ),
-        status = if (isTRUE(provider$available)) "info" else "warning"
+        status = if (lifecycle_provider_available(provider)) "info" else "warning"
       )
     })
 
@@ -222,7 +152,7 @@ page_project_server <- function(id, ctx) {
       if (is.list(project) && identical(project$project_state %||% "", "project_ready")) {
         return(ui_callout(
           "Project ready",
-          paste(project$project_name, "owns persistent outputs at", project$project_root),
+          paste(project$project_name, "is saving project work in", project$project_root),
           status = "success"
         ))
       }
@@ -233,22 +163,700 @@ page_project_server <- function(id, ctx) {
       )
     })
 
-    output$workspace_overview <- renderUI({
+    project_readout <- reactive({
       data <- tryCatch(ctx$project_data(), error = function(e) NULL)
+      data_info <- tryCatch(ctx$project_data_info(), error = function(e) list())
       artifacts <- tryCatch(ctx$all_artifacts(), error = function(e) list())
       plans <- tryCatch(ctx$report_plan_state$plans, error = function(e) list())
       collector <- tryCatch(ctx$project_collector_summary(), error = function(e) data.table::data.table())
-      workspace_state <- tryCatch(ctx$workspace_state(), error = function(e) "workspace_unconfigured")
-      project_state <- tryCatch(ctx$project_state_status(), error = function(e) "no_project")
-      collector_status <- if (nrow(collector)) collector$collector_status[[1]] else "not_created"
-      collector_badge <- if (collector_status %in% c("success", "created")) "success" else if (collector_status %in% c("error")) "error" else "neutral"
-      ui_stat_grid(
-        ui_stat_tile("Dataset", if (is.null(data)) "None" else paste(nrow(data), "rows"), status = if (is.null(data)) "neutral" else "success", detail = if (is.null(data)) "Upload data to begin" else paste(ncol(data), "columns")),
-        ui_stat_tile("Workspace", ui_status_label(workspace_state), status = if (identical(workspace_state, "workspace_ready")) "success" else "warning", detail = ui_display_label(ctx$current_workspace()$provider_id %||% "no provider")),
-        ui_stat_tile("Project", ui_status_label(project_state), status = if (identical(project_state, "project_ready")) "success" else "warning", detail = "persistent owner"),
-        ui_stat_tile("Artifacts", length(artifacts), status = if (length(artifacts)) "success" else "neutral", detail = "plots, tables, text"),
-        ui_stat_tile("Report Plans", length(plans), status = if (length(plans)) "success" else "neutral", detail = "curated outputs"),
-        ui_stat_tile("Collector", ui_status_label(collector_status), status = collector_badge, detail = if (nrow(collector)) paste(collector$artifact_count[[1]], "artifacts") else "not created")
+      workspace <- tryCatch(ctx$current_workspace(), error = function(e) list())
+      project <- tryCatch(ctx$current_project(), error = function(e) NULL)
+      project_ready <- is.list(project) && identical(project$project_state %||% "", "project_ready")
+      collector_count <- if (nrow(collector)) collector$artifact_count[[1]] %||% 0L else 0L
+      list(
+        data = data,
+        data_info = data_info,
+        artifacts = artifacts,
+        plans = plans,
+        collector = collector,
+        collector_count = collector_count,
+        workspace = workspace,
+        project = project,
+        project_ready = project_ready,
+        project_name = if (project_ready) project$project_name %||% "Open Project" else "No Project Open",
+        project_root = if (project_ready) project$project_root %||% "" else "",
+        dataset_label = if (is.null(data)) "No dataset loaded" else paste(data_info$name %||% "Loaded Data", "-", format(nrow(data), big.mark = ","), "rows"),
+        evidence_label = paste(length(artifacts), "artifact(s),", length(plans), "report plan(s),", collector_count, "collector artifact(s)")
+      )
+    })
+
+    project_next_step <- reactive({
+      info <- project_readout()
+      if (!isTRUE(info$project_ready)) {
+        return(list(title = "Create or open a project", message = "Project work is temporary until a project is created or opened.", status = "warning"))
+      }
+      if (is.null(info$data)) {
+        return(list(title = "Load data", message = "A project is open, but no dataset is loaded yet.", status = "info"))
+      }
+      if (!length(info$artifacts)) {
+        return(list(title = "Run the first analysis", message = "Generate foundational evidence with Explore Data or Model Readiness.", status = "info"))
+      }
+      if ((info$collector_count %||% 0L) < 1L) {
+        return(list(title = "Write evidence memory", message = "Artifacts exist; make sure the project evidence memory is updated.", status = "warning"))
+      }
+      list(title = "Review evidence", message = "Evidence is available. Artifact Studio or AI Assistance can help inspect the project.", status = "success")
+    })
+
+    lifecycle_location_input <- reactive({
+      provider_id <- lifecycle_provider_selection()
+      provider <- lifecycle_provider(provider_id)
+      raw <- input$workspace_root %||% ""
+      source <- "manual_entry"
+      if (!is.null(provider$root_path) && nzchar(provider$root_path %||% "")) {
+        raw <- provider$root_path
+        source <- "provider_root"
+      }
+      if (!nzchar(trimws(raw)) && !is.null(project_location_confirmed())) {
+        raw <- project_location_confirmed()
+        source <- "confirmed_location"
+      }
+      normalized <- storage_normalize_path(raw, must_work = FALSE)
+      list(provider_id = provider_id, raw = raw, normalized = normalized, source = source)
+    })
+
+    lifecycle_provider_registry <- reactive({
+      storage_provider_registry()
+    })
+
+    lifecycle_provider <- function(provider_id = NULL) {
+      providers <- lifecycle_provider_registry()
+      providers[[provider_id %||% "local_server_directory"]] %||% providers$local_server_directory
+    }
+
+    lifecycle_provider_available <- function(provider) {
+      isTRUE(provider$available) && (
+        identical(provider$provider_id, "local_server_directory") ||
+          isTRUE(provider$selection_supported) ||
+          (!is.null(provider$root_path) && nzchar(provider$root_path %||% ""))
+      )
+    }
+
+    lifecycle_provider_unavailable_reason <- function(provider) {
+      switch(
+        provider$provider_id %||% "",
+        configured_workspace = "No saved Project Location exists yet. Use Local Folder first, then save or create a project.",
+        managed_workspace = "No app-managed location is available in this environment.",
+        native_host_directory = "The host folder picker is not available in this environment.",
+        "This location type is unavailable in the current runtime."
+      )
+    }
+
+    lifecycle_provider_selection <- reactive({
+      providers <- lifecycle_provider_registry()
+      selected <- input$workspace_provider %||% "local_server_directory"
+      provider <- providers[[selected]]
+      if (is.null(provider) || !lifecycle_provider_available(provider)) {
+        "local_server_directory"
+      } else {
+        selected
+      }
+    })
+
+    lifecycle_location_choices <- reactive({
+      providers <- lifecycle_provider_registry()
+      provider_choice <- function(provider_id, title, description, recommended = FALSE) {
+        provider <- providers[[provider_id]]
+        enabled <- !is.null(provider) && lifecycle_provider_available(provider)
+        list(
+          value = provider_id,
+          title = title,
+          description = description,
+          recommended = isTRUE(recommended),
+          enabled = enabled,
+          unavailable_reason = if (enabled) "" else lifecycle_provider_unavailable_reason(provider %||% list(provider_id = provider_id))
+        )
+      }
+      list(
+        provider_choice("local_server_directory", "Local Folder", "Paste a Windows folder path. Best default for local desktop work.", recommended = TRUE),
+        provider_choice("configured_workspace", "Saved Location", "Reuse the project location already saved for this app."),
+        provider_choice("managed_workspace", "App-Managed Location", "Use a deployment-provided managed location."),
+        provider_choice("native_host_directory", "Choose Location", "Use the host folder picker when available.")
+      )
+    })
+
+    lifecycle_location_value <- reactive({
+      provider <- lifecycle_provider(lifecycle_provider_selection())
+      if (!is.null(provider$root_path) && nzchar(provider$root_path %||% "")) {
+        return(provider$root_path)
+      }
+      current_location_value <- input$workspace_root %||% ""
+      if (nzchar(trimws(current_location_value))) current_location_value else project_location_confirmed() %||% ""
+    })
+
+    lifecycle_location_is_confirmed <- reactive({
+      location <- lifecycle_location_input()
+      if (is.null(location$normalized)) {
+        return(FALSE)
+      }
+      identical(location$source, "provider_root") ||
+        identical(project_location_confirmed(), location$normalized)
+    })
+
+    lifecycle_project_name <- reactive({
+      trimws(input$project_name %||% "")
+    })
+
+    lifecycle_create_state <- reactive({
+      location <- lifecycle_location_input()
+      project_name <- lifecycle_project_name()
+      project_id <- if (nzchar(project_name)) safe_path_component(project_name, "project") else ""
+      destination <- if (!is.null(location$normalized) && nzchar(project_id)) {
+        storage_normalize_path(file.path(location$normalized, project_id), must_work = FALSE)
+      } else {
+        NULL
+      }
+      missing <- character()
+      warnings <- character()
+      ready <- TRUE
+
+      if (is.null(location$normalized)) {
+        ready <- FALSE
+        missing <- c(missing, "Enter or choose a Project Location.")
+      }
+      if (!nzchar(project_name)) {
+        ready <- FALSE
+        missing <- c(missing, "Enter a Project Name.")
+      }
+      if (!is.null(location$normalized) && file.exists(location$normalized) && !dir.exists(location$normalized)) {
+        ready <- FALSE
+        missing <- c(missing, "Project Location must be a folder, not a file.")
+      }
+      if (!is.null(location$normalized) && !isTRUE(lifecycle_location_is_confirmed())) {
+        ready <- FALSE
+        missing <- c(missing, "Confirm the Project Location.")
+      }
+      if (!is.null(destination) && file.exists(destination)) {
+        if (dir.exists(destination) && length(list.files(destination, all.files = TRUE, no.. = TRUE))) {
+          ready <- FALSE
+          missing <- c(missing, "A non-empty project destination already exists.")
+        } else if (!dir.exists(destination)) {
+          ready <- FALSE
+          missing <- c(missing, "The derived project destination points to a file.")
+        }
+      }
+      if (!is.null(location$normalized) && !dir.exists(location$normalized)) {
+        warnings <- c(warnings, "Project Location folder will be created.")
+      }
+      if (!is.null(destination) && !file.exists(destination)) {
+        warnings <- c(warnings, "Project destination will be created.")
+      }
+
+      list(
+        ready = isTRUE(ready),
+        location = location,
+        project_name = project_name,
+        project_id = project_id,
+        destination = destination,
+        missing = missing,
+        warnings = warnings
+      )
+    })
+
+    lifecycle_open_state <- reactive({
+      location <- lifecycle_location_input()
+      normalized <- location$normalized
+      candidate <- NULL
+      status <- "warning"
+      message <- "Choose an existing project location."
+      ready <- FALSE
+
+      if (!is.null(normalized)) {
+        if (file.exists(normalized) && !dir.exists(normalized) && grepl("\\.rds$", normalized, ignore.case = TRUE)) {
+          candidate <- normalized
+        } else if (dir.exists(normalized)) {
+          candidate <- file.path(normalized, "project.rds")
+        }
+        if (!is.null(candidate) && file.exists(candidate)) {
+          ready <- TRUE
+          status <- "success"
+          message <- paste("Existing project detected:", candidate)
+        } else if (!is.null(normalized) && dir.exists(normalized)) {
+          status <- "warning"
+          message <- "This folder does not contain a saved project yet."
+        } else {
+          status <- "warning"
+          message <- "Project location does not exist yet."
+        }
+      }
+
+      list(
+        ready = ready,
+        location = location,
+        project_file = candidate,
+        status = status,
+        message = message
+      )
+    })
+
+    lifecycle_create_feedback <- function(state) {
+      if (isTRUE(state$ready)) {
+        return(ui_callout(
+          "Destination is ready",
+          paste("New project will be created at:", state$destination),
+          status = "success"
+        ))
+      }
+      ui_callout(
+        "Create Project is waiting",
+        paste(c(state$missing, state$warnings), collapse = " "),
+        status = "warning"
+      )
+    }
+
+    lifecycle_location_status_callout <- function(intent = "create") {
+      requested <- input$workspace_provider %||% lifecycle_provider_selection()
+      selected <- lifecycle_provider_selection()
+      provider <- lifecycle_provider(selected)
+      location <- lifecycle_location_input()
+      fallback <- !identical(requested, selected)
+      available <- lifecycle_provider_available(provider)
+      has_real_location <- !is.null(location$normalized)
+      confirmed <- isTRUE(lifecycle_location_is_confirmed())
+      title <- if (!available) {
+        paste(provider$display_name %||% "Project Location", "unavailable")
+      } else if (!has_real_location) {
+        "No project location selected yet"
+      } else if (confirmed) {
+        "Project location confirmed"
+      } else {
+        "Location entered"
+      }
+      next_action <- if (fallback) {
+        paste("The requested location type is unavailable, so Local Folder is selected instead.")
+      } else if (!available) {
+        lifecycle_provider_unavailable_reason(provider)
+      } else if (!has_real_location) {
+        "Paste a folder path or choose an available location option."
+      } else if (confirmed && identical(intent, "open")) {
+        "Open becomes available when project.rds is detected."
+      } else if (confirmed) {
+        "Name the project to continue."
+      } else if (identical(location$source, "manual_entry")) {
+        "Confirm this location to continue."
+      } else {
+        "Review this location to continue."
+      }
+      ui_callout(
+        title,
+        paste(
+          "Selected location type:", ui_display_label(selected),
+          if (has_real_location) paste("Location:", location$normalized) else "No real location value has been provided.",
+          "Next:", next_action
+        ),
+        status = if (fallback || !available) "warning" else if (confirmed) "success" else "info"
+      )
+    }
+
+    output$project_persistent_context <- renderUI({
+      info <- project_readout()
+      next_step <- project_next_step()
+      actions <- project_actions()
+      message <- ctx$project_message()
+      project_state <- if (isTRUE(info$project_ready)) "Project is open" else "No durable project yet"
+      latest_activity <- if (length(actions)) actions[[1]] else if (!is.null(message) && nzchar(message)) message else "No project activity yet."
+
+      ui_card(
+        title = "The Project",
+        subtitle = "The object remains visible. Chapters change the aspect of the project you are reading.",
+        class = "aq-project-object-context",
+        div(
+          class = "aq-project-object-summary",
+          div(
+            class = "aq-project-object-title",
+            tags$span(class = "aq-kicker", if (isTRUE(info$project_ready)) "ACTIVE PROJECT" else "PROJECT NOT YET SAVED"),
+            tags$h2(info$project_name),
+            tags$p(if (isTRUE(info$project_ready)) "Persistent owner of data, evidence, reports, and AI-ready context." else "Create or open a project to start durable project memory.")
+          ),
+          div(
+            class = "aq-project-object-facts",
+            ui_stat_tile("Status", project_state, status = if (isTRUE(info$project_ready)) "success" else "warning"),
+            ui_stat_tile("Project Location", if (nzchar(info$project_root)) "Ready" else ui_display_label(info$workspace$provider_id %||% "local_server_directory"), status = if (isTRUE(info$project_ready)) "success" else "warning", detail = if (nzchar(info$project_root)) info$project_root else "Choose a location"),
+            ui_stat_tile("Dataset", info$dataset_label, status = if (is.null(info$data)) "neutral" else "success"),
+            ui_stat_tile("Evidence", info$evidence_label, status = if (length(info$artifacts)) "success" else "neutral"),
+            ui_stat_tile("Next Action", next_step$title, status = next_step$status, detail = next_step$message),
+            ui_stat_tile("Recent Activity", latest_activity, status = if (length(actions) || nzchar(message %||% "")) "success" else "neutral")
+          )
+        )
+      )
+    })
+
+    output$project_chapter_surface <- renderUI({
+      chapter <- input$project_chapter %||% "lifecycle"
+      info <- project_readout()
+      next_step <- project_next_step()
+      actions <- project_actions()
+      message <- ctx$project_message()
+      project_file_value <- input$project_path %||% if (isTRUE(info$project_ready)) project_path(info$project, "project.rds") else ""
+      lifecycle_intent <- input$lifecycle_intent %||% "create"
+      create_state <- lifecycle_create_state()
+      open_state <- lifecycle_open_state()
+      busy <- isTRUE(project_lifecycle_busy())
+      lifecycle_button <- function(input_id, label, class = "btn-primary btn-sm", enabled = TRUE) {
+        button <- actionButton(ns(input_id), label, class = class)
+        if (!isTRUE(enabled)) {
+          button <- htmltools::tagAppendAttributes(button, disabled = "disabled", `aria-disabled` = "true")
+        }
+        button
+      }
+
+      lifecycle <- function() {
+        if (isTRUE(info$project_ready)) {
+          return(ui_card(
+            title = "Chapter 1: Lifecycle",
+            subtitle = "Save, move, bundle, or close the active project.",
+            class = "aq-project-chapter-surface",
+            div(
+              class = "aq-project-chapter-body",
+              tags$section(
+                class = "aq-project-chapter-section",
+                div(
+                  class = "aq-project-section-copy",
+                  tags$h3("Project is open"),
+                  tags$p("Lifecycle actions now operate on the active project. Creation and opening are available after closing or moving to advanced recovery.")
+                ),
+                div(
+                  class = "aq-project-lifecycle-editorial",
+                  tags$dl(
+                    class = "aq-module-run-summary aq-project-summary-list",
+                    tags$dt("Project Name"),
+                    tags$dd(info$project_name),
+                    tags$dt("Project Location"),
+                    tags$dd(info$project_root),
+                    tags$dt("Save State"),
+                    tags$dd("Save is available for the active project.")
+                  ),
+                  ui_action_row(
+                    lifecycle_button("save_project_secondary", if (busy) "Saving..." else "Save Project", class = "btn-success btn-sm", enabled = !busy),
+                    lifecycle_button("close_project", "Close Project", class = "btn-secondary btn-sm", enabled = !busy)
+                  ),
+                  if (!is.null(message) && nzchar(message)) tags$p(class = "aq-export-message", message)
+                )
+              ),
+              ui_disclosure(
+                "Move / Save As",
+                ui_callout("Planned lifecycle depth", "Move Project and Save As remain explicit future operations. They are not mixed into the creation sequence.", status = "info"),
+                level = "advanced",
+                open = FALSE
+              ),
+              ui_disclosure(
+                "Portable Project Bundle",
+                tagList(
+                  tags$p(class = "aq-muted-note", "Use this when moving a complete project between environments."),
+                  textInput(ns("bundle_dir"), "Bundle Location", value = input$bundle_dir %||% info$project_root),
+                  ui_action_row(
+                    actionButton(ns("save_bundle"), "Save Bundle", class = "btn-primary btn-sm"),
+                    actionButton(ns("load_bundle"), "Load Bundle", class = "btn-secondary btn-sm")
+                  )
+                ),
+                level = "advanced",
+                open = FALSE
+              )
+            )
+          ))
+        }
+
+        ui_card(
+          title = "Chapter 1: Lifecycle",
+          subtitle = "Choose where the project lives, then create or open it.",
+          class = "aq-project-chapter-surface",
+          div(
+            class = "aq-project-chapter-body",
+            tags$section(
+              class = "aq-project-chapter-section",
+              div(
+                class = "aq-project-section-copy",
+                tags$h3("1. Choose what you are doing"),
+                tags$p("Lifecycle begins with intent. Creating and opening have different prerequisites, so the page only shows the flow that applies.")
+              ),
+              div(
+                class = "aq-project-lifecycle-editorial",
+                ui_choice_explainer(
+                  ns("lifecycle_intent"),
+                  "Lifecycle Intent",
+                  choices = list(
+                    list(value = "create", title = "Create New Project", description = "Choose a location, name the project, then create durable project memory.", recommended = TRUE),
+                    list(value = "open", title = "Open Existing Project", description = "Choose an existing project location and let the app find the saved project file.")
+                  ),
+                  selected = lifecycle_intent
+                )
+              )
+            ),
+            tags$section(
+              class = "aq-project-chapter-section",
+              div(
+                class = "aq-project-section-copy",
+                tags$h3(if (identical(lifecycle_intent, "open")) "2. Choose existing project location" else "2. Choose or confirm project location"),
+                tags$p(if (identical(lifecycle_intent, "open")) "Use the folder where the existing project lives. The app discovers the internal saved project file." else "This is the parent location where the new project will be created. One user-facing path; technical details stay behind disclosure.")
+              ),
+              div(
+                class = "aq-project-location-editorial",
+                ui_choice_explainer(
+                  ns("workspace_provider"),
+                  "Location Type",
+                  choices = lifecycle_location_choices(),
+                  selected = lifecycle_provider_selection()
+                ),
+                lifecycle_location_status_callout(lifecycle_intent),
+                div(
+                  class = "aq-project-location-path",
+                  {
+                    location_field <- textInput(
+                      ns("workspace_root"),
+                      "Project Location",
+                      value = lifecycle_location_value(),
+                      placeholder = "C:\\Users\\YourName\\Documents\\AnalyticsWorkstationProjects"
+                    )
+                    if (!identical(lifecycle_provider_selection(), "local_server_directory")) {
+                      location_field <- htmltools::tagAppendAttributes(location_field, `data-provider-controlled` = "true")
+                      if (length(location_field$children) >= 2L) {
+                        location_field$children[[2]] <- htmltools::tagAppendAttributes(
+                          location_field$children[[2]],
+                          readonly = "readonly",
+                          `aria-readonly` = "true"
+                        )
+                      }
+                    }
+                    location_field
+                  },
+                  if (identical(lifecycle_intent, "create")) {
+                    location <- lifecycle_location_input()
+                    lifecycle_button(
+                      "confirm_project_location",
+                      "Confirm Project Location",
+                      class = "btn-secondary btn-sm",
+                      enabled = identical(location$source, "manual_entry") &&
+                        !is.null(location$normalized) &&
+                        !busy
+                    )
+                  }
+                ),
+                if (identical(lifecycle_intent, "open")) {
+                  ui_callout(if (isTRUE(open_state$ready)) "Existing project detected" else "Open Project is waiting", open_state$message, status = open_state$status)
+                } else {
+                  lifecycle_create_feedback(create_state)
+                },
+                ui_disclosure(
+                  "Open project file directly",
+                  tagList(
+                    textInput(ns("project_path"), "Saved Project File", value = project_file_value),
+                    tags$p(class = "aq-muted-note", "Advanced recovery only. The normal Open Existing Project flow discovers this file from Project Location.")
+                  ),
+                  level = "advanced",
+                  open = FALSE
+                ),
+                ui_disclosure(
+                  "Location Details",
+                  tagList(
+                    uiOutput(ns("workspace_location_summary")),
+                    uiOutput(ns("workspace_provider_details"))
+                  ),
+                  level = "advanced",
+                  open = FALSE
+                )
+              )
+            ),
+            if (identical(lifecycle_intent, "create")) {
+              tags$section(
+                class = "aq-project-chapter-section",
+                div(
+                  class = "aq-project-section-copy",
+                  tags$h3("3. Name the project"),
+                  tags$p("The project name determines the final project directory inside the selected Project Location.")
+                ),
+                div(
+                  class = "aq-project-lifecycle-editorial",
+                  textInput(ns("project_name"), "Project Name", value = input$project_name %||% ""),
+                  ui_callout(
+                    if (isTRUE(create_state$ready)) "Resolved destination" else "Destination preview",
+                    if (!is.null(create_state$destination)) paste("New project will be created at:", create_state$destination) else "Enter a Project Location and Project Name to preview the destination.",
+                    status = if (isTRUE(create_state$ready)) "success" else "info"
+                  )
+                )
+              )
+            },
+            tags$section(
+              class = "aq-project-chapter-section",
+              div(
+                class = "aq-project-section-copy",
+                tags$h3(if (identical(lifecycle_intent, "open")) "3. Open the project" else "4. Create the project"),
+                tags$p(if (identical(lifecycle_intent, "open")) "Open becomes available only after a saved project is detected." else "Create becomes available only after location and project name resolve to a valid destination.")
+              ),
+              div(
+                class = "aq-project-lifecycle-editorial",
+                if (identical(lifecycle_intent, "open")) {
+                  ui_action_row(
+                    lifecycle_button("load_project_secondary", if (busy) "Opening..." else "Open Project", class = "btn-primary btn-sm", enabled = isTRUE(open_state$ready) && !busy)
+                  )
+                } else {
+                  ui_action_row(
+                    lifecycle_button("create_project", if (busy) "Creating..." else "Create Project", class = "btn-primary btn-sm", enabled = isTRUE(create_state$ready) && !busy)
+                  )
+                },
+                if (!is.null(message) && nzchar(message)) tags$p(class = "aq-export-message", message)
+              )
+            ),
+            ui_disclosure(
+              "Portable Project Bundle",
+              tagList(
+                tags$p(class = "aq-muted-note", "Portable bundles are lifecycle depth after a project exists or when restoring from a bundle."),
+                textInput(ns("bundle_dir"), "Bundle Location", value = input$bundle_dir %||% ""),
+                ui_action_row(actionButton(ns("load_bundle"), "Load Bundle", class = "btn-secondary btn-sm"))
+              ),
+              level = "advanced",
+              open = FALSE
+            )
+          )
+        )
+      }
+
+      current <- function() {
+        ui_card(
+          title = "Chapter 2: Current Project",
+          subtitle = "What the open project currently contains.",
+          class = "aq-project-chapter-surface",
+          div(
+            class = "aq-project-chapter-body",
+            tags$dl(
+              class = "aq-module-run-summary aq-project-summary-list",
+              tags$dt("Project"),
+              tags$dd(info$project_name),
+              tags$dt("Project Location"),
+              tags$dd(if (nzchar(info$project_root)) info$project_root else "No project location yet"),
+              tags$dt("Data"),
+              tags$dd(info$dataset_label),
+              tags$dt("Evidence"),
+              tags$dd(info$evidence_label)
+            ),
+            uiOutput(ns("workspace_progress")),
+            ui_callout(next_step$title, next_step$message, status = next_step$status)
+          )
+        )
+      }
+
+      activity <- function() {
+        activity_body <- if (length(actions)) {
+          ui_activity_list(actions)
+        } else {
+          ui_empty_state(
+            if (isTRUE(info$project_ready)) "Project is open." else "No project activity yet.",
+            if (isTRUE(info$project_ready)) paste("Current next step:", next_step$title) else "Create or open a project to start the activity trail."
+          )
+        }
+        ui_card(
+          title = "Chapter 3: Activity",
+          subtitle = "What changed and where work should resume.",
+          class = "aq-project-chapter-surface",
+          div(
+            class = "aq-project-chapter-body",
+            if (!is.null(message) && nzchar(message)) tags$p(class = "aq-export-message", message),
+            activity_body,
+            ui_callout("Resume point", next_step$message, status = next_step$status)
+          )
+        )
+      }
+
+      administration <- function() {
+        ui_card(
+          title = "Chapter 4: Administration",
+          subtitle = "Advanced project systems. Open these only when the project needs operational depth.",
+          class = "aq-project-chapter-surface",
+          div(
+            class = "aq-project-chapter-body aq-project-systems-editorial",
+            uiOutput(ns("project_systems_summary")),
+            selectInput(
+              ns("project_system_detail"),
+              "Project System",
+              choices = c(
+                "AI Assistance" = "ai_assistance",
+                "Evidence Strategy" = "evidence_strategy",
+                "Persisted Results" = "persisted_results",
+                "Feature Experiments" = "feature_experiments",
+                "GenAI Jobs" = "genai_jobs",
+                "Improvement Ledger" = "improvement_ledger",
+                "Remediation Plans" = "remediation_plans",
+                "Action Audit" = "action_audit",
+                "Technical Signals" = "technical_signals"
+              ),
+              selected = input$project_system_detail %||% "ai_assistance"
+            ),
+            uiOutput(ns("project_system_detail_panel"))
+          )
+        )
+      }
+
+      switch(
+        chapter,
+        lifecycle = lifecycle(),
+        current = current(),
+        activity = activity(),
+        administration = administration(),
+        lifecycle()
+      )
+    })
+
+    output$project_systems_summary <- renderUI({
+      uiOutput(ns("project_operations_summary"))
+    })
+
+    output$project_system_detail_panel <- renderUI({
+      selected <- input$project_system_detail %||% "ai_assistance"
+      switch(
+        selected,
+        ai_assistance = uiOutput(ns("project_intelligence_panel")),
+        evidence_strategy = uiOutput(ns("evidence_strategy_panel")),
+        persisted_results = uiOutput(ns("persisted_results_browser")),
+        feature_experiments = uiOutput(ns("feature_experiment_browser")),
+        genai_jobs = uiOutput(ns("genai_job_monitor")),
+        improvement_ledger = uiOutput(ns("improvement_ledger_browser")),
+        remediation_plans = uiOutput(ns("remediation_plan_browser")),
+        action_audit = uiOutput(ns("genai_audit_ledger_browser")),
+        technical_signals = ui_card(
+          title = "Technical Signals",
+          subtitle = "Storage, project state, modeling data, and collector details.",
+          ui_disclosure("Project Signals", uiOutput(ns("workspace_status")), level = "advanced", open = TRUE),
+          ui_disclosure("Modeling Data", uiOutput(ns("modeling_context_panel")), level = "advanced", open = FALSE),
+          ui_disclosure("Collector", uiOutput(ns("collector_panel")), level = "advanced", open = FALSE)
+        ),
+        uiOutput(ns("project_intelligence_panel"))
+      )
+    })
+
+    output$workspace_location_summary <- renderUI({
+      provider_id <- lifecycle_provider_selection()
+      provider <- lifecycle_provider(provider_id)
+      location <- lifecycle_location_input()
+      available <- lifecycle_provider_available(provider)
+      has_real_location <- !is.null(location$normalized)
+      confirmed <- isTRUE(lifecycle_location_is_confirmed())
+      next_action <- if (!available) {
+        lifecycle_provider_unavailable_reason(provider)
+      } else if (!has_real_location) {
+        "Paste a folder path or choose an available location option."
+      } else if (confirmed) {
+        "Location is ready for the current workflow."
+      } else if (identical(location$source, "manual_entry")) {
+        "Confirm this location to continue."
+      } else {
+        "Review this location to continue."
+      }
+      ui_callout(
+        if (!available) paste(ui_display_label(provider_id), "unavailable") else if (!has_real_location) "No project location selected yet" else if (confirmed) "Project location confirmed" else "Location entered",
+        paste(
+          "Selected:", ui_display_label(provider_id),
+          if (has_real_location) paste("Location:", location$normalized) else "No real location value has been provided.",
+          "Next:", next_action
+        ),
+        status = if (!available) "warning" else if (confirmed) "success" else "info"
       )
     })
 
@@ -284,7 +892,7 @@ page_project_server <- function(id, ctx) {
 
       ui_card(
         title = "Workspace Progress",
-        subtitle = "Project -> data -> artifacts -> collector -> AI-ready evidence.",
+        subtitle = "Project -> data -> analysis -> evidence memory -> AI-ready context.",
         ui_progress_steps(
           steps = c(
             project = "Project",
@@ -292,7 +900,7 @@ page_project_server <- function(id, ctx) {
             analysis = "Analysis",
             artifacts = "Artifacts",
             reports = "Reports",
-            collector = "Collector",
+            collector = "Evidence Memory",
             ai = "AI Ready"
           ),
           active = active,
@@ -323,15 +931,21 @@ page_project_server <- function(id, ctx) {
     output$genai_provider_panel <- renderUI({
       strategy <- ctx$evidence_strategy_config()
       frontier <- evidence_strategy_frontier_summary(strategy)
+      busy <- isTRUE(genai_project_busy())
+      busy_action <- genai_project_action() %||% "AI request"
       tagList(
         ui_genai_status_panel(
           ctx$genai_status(check_availability = FALSE),
-          title = "GenAI Readiness",
+          title = "AI Assistance",
           actions = ui_action_row(
-            actionButton(ns("brief_project"), "Brief Project", class = "btn-primary btn-sm"),
-            actionButton(ns("suggest_next_action"), "Suggest Next Action", class = "btn-secondary btn-sm")
+            actionButton(ns("brief_project"), if (busy) "Working..." else "Brief Project", class = "btn-primary btn-sm", disabled = if (busy) "disabled" else NULL),
+            actionButton(ns("suggest_next_action"), if (busy) "Working..." else "Suggest Next Action", class = "btn-secondary btn-sm", disabled = if (busy) "disabled" else NULL)
           ),
-          result = ctx$genai_last_result()
+          result = if (busy) {
+            service_result(status = "warning", messages = paste(busy_action, "is running. Please wait before requesting another AI response."))
+          } else {
+            ctx$genai_last_result()
+          }
         ),
         ui_card(
           title = "Evidence Strategy",
@@ -357,20 +971,115 @@ page_project_server <- function(id, ctx) {
       )
     })
 
+    output$project_intelligence_panel <- renderUI({
+      busy <- isTRUE(genai_project_busy())
+      busy_action <- genai_project_action() %||% "AI request"
+      ui_genai_status_panel(
+        ctx$genai_status(check_availability = FALSE),
+        title = "AI Assistance",
+        actions = ui_action_row(
+          actionButton(ns("brief_project"), if (busy) "Working..." else "Brief Project", class = "btn-primary btn-sm", disabled = if (busy) "disabled" else NULL),
+          actionButton(ns("suggest_next_action"), if (busy) "Working..." else "Suggest Next Action", class = "btn-secondary btn-sm", disabled = if (busy) "disabled" else NULL)
+        ),
+        result = if (busy) {
+          service_result(status = "warning", messages = paste(busy_action, "is running. Please wait before requesting another AI response."))
+        } else {
+          ctx$genai_last_result()
+        }
+      )
+    })
+
+    output$evidence_strategy_panel <- renderUI({
+      strategy <- ctx$evidence_strategy_config()
+      frontier <- evidence_strategy_frontier_summary(strategy)
+      ui_card(
+        title = "Evidence Strategy",
+        subtitle = "How future evidence should balance cost, completeness, privacy, and nuance.",
+        div(
+          class = "aw-evidence-strategy",
+          selectInput(
+            ns("evidence_strategy"),
+            "Strategy",
+            choices = stats::setNames(evidence_strategy_ids(), vapply(evidence_strategy_registry(), function(x) x$strategy_label, character(1))),
+            selected = ctx$evidence_strategy()
+          ),
+          div(
+            class = "aw-meta-grid",
+            div(class = "aw-meta-item", span("Cost"), strong(frontier$estimated_token_cost[[1]])),
+            div(class = "aw-meta-item", span("Completeness"), strong(frontier$estimated_evidence_completeness[[1]])),
+            div(class = "aw-meta-item", span("Nuance Risk"), strong(frontier$risk_of_missing_nuance[[1]])),
+            div(class = "aw-meta-item", span("Provider"), strong(frontier$provider_privacy_posture[[1]]))
+          ),
+          tags$p(class = "aw-muted", strategy$strategy_description),
+          ui_disclosure(
+            "Technical Strategy Details",
+            render_table(frontier, engine = "html", searchable = FALSE, sortable = FALSE),
+            level = "advanced",
+            open = FALSE
+          )
+        )
+      )
+    })
+
+    output$project_operations_summary <- renderUI({
+      project <- tryCatch(ctx$current_project(), error = function(e) NULL)
+      project_ready <- is.list(project) && identical(project$project_state %||% "", "project_ready")
+      persisted <- tryCatch(persisted_result_rows(), error = function(e) data.table::data.table())
+      feature_state <- tryCatch(feature_experiment_state_summary(list(
+        proposals = ctx$feature_experiment_state$proposals,
+        executions = ctx$feature_experiment_state$executions,
+        experiments = ctx$feature_experiment_state$experiments,
+        adoptions = ctx$feature_experiment_state$adoptions
+      )), error = function(e) data.table::data.table())
+      jobs <- tryCatch(if (project_ready) genai_job_summary(project) else data.table::data.table(), error = function(e) data.table::data.table())
+      improvements <- tryCatch(if (project_ready) improvement_ledger_summary(project) else data.table::data.table(), error = function(e) data.table::data.table())
+      remediations <- tryCatch(remediation_plan_state()$table, error = function(e) data.table::data.table())
+      audits <- tryCatch(audit_ledger_state()$events, error = function(e) data.table::data.table())
+      feature_proposals <- if (nrow(feature_state)) feature_state$total_proposals[[1]] %||% 0L else 0L
+      open_improvements <- if (nrow(improvements)) improvements$open_items[[1]] %||% 0L else 0L
+      failed_jobs <- if (nrow(jobs) && "status" %in% names(jobs)) sum(jobs$status %in% c("failed", "error"), na.rm = TRUE) else 0L
+      ui_card(
+        title = "Project Operations",
+        subtitle = "Operational systems stay secondary. Open one detail pane when needed.",
+        ui_stat_grid(
+          ui_stat_tile("Persisted Results", nrow(persisted), status = if (nrow(persisted)) "info" else "neutral"),
+          ui_stat_tile("Feature Experiments", feature_proposals, status = if (feature_proposals > 0L) "info" else "neutral"),
+          ui_stat_tile("GenAI Jobs", nrow(jobs), status = if (failed_jobs > 0L) "error" else if (nrow(jobs)) "info" else "neutral", detail = paste(failed_jobs, "failed")),
+          ui_stat_tile("Improvements", open_improvements, status = if (open_improvements > 0L) "warning" else "neutral", detail = "open"),
+          ui_stat_tile("Remediation Plans", nrow(remediations), status = if (nrow(remediations)) "info" else "neutral"),
+          ui_stat_tile("Audit Events", nrow(audits), status = if (nrow(audits)) "info" else "neutral")
+        )
+      )
+    })
+
+    output$project_operation_detail_panel <- renderUI({
+      selected <- input$project_operation_detail %||% "persisted_results"
+      switch(
+        selected,
+        persisted_results = uiOutput(ns("persisted_results_browser")),
+        feature_experiments = uiOutput(ns("feature_experiment_browser")),
+        genai_jobs = uiOutput(ns("genai_job_monitor")),
+        improvement_ledger = uiOutput(ns("improvement_ledger_browser")),
+        remediation_plans = uiOutput(ns("remediation_plan_browser")),
+        action_audit = uiOutput(ns("genai_audit_ledger_browser")),
+        uiOutput(ns("persisted_results_browser"))
+      )
+    })
+
     output$workspace_status <- renderUI({
       data_info <- tryCatch(ctx$project_data_info(), error = function(e) list(path = NULL, name = NULL))
       collector <- tryCatch(ctx$project_collector_summary(), error = function(e) data.table::data.table())
       rows <- data.table::data.table(
-        item = c("Workspace provider", "Workspace", "Project", "Project root", "Current dataset", "Dataset path", "Render target", "Collector DOCX", "Manifest", "Current run"),
+        item = c("File Location", "Folder", "Project", "Project Folder", "Dataset", "Source File", "AI Context", "Evidence Document", "Evidence Index", "Latest Run"),
         value = c(
-          ctx$current_workspace()$provider_id %||% "No provider configured",
+          ui_display_label(ctx$current_workspace()$provider_id %||% "No provider configured"),
           ctx$current_workspace()$workspace_root %||% "No workspace configured",
           ctx$current_project()$project_name %||% "No project open",
           ctx$current_project()$project_root %||% "No project root",
           data_info$name %||% "No dataset loaded",
           data_info$path %||% "No source path",
           if (nrow(collector)) ui_display_label(collector$render_target[[1]] %||% "llm_docx") else "LLM DOCX",
-          if (nrow(collector)) collector$collector_docx[[1]] else "Collector not created",
+          if (nrow(collector)) collector$collector_docx[[1]] else "Evidence document not created",
           if (nrow(collector)) ui_status_label(collector$manifest_status[[1]]) else "Not Written",
           if (nrow(collector)) collector$current_run_id[[1]] else "No run yet"
         )
@@ -381,11 +1090,12 @@ page_project_server <- function(id, ctx) {
     output$modeling_context_panel <- renderUI({
       context <- ctx$current_modeling_context()
       validation <- ctx$validate_active_modeling_context()
-      data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
+      data <- tryCatch(ctx$project_data(), error = function(e) NULL)
+      data_info <- tryCatch(ctx$project_data_info(), error = function(e) list())
       artifact_id <- context$active_dataset_artifact_id %||% NA_character_
       ui_card(
-        title = "Active Modeling Context",
-        subtitle = "The dataset identity and lineage that downstream modeling will consume.",
+        title = "Modeling Data",
+        subtitle = "The dataset currently available to modeling and analysis steps.",
         class = "aq-compact-card",
         ui_action_row(
           ui_status_badge(
@@ -393,21 +1103,21 @@ page_project_server <- function(id, ctx) {
             status = if (identical(validation$status, "success")) "success" else if (identical(validation$status, "warning")) "warning" else "error"
           ),
           if (!is.na(artifact_id) && nzchar(artifact_id)) {
-            ui_status_badge("Prepared Artifact", status = "info")
+            ui_status_badge("Prepared Data", status = "info")
           }
         ),
         tags$dl(
           class = "aq-module-run-summary",
           tags$dt("Dataset"),
-          tags$dd(context$active_dataset_label %||% "Active Dataset"),
+          tags$dd(data_info$name %||% context$active_dataset_label %||% "Active Dataset"),
           tags$dt("Rows"),
           tags$dd(if (is.null(data)) "Not loaded" else format(nrow(data), big.mark = ",")),
           tags$dt("Columns"),
           tags$dd(if (is.null(data)) "Not loaded" else format(ncol(data), big.mark = ",")),
-          tags$dt("Prepared Artifact"),
-          tags$dd(if (!is.na(artifact_id) && nzchar(artifact_id)) artifact_id else "None"),
-          tags$dt("Lineage"),
-          tags$dd(context$lineage_summary %||% "No lineage summary recorded.")
+          tags$dt("Source"),
+          tags$dd(if (!is.na(artifact_id) && nzchar(artifact_id)) "Prepared data artifact" else "Original or loaded dataset"),
+          tags$dt("Source File"),
+          tags$dd(data_info$path %||% "No source file recorded")
         ),
         if (!identical(validation$status, "success")) {
           ui_callout(
@@ -1082,7 +1792,7 @@ page_project_server <- function(id, ctx) {
       threshold_metrics <- bundle$value$threshold_metrics %||% NULL
       plot_specs <- bundle$value$plots %||% list()
       meta <- data.table::data.table(
-        item = c("Result ID", "Type", "Module", "Dataset", "Created", "Persisted", "Source Execution", "Project", "Manifest", "Hashes", "Location"),
+        item = c("Result ID", "Type", "Module", "Dataset", "Created", "Persisted", "Source Execution", "Project", "Index", "Hashes", "Location"),
         value = c(
           resolution$value$persisted_result_id,
           resolution$value$result_type,
@@ -1194,6 +1904,14 @@ page_project_server <- function(id, ctx) {
       ui_activity_list(project_actions())
     })
 
+    observeEvent(input$go_intelligence, {
+      updateSelectInput(session, "project_system_detail", selected = "ai_assistance")
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$go_technical, {
+      updateSelectInput(session, "project_system_detail", selected = "technical_signals")
+    }, ignoreInit = TRUE)
+
     save_project_action <- function() {
       ctx$project_message("")
 
@@ -1203,9 +1921,13 @@ page_project_server <- function(id, ctx) {
         }
         ctx$persist_project_data_if_needed()
         project_state <- ctx$current_project_state()
+        target_project_path <- input$project_path %||% ""
+        if (!nzchar(target_project_path)) {
+          target_project_path <- project_path(ctx$current_project(), "project.rds")
+        }
         output_path <- save_project_state(
           project_state,
-          input$project_path,
+          target_project_path,
           workspace = ctx$current_workspace(),
           project = ctx$current_project(),
           resource_type = "project_state"
@@ -1222,7 +1944,9 @@ page_project_server <- function(id, ctx) {
       ctx$project_message("")
 
       tryCatch({
-        project_path <- normalize_project_load_path(input$project_path)
+        open_state <- lifecycle_open_state()
+        project_path <- open_state$project_file %||% input$project_path
+        project_path <- normalize_project_load_path(project_path)
         if (!file.exists(project_path)) {
           stop(paste("Project file does not exist:", project_path), call. = FALSE)
         }
@@ -1243,6 +1967,13 @@ page_project_server <- function(id, ctx) {
         active_project$project_state <- "project_ready"
         ensure_project_structure(active_project$project_root)
         loaded <- ctx$load_project_state(project_state, active_project = active_project)
+        project_location_confirmed(root_validation$value)
+        updateTextInput(session, "workspace_root", value = root_validation$value)
+        updateRadioButtons(
+          session,
+          "workspace_provider",
+          selected = active_project$workspace_provider_id %||% "local_server_directory"
+        )
         ctx$selected_persisted_result_id(NULL)
         ctx$project_message(paste(loaded$messages, collapse = " "))
         add_activity(paste("Loaded project from", project_path))
@@ -1255,20 +1986,83 @@ page_project_server <- function(id, ctx) {
     observeEvent(input$save_project, save_project_action(), ignoreInit = TRUE)
     observeEvent(input$save_project_secondary, save_project_action(), ignoreInit = TRUE)
     observeEvent(input$load_project, load_project_action(), ignoreInit = TRUE)
-    observeEvent(input$load_project_secondary, load_project_action(), ignoreInit = TRUE)
+    observeEvent(input$load_project_secondary, {
+      if (isTRUE(project_lifecycle_busy())) {
+        ctx$project_message("Open Project is already running. Ignoring duplicate request.")
+        return(invisible(NULL))
+      }
+      project_lifecycle_busy(TRUE)
+      on.exit(project_lifecycle_busy(FALSE), add = TRUE)
+      load_project_action()
+    }, ignoreInit = TRUE)
 
     observeEvent(input$configure_workspace, {
       ctx$project_message("")
-      result <- ctx$configure_workspace(input$workspace_root, provider_id = input$workspace_provider %||% "configured_workspace")
+      result <- ctx$configure_workspace(input$workspace_root, provider_id = input$workspace_provider %||% "local_server_directory")
       ctx$project_message(service_result_message(result))
       add_activity(service_result_message(result))
     }, ignoreInit = TRUE)
 
-    observeEvent(input$create_project, {
+    observeEvent(input$workspace_root, {
+      current_location <- storage_normalize_path(input$workspace_root, must_work = FALSE)
+      if (!identical(current_location, project_location_confirmed())) {
+        project_location_confirmed(NULL)
+      }
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$confirm_project_location, {
       ctx$project_message("")
-      result <- ctx$create_project(input$project_name)
-      ctx$project_message(service_result_message(result))
-      add_activity(service_result_message(result))
+      location <- lifecycle_location_input()
+      if (is.null(location$normalized)) {
+        message <- "Enter or choose a Project Location before confirming it."
+        ctx$project_message(message)
+        add_activity(message)
+        return(invisible(NULL))
+      }
+      if (file.exists(location$normalized) && !dir.exists(location$normalized)) {
+        message <- "Project Location must be a folder, not a file."
+        ctx$project_message(message)
+        add_activity(message)
+        return(invisible(NULL))
+      }
+      project_location_confirmed(location$normalized)
+      message <- paste("Project Location confirmed:", location$normalized)
+      ctx$project_message(message)
+      add_activity(message)
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$create_project, {
+      if (isTRUE(project_lifecycle_busy())) {
+        ctx$project_message("Create Project is already running. Ignoring duplicate request.")
+        add_activity("Create Project duplicate request ignored.")
+        return(invisible(NULL))
+      }
+      ctx$project_message("")
+      project_lifecycle_busy(TRUE)
+      on.exit(project_lifecycle_busy(FALSE), add = TRUE)
+      if (isTRUE(ctx$project_ready())) {
+        message <- "Close the active project before creating another project."
+        ctx$project_message(message)
+        add_activity(message)
+        return(invisible(NULL))
+      }
+      state <- lifecycle_create_state()
+      if (!isTRUE(state$ready)) {
+        message <- paste(c("Create Project is not ready.", state$missing), collapse = " ")
+        ctx$project_message(message)
+        add_activity(message)
+        return(invisible(NULL))
+      }
+      workspace_result <- ctx$configure_workspace(state$location$normalized, provider_id = state$location$provider_id)
+      if (!identical(workspace_result$status, "success")) {
+        ctx$project_message(service_result_message(workspace_result))
+        add_activity(service_result_message(workspace_result))
+        return(invisible(NULL))
+      }
+      result <- ctx$create_project(state$project_name, project_id = state$project_id, project_root = state$destination)
+      message <- service_result_message(result)
+      ctx$project_message(message)
+      add_activity(message)
     }, ignoreInit = TRUE)
 
     observeEvent(input$close_project, {
@@ -1276,18 +2070,55 @@ page_project_server <- function(id, ctx) {
       add_activity("Closed active project.")
     }, ignoreInit = TRUE)
 
-    observeEvent(input$brief_project, {
-      result <- genai_brief_project(ctx, config = ctx$genai_config())
+    run_project_genai_action <- function(action_id, label, fn) {
+      last <- genai_last_request()
+      recently_completed <- identical(last$action %||% "", action_id) &&
+        !is.na(last$completed_at) &&
+        as.numeric(difftime(Sys.time(), last$completed_at, units = "secs")) < 4
+      if (isTRUE(genai_project_busy()) || isTRUE(recently_completed)) {
+        message <- paste(label, "is already running or just completed. Ignoring duplicate request.")
+        ctx$project_message(message)
+        add_activity(message)
+        return(invisible(NULL))
+      }
+      genai_project_busy(TRUE)
+      genai_project_action(label)
+      ctx$project_message(paste(label, "started. The response will appear in AI Assistance when ready."))
+      add_activity(paste(label, "started."))
+      on.exit({
+        genai_project_busy(FALSE)
+        genai_project_action(NULL)
+        genai_last_request(list(action = action_id, completed_at = Sys.time()))
+      }, add = TRUE)
+      result <- tryCatch(
+        fn(),
+        error = function(e) service_result(status = "error", errors = conditionMessage(e))
+      )
+      if (is.list(result$value) && is.character(result$value$text %||% NULL)) {
+        result$value$text <- gsub("\\\\([[:punct:]])", "\\1", result$value$text)
+      } else if (is.character(result$value)) {
+        result$value <- gsub("\\\\([[:punct:]])", "\\1", result$value)
+      }
       ctx$genai_last_result(result)
       ctx$project_message(service_result_message(result))
-      add_activity("Requested read-only GenAI project brief.")
+      add_activity(paste(label, "finished:", service_result_message(result)))
+      invisible(result)
+    }
+
+    observeEvent(input$brief_project, {
+      run_project_genai_action(
+        "brief_project",
+        "Project brief",
+        function() genai_brief_project(ctx, config = ctx$genai_config())
+      )
     }, ignoreInit = TRUE)
 
     observeEvent(input$suggest_next_action, {
-      result <- genai_suggest_next_action(ctx, config = ctx$genai_config())
-      ctx$genai_last_result(result)
-      ctx$project_message(service_result_message(result))
-      add_activity("Requested read-only GenAI next-action suggestion.")
+      run_project_genai_action(
+        "suggest_next_action",
+        "Next-action suggestion",
+        function() genai_suggest_next_action(ctx, config = ctx$genai_config())
+      )
     }, ignoreInit = TRUE)
 
     observeEvent(input$evidence_strategy, {

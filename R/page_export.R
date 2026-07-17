@@ -7,25 +7,34 @@ page_export_ui <- function(id) {
       title = "Export",
       subtitle = "Write human-facing report outputs and reproducible R code from the current project state.",
       eyebrow = "Reports",
-      tags$div(
-        class = "aq-export-layout",
+      ui_object_spine(
+        object = "Delivery Package",
+        intent = "Turn the current report plan into files that can leave the workstation without changing the underlying evidence.",
+        state = "Exports require an open project and a valid destination.",
+        next_action = "Review the export directory and choose HTML, R code, or both.",
+        depth = "Delivery only; artifact selection and report composition happen in Layout Studio."
+      ),
+      tags$section(
+        class = "aq-delivery-room",
         ui_card(
-          title = "Export Settings",
-          class = "aq-export-settings",
+          title = "Create a Delivery Package",
+          subtitle = "Choose the destination once, then export the report, reproducible code, or both.",
+          class = "aq-export-settings aq-delivery-command",
           tags$div(
-            class = "aq-wide-input",
-            textInput(ns("export_dir"), "Export Directory", value = "")
+            class = "aq-delivery-fields",
+            textInput(ns("export_dir"), "Destination Folder", value = ""),
+            textInput(ns("export_name"), "Output Name", value = "autoplots_report")
           ),
-          textInput(ns("export_name"), "File Name", value = "autoplots_report"),
           ui_action_row(
-            actionButton(ns("export_html"), "Export HTML", class = "btn-primary"),
-            actionButton(ns("export_code"), "Export R Code", class = "btn-secondary"),
-            actionButton(ns("export_all"), "Export All", class = "btn-success")
+            actionButton(ns("export_all"), "Export Report Package", class = "btn-success"),
+            actionButton(ns("export_html"), "HTML Only", class = "btn-primary"),
+            actionButton(ns("export_code"), "Code Only", class = "btn-secondary")
           )
         ),
         ui_card(
-          title = "Export Status",
-          class = "aq-export-status",
+          title = "Delivery Status",
+          subtitle = "The latest export result appears here.",
+          class = "aq-export-status aq-delivery-status",
           uiOutput(ns("export_message"))
         )
       )

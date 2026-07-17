@@ -167,59 +167,85 @@ page_analysis_modules_ui <- function(id) {
     "Analysis Modules",
     ui_page(
       title = "Analysis Modules",
-      tags$div(
-        class = "aq-export-layout",
+      subtitle = "Run one analytical stage against the current dataset and preserve the result as project evidence.",
+      eyebrow = "Analysis",
+      ui_object_spine(
+        object = "Analysis Run",
+        intent = "Choose the next analytical operator, run it against the current project data, and inspect the generated evidence contract.",
+        state = "Ready when data and required columns are available.",
+        next_action = "Select a user-facing module, review detected context, then run it.",
+        depth = "Generated code and handoff details remain visible as technical depth."
+      ),
+      tags$section(
+        class = "aq-analysis-runway",
         ui_card(
-          title = "Module Settings",
-          selectInput(
-            ns("analysis_module_id"),
-            "Module",
-            choices = stats::setNames(
-              c(
-                "autoquant_eda",
-                "model_assessment",
-                "autoquant_model_readiness",
-                "feature_engineering_model_prep",
-                "autoquant_regression_model_insights",
-                "autoquant_binary_model_insights",
-                "autoquant_regression_shap_analysis",
-                "autoquant_binary_shap_analysis",
-                "autoquant_catboost_builder",
-                "autoquant_multiclass_shap_analysis"
-              ),
-              vapply(
-                c(
-                  "autoquant_eda",
-                  "model_assessment",
-                  "autoquant_model_readiness",
-                  "feature_engineering_model_prep",
-                  "autoquant_regression_model_insights",
-                  "autoquant_binary_model_insights",
-                  "autoquant_regression_shap_analysis",
-                  "autoquant_binary_shap_analysis",
-                  "autoquant_catboost_builder",
-                  "autoquant_multiclass_shap_analysis"
+          title = "Run the Next Analysis",
+          subtitle = "Pick the analytical move that answers the next project question.",
+          class = "aq-analysis-command-card",
+          tags$div(
+            class = "aq-analysis-command-grid",
+            tags$div(
+              class = "aq-analysis-module-picker",
+              selectInput(
+                ns("analysis_module_id"),
+                "Analysis",
+                choices = stats::setNames(
+                  c(
+                    "autoquant_eda",
+                    "model_assessment",
+                    "autoquant_model_readiness",
+                    "feature_engineering_model_prep",
+                    "autoquant_regression_model_insights",
+                    "autoquant_binary_model_insights",
+                    "autoquant_regression_shap_analysis",
+                    "autoquant_binary_shap_analysis",
+                    "autoquant_catboost_builder",
+                    "autoquant_multiclass_shap_analysis"
+                  ),
+                  vapply(
+                    c(
+                      "autoquant_eda",
+                      "model_assessment",
+                      "autoquant_model_readiness",
+                      "feature_engineering_model_prep",
+                      "autoquant_regression_model_insights",
+                      "autoquant_binary_model_insights",
+                      "autoquant_regression_shap_analysis",
+                      "autoquant_binary_shap_analysis",
+                      "autoquant_catboost_builder",
+                      "autoquant_multiclass_shap_analysis"
+                    ),
+                    module_display_label,
+                    character(1)
+                  )
                 ),
-                module_display_label,
-                character(1)
-              )
+                selected = "autoquant_eda"
+              ),
+              uiOutput(ns("analysis_context_panel"))
             ),
-            selected = "autoquant_eda"
-          ),
-          uiOutput(ns("analysis_context_panel")),
-          uiOutput(ns("analysis_module_settings")),
-          ui_action_row(
-            actionButton(ns("run_analysis_module"), "Run Module", class = "btn-primary")
+            tags$div(
+              class = "aq-analysis-run-controls",
+              uiOutput(ns("analysis_module_status")),
+              ui_action_row(
+                actionButton(ns("run_analysis_module"), "Run Analysis", class = "btn-primary")
+              )
+            )
           )
         ),
         ui_card(
-          title = "Run Status",
-          uiOutput(ns("analysis_module_status")),
+          title = "Analysis Details",
+          class = "aq-analysis-detail-card",
+          uiOutput(ns("analysis_module_settings")),
           uiOutput(ns("catboost_handoff_panel")),
-          ui_code_panel(
-            "Generated Code",
-            verbatimTextOutput(ns("analysis_module_code")),
-            collapsed = FALSE
+          ui_disclosure(
+            "Reproducible Code",
+            ui_code_panel(
+              "Generated Code",
+              verbatimTextOutput(ns("analysis_module_code")),
+              collapsed = FALSE
+            ),
+            level = "developer",
+            open = FALSE
           )
         )
       )

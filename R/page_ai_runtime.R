@@ -14,6 +14,13 @@ page_ai_runtime_ui <- function(id) {
         "Inspect compiled runtime bundles, task routing, model-tier context, validation, diagnostics, and proposed actions.",
         eyebrow = "DEVELOPER"
       ),
+      ui_object_spine(
+        object = "AI Operating Contract",
+        intent = "Inspect what the AI is allowed to know, propose, persist, and route before any broader operation is trusted.",
+        state = "Read-only runtime inspection with governed proposals.",
+        next_action = "Choose a task and model tier, then refresh the runtime snapshot.",
+        depth = "Diagnostics are intentionally developer-facing and remain below the operating contract."
+      ),
       tags$div(
         class = "aq-workspace-grid aq-workspace-grid-main-sidebar",
         tags$section(
@@ -29,52 +36,76 @@ page_ai_runtime_ui <- function(id) {
             tags$pre(class = "aq-code-block", textOutput(ns("action_proposal"), container = span))
           ),
           ui_card(
-            title = "Diagnostics",
-            subtitle = "Bundle, task, token, cache, validation, fallback, and escalation metadata.",
-            tags$pre(class = "aq-code-block", textOutput(ns("runtime_diagnostics"), container = span))
-          ),
-          ui_card(
             title = "Qualification",
             subtitle = "Task-scoped model qualification under the current runtime and bundle version.",
             uiOutput(ns("qualification_summary"))
           ),
-          ui_card(
-            title = "Progressive Retrieval",
-            subtitle = "Artifact-centered context growth, retrieval chain, cache, and sufficiency diagnostics.",
-            uiOutput(ns("retrieval_summary")),
-            tags$pre(class = "aq-code-block", textOutput(ns("retrieval_chain"), container = span))
-          ),
-          ui_card(
-            title = "Cross-Artifact Synthesis",
-            subtitle = "Evidence classes, contradictions, coverage, missing evidence, and cited synthesis plan.",
-            uiOutput(ns("synthesis_summary")),
-            tags$pre(class = "aq-code-block", textOutput(ns("synthesis_plan"), container = span))
-          ),
-          ui_card(
-            title = "Governed Evidence Review",
-            subtitle = "Bounded review, evidence binder, sufficiency for action, ranked supported actions, and preview-only draft.",
-            uiOutput(ns("evidence_review_summary")),
-            uiOutput(ns("evidence_review_actions")),
-            tags$pre(class = "aq-code-block", textOutput(ns("evidence_review_draft"), container = span))
-          ),
-          ui_card(
-            title = "Evidence Review Audit",
-            subtitle = "Operational AI evidence record. This is reconstructable runtime telemetry, not project mutation.",
-            tags$pre(class = "aq-code-block", textOutput(ns("evidence_review_audit"), container = span))
-          ),
-          ui_card(
-            title = "Confirmed Draft Persistence",
-            subtitle = "Governed Class 3 lifecycle state for AI-generated drafts. Persistence requires explicit confirmation and existing app handlers.",
-            uiOutput(ns("draft_persistence_summary")),
-            uiOutput(ns("draft_lifecycle_table")),
-            tags$pre(class = "aq-code-block", textOutput(ns("draft_audit_timeline"), container = span))
-          ),
-          ui_card(
-            title = "Mutation Governance",
-            subtitle = "Canonical mutation classification, risk, governance, lifecycle, and audit state for future AI-operated workflows.",
-            uiOutput(ns("mutation_governance_summary")),
-            uiOutput(ns("mutation_lifecycle_table")),
-            tags$pre(class = "aq-code-block", textOutput(ns("mutation_audit_timeline"), container = span))
+          tags$section(
+            class = "aq-ai-runtime-depth",
+            ui_disclosure(
+              "Diagnostics",
+              ui_card(
+                title = "Runtime Diagnostics",
+                subtitle = "Bundle, task, token, cache, validation, fallback, and escalation metadata.",
+                tags$pre(class = "aq-code-block", textOutput(ns("runtime_diagnostics"), container = span))
+              ),
+              level = "developer",
+              open = FALSE
+            ),
+            ui_disclosure(
+              "Context and Synthesis",
+              ui_workspace_grid(
+                columns = "two",
+                ui_card(
+                  title = "Progressive Retrieval",
+                  subtitle = "Artifact-centered context growth, retrieval chain, cache, and sufficiency diagnostics.",
+                  uiOutput(ns("retrieval_summary")),
+                  tags$pre(class = "aq-code-block", textOutput(ns("retrieval_chain"), container = span))
+                ),
+                ui_card(
+                  title = "Cross-Artifact Synthesis",
+                  subtitle = "Evidence classes, contradictions, coverage, missing evidence, and cited synthesis plan.",
+                  uiOutput(ns("synthesis_summary")),
+                  tags$pre(class = "aq-code-block", textOutput(ns("synthesis_plan"), container = span))
+                )
+              ),
+              level = "developer",
+              open = FALSE
+            ),
+            ui_disclosure(
+              "Governed Review and Persistence",
+              ui_workspace_grid(
+                columns = "two",
+                ui_card(
+                  title = "Governed Evidence Review",
+                  subtitle = "Bounded review, evidence binder, sufficiency for action, ranked supported actions, and preview-only draft.",
+                  uiOutput(ns("evidence_review_summary")),
+                  uiOutput(ns("evidence_review_actions")),
+                  tags$pre(class = "aq-code-block", textOutput(ns("evidence_review_draft"), container = span))
+                ),
+                ui_card(
+                  title = "Evidence Review Audit",
+                  subtitle = "Operational AI evidence record. This is reconstructable runtime telemetry, not project mutation.",
+                  tags$pre(class = "aq-code-block", textOutput(ns("evidence_review_audit"), container = span))
+                ),
+                ui_card(
+                  title = "Confirmed Draft Persistence",
+                  subtitle = "Governed Class 3 lifecycle state for AI-generated drafts. Persistence requires explicit confirmation and existing app handlers.",
+                  uiOutput(ns("draft_persistence_summary")),
+                  uiOutput(ns("draft_lifecycle_table")),
+                  tags$pre(class = "aq-code-block", textOutput(ns("draft_audit_timeline"), container = span))
+                ),
+                ui_card(
+                  title = "Mutation Governance",
+                  subtitle = "Canonical mutation classification, risk, governance, lifecycle, and audit state for future AI-operated workflows.",
+                  uiOutput(ns("mutation_governance_summary")),
+                  uiOutput(ns("mutation_lifecycle_table")),
+                  tags$pre(class = "aq-code-block", textOutput(ns("mutation_audit_timeline"), container = span))
+                )
+              ),
+              level = "developer",
+              open = FALSE
+            )
           )
         ),
         tags$aside(

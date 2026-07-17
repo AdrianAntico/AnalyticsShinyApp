@@ -45,71 +45,82 @@ page_plot_builder_ui <- function(id) {
       title = "Plot Builder",
       subtitle = "Create production AutoPlots widgets, save them as artifacts, and assign them to report sections.",
       eyebrow = "Artifacts",
-      ui_split_panel(
-        side = "left",
-        side_content = ui_card(
-          title = "Plot Controls",
-          selectInput(ns("plot_type"), "Plot Type", choices = plot_type_choices()),
-          ui_control_group(
-            "Mappings",
-            tags$div(
-              class = "aq-plot-mapping-controls",
-              uiOutput(ns("mapping_inputs"))
-            )
-          ),
-          tags$div(
-            class = "aq-plot-builder-primary-actions",
-            actionButton(ns("build_plot"), "Build / Refresh Plot", class = "btn-primary"),
-            actionButton(ns("add_plot"), "Add Plot", class = "btn-success"),
-            actionButton(ns("remove_last_plot"), "Remove Last Plot", class = "btn-secondary")
-          ),
-          ui_disclosure(
-            "Plot Options",
-            uiOutput(ns("option_inputs")),
-            level = "advanced",
-            open = TRUE
-          ),
-          ui_callout(
-            "Preview cadence",
-            "Plot preview updates only when Build / Refresh Plot is clicked.",
-            status = "info"
-          )
-        ),
-        main = tagList(
+      ui_object_spine(
+        object = "Plot Artifact",
+        intent = "Author one production plot at a time, inspect the rendered result, then preserve useful plots as project artifacts.",
+        state = "Preview updates only when you build or refresh the plot.",
+        next_action = "Choose mappings, build the plot, then add it to the saved artifact list.",
+        depth = "Advanced visual options are available below the core mapping controls."
+      ),
+      tags$section(
+        class = "aq-plot-studio-v2",
+        tags$main(
+          class = "aq-plot-stage",
           ui_preview_panel(
             title = "Current Plot Preview",
             uiOutput(ns("preview_plot")),
             textOutput(ns("plot_list_message"))
-          ),
-          ui_workspace_grid(
-            columns = "two",
-            ui_card(
-              title = "Saved Plots",
-              selectInput(ns("selected_saved_plot"), "Saved Plot", choices = character()),
-              ui_action_row(
-                actionButton(ns("load_saved_plot"), "Load Plot for Editing", class = "btn-secondary"),
-                actionButton(ns("update_saved_plot"), "Update Saved Plot", class = "btn-primary"),
-                actionButton(ns("duplicate_saved_plot"), "Duplicate Plot", class = "btn-secondary")
-              ),
-              selectInput(ns("section_for_plot"), "Section", choices = character()),
-              textInput(ns("new_section_name"), "New Section", value = ""),
-              ui_action_row(
-                actionButton(ns("assign_plot_section"), "Assign Plot to Section", class = "btn-primary"),
-                actionButton(ns("move_plot_up"), "Move Up", class = "btn-secondary"),
-                actionButton(ns("move_plot_down"), "Move Down", class = "btn-secondary")
-              ),
-              uiOutput(ns("saved_plot_list"))
-            ),
-            tagList(
-              ui_code_panel(
-                "Current Plot Code",
-                verbatimTextOutput(ns("generated_code")),
-                collapsed = FALSE
-              ),
-              ui_code_panel(
-                "All Saved Plots Code",
-                verbatimTextOutput(ns("saved_plots_code"))
+          )
+        ),
+        tags$aside(
+          class = "aq-plot-control-dock",
+          ui_card(
+            title = "Build the Plot",
+            subtitle = "Choose the chart, map columns, then refresh the preview.",
+            selectInput(ns("plot_type"), "Plot Type", choices = plot_type_choices()),
+            ui_control_group(
+              "Column Mappings",
+              tags$div(
+                class = "aq-plot-mapping-controls",
+                uiOutput(ns("mapping_inputs"))
               )
+            ),
+            tags$div(
+              class = "aq-plot-builder-primary-actions aq-plot-actions-top",
+              actionButton(ns("build_plot"), "Build / Refresh Plot", class = "btn-primary"),
+              actionButton(ns("add_plot"), "Save Plot", class = "btn-success"),
+              actionButton(ns("remove_last_plot"), "Remove Last", class = "btn-secondary")
+            ),
+            ui_disclosure(
+              "Fine Tune Appearance",
+              uiOutput(ns("option_inputs")),
+              level = "advanced",
+              open = FALSE
+            )
+          )
+        )
+      ),
+      tags$section(
+        class = "aq-plot-depth",
+        ui_workspace_grid(
+          columns = "two",
+          ui_card(
+            title = "Saved Plot Queue",
+            selectInput(ns("selected_saved_plot"), "Saved Plot", choices = character()),
+            ui_action_row(
+              actionButton(ns("load_saved_plot"), "Edit Selected", class = "btn-secondary"),
+              actionButton(ns("update_saved_plot"), "Update", class = "btn-primary"),
+              actionButton(ns("duplicate_saved_plot"), "Duplicate", class = "btn-secondary")
+            ),
+            selectInput(ns("section_for_plot"), "Report Section", choices = character()),
+            textInput(ns("new_section_name"), "New Section", value = ""),
+            ui_action_row(
+              actionButton(ns("assign_plot_section"), "Assign to Section", class = "btn-primary"),
+              actionButton(ns("move_plot_up"), "Move Up", class = "btn-secondary"),
+              actionButton(ns("move_plot_down"), "Move Down", class = "btn-secondary")
+            ),
+            uiOutput(ns("saved_plot_list"))
+          ),
+          tagList(
+            ui_code_panel(
+              "Current Plot Code",
+              verbatimTextOutput(ns("generated_code")),
+              collapsed = FALSE
+            ),
+            ui_code_panel(
+              "All Saved Plots Code",
+              verbatimTextOutput(ns("saved_plots_code")),
+              collapsed = TRUE
             )
           )
         )
