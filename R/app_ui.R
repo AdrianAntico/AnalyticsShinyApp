@@ -130,6 +130,23 @@ build_app_ui <- function() {
             if (tab) tab.click();
           }
 
+          function closeShellMenus(exceptMenu) {
+            document.querySelectorAll('.aq-shell-menu[open]').forEach(function(menu) {
+              if (!exceptMenu || menu !== exceptMenu) menu.removeAttribute('open');
+            });
+          }
+
+          document.addEventListener('click', function(event) {
+            var summary = event.target.closest('.aq-shell-menu-summary');
+            if (summary) {
+              var selectedMenu = summary.closest('.aq-shell-menu');
+              if (selectedMenu && !selectedMenu.open) closeShellMenus(selectedMenu);
+              return;
+            }
+
+            if (!event.target.closest('.aq-shell-menu')) closeShellMenus();
+          }, true);
+
           document.addEventListener('click', function(event) {
             var route = event.target.closest('.aq-shell-route[data-target]');
             if (!route) return;
@@ -137,9 +154,7 @@ build_app_ui <- function() {
             var target = route.getAttribute('data-target');
             setShellActive(target);
             activateExistingTab(target);
-            document.querySelectorAll('.aq-shell-menu[open]').forEach(function(menu) {
-              menu.removeAttribute('open');
-            });
+            closeShellMenus();
             if (window.Shiny && Shiny.setInputValue) {
               Shiny.setInputValue('shell_nav_target', target, { priority: 'event' });
             }
@@ -148,10 +163,12 @@ build_app_ui <- function() {
           document.addEventListener('toggle', function(event) {
             var openedMenu = event.target.closest('.aq-shell-menu');
             if (!openedMenu || !openedMenu.open) return;
-            document.querySelectorAll('.aq-shell-menu[open]').forEach(function(menu) {
-              if (menu !== openedMenu) menu.removeAttribute('open');
-            });
+            closeShellMenus(openedMenu);
           }, true);
+
+          document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') closeShellMenus();
+          });
 
           document.addEventListener('shown.bs.tab', function() {
             window.setTimeout(function() { setShellActive(currentTabLabel()); }, 0);

@@ -1024,18 +1024,22 @@ qa_ui_consistency <- function() {
           has_patterns(c(".aq-brand-lockup", ".aq-brand-mark", ".aq-brand-name", ".aq-brand-subtitle"), css) &&
           file.exists(file.path("www", "brand", "analytics-workstation-mark.svg"))) "success" else "error",
       if (has_patterns(c("aq-shell-primary-nav", "Project", "Data", "Analysis", "Evidence", "Decisions", "Delivery", "AI Runtime", "Knowledge Library", "Code Runner", "Product Experience"), app_ui) &&
-          has_patterns(c("shell_nav_target", "aq-main-tabset", "aq-shell-menu", "aq-shell-utility-link"), app_ui) &&
+          has_patterns(c("shell_nav_target", "aq-main-tabset", "aq-shell-menu", "aq-shell-utility-link", "closeShellMenus", "event.target.closest('.aq-shell-menu')", "event.key === 'Escape'"), app_ui) &&
           has_patterns(c(".aq-shell-primary-nav", ".aq-workstation-utilities", ".aq-main-tabset > .tabbable > .nav-tabs", "display: none"), css)) "success" else "error",
       if (has_patterns(c("ui_theme_switcher", "aq-theme-switcher", "aq-theme-select", "window.aqApplyTheme", "localStorage.setItem('aq.theme'"), ui_components) &&
           has_patterns(c("aq-workstation-header", "aq-workstation-utilities", "ui_theme_switcher(theme = \"dark\")"), app_ui)) "success" else "error",
       if (has_patterns(c("body.aq-theme-cyberpunk", "#00f5ff", "#ff2bd6", ".aq-theme-switcher"), css) && has_patterns(c("cyberpunk", "reactable_theme_cyberpunk"), table_theme)) "success" else "error",
       if (has_patterns(c("body.aq-theme-dark", "body:not(.aq-theme-light):not(.aq-theme-pimp):not(.aq-theme-cyberpunk)", "--aq-bg-base", "--aq-focus-ring", "--aq-secondary"), css)) "success" else "error",
       if (has_patterns(c("Data Workspace", "supported_data_accept_types", "aq-data-workbench", "aq-data-loader-band", "aq-data-preview-wide"), data_page)) "success" else "error",
-      if (grepl("Plot Builder", plot_builder_page, fixed = TRUE) &&
-          grepl("ui_preview_panel", plot_builder_page, fixed = TRUE) &&
+      if (grepl("Plot Studio", plot_builder_page, fixed = TRUE) &&
+          grepl("aq-plot-studio-v3", plot_builder_page, fixed = TRUE) &&
+          grepl("aq-plot-command-ribbon", plot_builder_page, fixed = TRUE) &&
+          grepl("aq-plot-stage-v3", plot_builder_page, fixed = TRUE) &&
+          grepl("theme_presets", plot_builder_page, fixed = TRUE) &&
           grepl("ui_code_panel", plot_builder_page, fixed = TRUE) &&
-          grepl("aq-plot-builder-primary-actions", plot_builder_page, fixed = TRUE) &&
-          grepl(".aq-plot-builder-primary-actions", css, fixed = TRUE) &&
+          grepl(".aq-plot-studio-v3", css, fixed = TRUE) &&
+          grepl(".aq-plot-command-ribbon", css, fixed = TRUE) &&
+          grepl(".aq-plot-theme-strip", css, fixed = TRUE) &&
           grepl("aq-plot-mapping-controls", plot_builder_page, fixed = TRUE) &&
           grepl(".aq-plot-mapping-controls", css, fixed = TRUE)) "success" else "error",
       if (grepl("Layout Studio", layouts_page, fixed = TRUE) && grepl("aq-layout-studio", layouts_page, fixed = TRUE) && grepl("ui_code_panel", layouts_page, fixed = TRUE)) "success" else "error",
@@ -1091,7 +1095,7 @@ qa_ui_consistency <- function() {
       "Cyberpunk theme tokens and table theme support are available.",
       "Dark-first tokens include base surfaces, focus states, and secondary accent.",
       "Data page uses a top dataset loader/status band with a full-width preview.",
-      "Plot Builder uses shared preview/code panels and keeps primary plot actions sticky.",
+      "Plot Studio uses a live stage, command ribbon, AutoPlots theme rail, and shared code panels.",
       "Layout Studio uses a dedicated composition stage, disclosure, preview, and code panels.",
       "Artifact Studio surfaces evidence gallery, inspector, and filmstrip.",
       "Analysis Modules uses the shared code panel.",

@@ -30,6 +30,8 @@ Powerful when expanded
 Inspectable when needed
 ```
 
+The software should reward curiosity. That reward should come from craft rather than gimmicks: beautiful mathematical surfaces, elegant plot exploration, polished export details, empty states that invite the next move, and transitions that make the user feel another human cared about the experience. These moments are not decoration; they are part of how the product earns trust and makes analytical work feel worth returning to.
+
 The design inspiration should be closer to professional workspaces such as VS Code, Cursor, Figma, Linear, JetBrains IDEs, Adobe Lightroom, and Power BI Desktop than to a traditional dashboard.
 
 ## Visual Language

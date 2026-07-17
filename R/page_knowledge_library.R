@@ -275,8 +275,30 @@ ui_knowledge_context_list <- function(title, items, empty = "No related items ye
   )
 }
 
+knowledge_library_initial_selection <- function(docs = knowledge_library_discover_documents()) {
+  if (!nrow(docs)) {
+    return(list(
+      categories = character(),
+      selected_category = character(),
+      documents = character(),
+      selected_document = character()
+    ))
+  }
+  categories <- unique(docs$category)
+  selected_category <- categories[[1]]
+  document_rows <- docs[category == selected_category]
+  documents <- stats::setNames(document_rows$path, document_rows$title)
+  list(
+    categories = categories,
+    selected_category = selected_category,
+    documents = documents,
+    selected_document = if (length(documents)) unname(documents[[1]]) else character()
+  )
+}
+
 page_knowledge_library_ui <- function(id) {
   ns <- NS(id)
+  initial <- knowledge_library_initial_selection()
   tabPanel(
     "Knowledge Library",
     tags$div(
@@ -305,8 +327,20 @@ page_knowledge_library_ui <- function(id) {
             title = "Knowledge Navigator",
             subtitle = "Repository-backed source material.",
             uiOutput(ns("book_status")),
-            selectInput(ns("library_category"), "Section", choices = character()),
-            selectInput(ns("library_document"), "Document", choices = character()),
+            selectInput(
+              ns("library_category"),
+              "Section",
+              choices = initial$categories,
+              selected = initial$selected_category,
+              selectize = FALSE
+            ),
+            selectInput(
+              ns("library_document"),
+              "Document",
+              choices = initial$documents,
+              selected = initial$selected_document,
+              selectize = FALSE
+            ),
             textInput(ns("library_search_placeholder"), "Search", value = "", placeholder = "Search arrives in a future phase"),
             ui_action_row(
               actionButton(ns("continue_reading"), "Continue Reading", class = "btn-primary btn-sm"),
@@ -365,12 +399,25 @@ page_knowledge_library_server <- function(id, ctx = NULL) {
     observe({
       categories <- unique(docs()$category)
       if (length(categories)) {
-        updateSelectInput(session, "library_category", choices = categories, selected = selected_value(input$library_category) %||% categories[[1]])
+        selected <- selected_value(input$library_category)
+        if (is.null(selected) || !selected %in% categories) {
+          selected <- categories[[1]]
+        }
+        updateSelectInput(session, "library_category", choices = categories, selected = selected)
       }
     })
 
     observeEvent(input$library_category, {
-      choices <- docs()[category == input$library_category]
+      category <- selected_value(input$library_category)
+      categories <- unique(docs()$category)
+      if (is.null(category) || !category %in% categories) {
+        category <- categories[[1]] %||% NULL
+      }
+      if (is.null(category)) {
+        updateSelectInput(session, "library_document", choices = character(), selected = character())
+        return(invisible(NULL))
+      }
+      choices <- docs()[category == category]
       if (!nrow(choices)) {
         updateSelectInput(session, "library_document", choices = character(), selected = character())
         return(invisible(NULL))
@@ -386,8 +433,11 @@ page_knowledge_library_server <- function(id, ctx = NULL) {
     selected_document <- reactive({
       library_docs <- docs()
       selected <- selected_value(input$library_document)
-      if (is.null(selected) || !nzchar(selected) || !nrow(library_docs)) {
+      if (!nrow(library_docs)) {
         return(library_docs[0])
+      }
+      if (is.null(selected) || !nzchar(selected)) {
+        return(library_docs[1])
       }
       row <- library_docs[path == selected]
       if (!nrow(row)) {
@@ -555,6 +605,7 @@ qa_knowledge_library <- function() {
   markdown_text <- if (nrow(first_doc)) knowledge_library_read_markdown(first_doc$path[[1]]) else ""
   rendered <- knowledge_library_markdown_html(markdown_text)
   context <- knowledge_library_context(first_doc, docs)
+  initial <- knowledge_library_initial_selection(docs)
   context_text <- paste(as.character(ui_knowledge_context_list("Related Concepts", context$concepts)), collapse = " ")
   ui_text <- paste(as.character(page_knowledge_library_ui("knowledge_library")), collapse = " ")
   css_text <- if (file.exists(file.path("www", "app.css"))) paste(readLines(file.path("www", "app.css"), warn = FALSE), collapse = " ") else ""
@@ -567,6 +618,7 @@ qa_knowledge_library <- function() {
       "markdown_renders",
       "chapter_discovery",
       "toc_links",
+      "initial_selector_choices",
       "toc_scroll_region",
       "timestamps_trimmed",
       "fluid_no_overlap_layout",
@@ -583,6 +635,7 @@ qa_knowledge_library <- function() {
       if (nzchar(rendered) && (grepl("<h1|<h2|<p|<pre", rendered) || grepl("<table", rendered))) "success" else "error",
       if (any(docs$category == "Book") && any(grepl("chapter", docs$relpath, ignore.case = TRUE))) "success" else "error",
       if (grepl("href=\"#", paste(as.character(knowledge_library_section_toc(markdown_text)), collapse = " "), fixed = TRUE)) "success" else "error",
+      if (length(initial$categories) >= 5L && length(initial$documents) > 0L && nzchar(initial$selected_category[[1]]) && nzchar(initial$selected_document[[1]]) && grepl('option value="Book"', ui_text, fixed = TRUE)) "success" else "error",
       if (grepl(".aq-library-toc-list", css_text, fixed = TRUE) && grepl("max-height: 92px", css_text, fixed = TRUE) && grepl("overflow-y: auto", css_text, fixed = TRUE)) "success" else "error",
       if (!any(grepl("\\.[0-9]{3,}", stats$value))) "success" else "error",
       if (grepl("aq-library-workspace-page", ui_text, fixed = TRUE) && grepl("clamp(240px, 16vw, 340px)", css_text, fixed = TRUE) && grepl("width: 100% !important", css_text, fixed = TRUE)) "success" else "error",
@@ -599,6 +652,7 @@ qa_knowledge_library <- function() {
       "Markdown renders to HTML.",
       "Book/source chapter discovery is active.",
       "Table of contents entries are anchor links.",
+      "Section and document selectors are populated before server update messages.",
       "Table of contents is a contained scroll region.",
       "Book status timestamps are trimmed for human reading.",
       "Library layout uses fluid tracks and constrains navigator controls.",

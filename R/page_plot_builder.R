@@ -36,92 +36,124 @@ mapping_control <- function(mapping, data, required = TRUE, selected = NULL, ns 
   )
 }
 
+plot_theme_preset_id <- function(theme) {
+  paste0("theme_preset_", gsub("[^A-Za-z0-9]+", "_", theme))
+}
+
+plot_theme_label <- function(theme) {
+  tools::toTitleCase(gsub("[-_]+", " ", theme))
+}
+
 page_plot_builder_ui <- function(id) {
   ns <- NS(id)
 
   tabPanel(
     "Plots",
     ui_page(
-      title = "Plot Builder",
-      subtitle = "Create production AutoPlots widgets, save them as artifacts, and assign them to report sections.",
+      title = "Plot Studio",
+      subtitle = "A creative studio for analytical storytelling with production AutoPlots underneath.",
       eyebrow = "Artifacts",
-      ui_object_spine(
-        object = "Plot Artifact",
-        intent = "Author one production plot at a time, inspect the rendered result, then preserve useful plots as project artifacts.",
-        state = "Preview updates only when you build or refresh the plot.",
-        next_action = "Choose mappings, build the plot, then add it to the saved artifact list.",
-        depth = "Advanced visual options are available below the core mapping controls."
-      ),
       tags$section(
-        class = "aq-plot-studio-v2",
-        tags$main(
-          class = "aq-plot-stage",
-          ui_preview_panel(
-            title = "Current Plot Preview",
-            uiOutput(ns("preview_plot")),
-            textOutput(ns("plot_list_message"))
+        class = "aq-plot-studio-v3",
+        tags$div(
+          class = "aq-plot-instrument",
+          tags$div(
+            class = "aq-plot-instrument-copy",
+            tags$p(class = "aq-plot-kicker", "Visual instrument"),
+            tags$h2("Compose, preview, preserve."),
+            tags$p("Plotting should feel fast enough to explore and structured enough to become evidence.")
+          ),
+          tags$div(
+            class = "aq-plot-instrument-status",
+            tags$span("1. Map"),
+            tags$span("2. Build"),
+            tags$span("3. Preserve"),
+            tags$span("4. Assign")
           )
         ),
-        tags$aside(
-          class = "aq-plot-control-dock",
-          ui_card(
-            title = "Build the Plot",
-            subtitle = "Choose the chart, map columns, then refresh the preview.",
-            selectInput(ns("plot_type"), "Plot Type", choices = plot_type_choices()),
-            ui_control_group(
-              "Column Mappings",
-              tags$div(
-                class = "aq-plot-mapping-controls",
-                uiOutput(ns("mapping_inputs"))
-              )
-            ),
+        tags$div(
+          class = "aq-plot-command-ribbon",
+          tags$div(
+            class = "aq-plot-command-cell aq-plot-type-cell",
+            selectInput(ns("plot_type"), "Plot Type", choices = plot_type_choices())
+          ),
+          tags$div(
+            class = "aq-plot-command-cell aq-plot-mapping-cell",
             tags$div(
-              class = "aq-plot-builder-primary-actions aq-plot-actions-top",
-              actionButton(ns("build_plot"), "Build / Refresh Plot", class = "btn-primary"),
-              actionButton(ns("add_plot"), "Save Plot", class = "btn-success"),
-              actionButton(ns("remove_last_plot"), "Remove Last", class = "btn-secondary")
+              class = "aq-plot-mapping-controls",
+              uiOutput(ns("mapping_inputs"))
+            )
+          ),
+          tags$div(
+            class = "aq-plot-command-cell aq-plot-run-cell",
+            actionButton(ns("build_plot"), "Build / Refresh", class = "btn-primary"),
+            actionButton(ns("add_plot"), "Preserve Plot", class = "btn-success"),
+            actionButton(ns("remove_last_plot"), "Remove Last", class = "btn-secondary")
+          )
+        ),
+        uiOutput(ns("theme_presets")),
+        tags$main(
+          class = "aq-plot-stage-v3",
+          tags$div(
+            class = "aq-plot-stage-header",
+            tags$div(
+              tags$p(class = "aq-plot-kicker", "Live preview"),
+              tags$h3("Current Plot")
             ),
-            ui_disclosure(
-              "Fine Tune Appearance",
-              uiOutput(ns("option_inputs")),
-              level = "advanced",
-              open = FALSE
+            tags$div(class = "aq-plot-stage-message", textOutput(ns("plot_list_message")))
+          ),
+          tags$div(
+            class = "aq-plot-stage-body",
+            uiOutput(ns("preview_plot"))
+          )
+        ),
+        tags$section(
+          class = "aq-plot-artifact-tray",
+          ui_card(
+            title = "Saved Plot Tray",
+            subtitle = "Preserved plots become report-ready artifacts.",
+            tags$div(
+              class = "aq-plot-tray-grid",
+              tags$div(
+                class = "aq-plot-tray-controls",
+                selectInput(ns("selected_saved_plot"), "Saved Plot", choices = character()),
+                ui_action_row(
+                  actionButton(ns("load_saved_plot"), "Edit Selected", class = "btn-secondary"),
+                  actionButton(ns("update_saved_plot"), "Update", class = "btn-primary"),
+                  actionButton(ns("duplicate_saved_plot"), "Duplicate", class = "btn-secondary")
+                ),
+                selectInput(ns("section_for_plot"), "Report Section", choices = character()),
+                textInput(ns("new_section_name"), "New Section", value = ""),
+                ui_action_row(
+                  actionButton(ns("assign_plot_section"), "Assign to Section", class = "btn-primary"),
+                  actionButton(ns("move_plot_up"), "Move Up", class = "btn-secondary"),
+                  actionButton(ns("move_plot_down"), "Move Down", class = "btn-secondary")
+                )
+              ),
+              tags$div(
+                class = "aq-plot-tray-list",
+                uiOutput(ns("saved_plot_list"))
+              )
             )
           )
-        )
-      ),
-      tags$section(
-        class = "aq-plot-depth",
-        ui_workspace_grid(
-          columns = "two",
-          ui_card(
-            title = "Saved Plot Queue",
-            selectInput(ns("selected_saved_plot"), "Saved Plot", choices = character()),
-            ui_action_row(
-              actionButton(ns("load_saved_plot"), "Edit Selected", class = "btn-secondary"),
-              actionButton(ns("update_saved_plot"), "Update", class = "btn-primary"),
-              actionButton(ns("duplicate_saved_plot"), "Duplicate", class = "btn-secondary")
-            ),
-            selectInput(ns("section_for_plot"), "Report Section", choices = character()),
-            textInput(ns("new_section_name"), "New Section", value = ""),
-            ui_action_row(
-              actionButton(ns("assign_plot_section"), "Assign to Section", class = "btn-primary"),
-              actionButton(ns("move_plot_up"), "Move Up", class = "btn-secondary"),
-              actionButton(ns("move_plot_down"), "Move Down", class = "btn-secondary")
-            ),
-            uiOutput(ns("saved_plot_list"))
+        ),
+        tags$section(
+          class = "aq-plot-depth",
+          ui_disclosure(
+            "Formatting and Advanced Controls",
+            uiOutput(ns("option_inputs")),
+            level = "advanced",
+            open = FALSE
           ),
-          tagList(
-            ui_code_panel(
-              "Current Plot Code",
-              verbatimTextOutput(ns("generated_code")),
-              collapsed = FALSE
-            ),
-            ui_code_panel(
-              "All Saved Plots Code",
-              verbatimTextOutput(ns("saved_plots_code")),
-              collapsed = TRUE
-            )
+          ui_code_panel(
+            "Current Plot Code",
+            verbatimTextOutput(ns("generated_code")),
+            collapsed = TRUE
+          ),
+          ui_code_panel(
+            "All Saved Plots Code",
+            verbatimTextOutput(ns("saved_plots_code")),
+            collapsed = TRUE
           )
         )
       )
@@ -193,6 +225,13 @@ page_plot_builder_server <- function(id, ctx) {
         NULL
       )
     }
+
+    lapply(theme_choices, function(theme) {
+      force(theme)
+      observeEvent(input[[plot_theme_preset_id(theme)]], {
+        update_option_control("Theme", theme)
+      }, ignoreInit = TRUE)
+    })
 
     ctx$load_config_into_builder <- function(config) {
       for (mapping in c("XVar", "YVar", "ZVar", "GroupVar", "CorrVars")) {
@@ -299,6 +338,41 @@ page_plot_builder_server <- function(id, ctx) {
       tagList(lapply(spec$options, function(option_name) {
         option_control(option_name, ns = session$ns)
       }))
+    })
+
+    output$theme_presets <- renderUI({
+      req(input$plot_type)
+      spec <- plot_spec(input$plot_type)
+      if (!"Theme" %in% spec$options) {
+        return(tags$div(
+          class = "aq-plot-theme-strip aq-plot-theme-strip-disabled",
+          tags$span("AutoPlots themes are not available for this plot type.")
+        ))
+      }
+
+      selected_theme <- selected_value(input$theme) %||% option_registry$Theme$default
+      tags$section(
+        class = "aq-plot-theme-strip",
+        tags$div(
+          class = "aq-plot-theme-copy",
+          tags$span("AutoPlots theme"),
+          tags$p("Explore the visual voice without leaving the plot.")
+        ),
+        tags$div(
+          class = "aq-plot-theme-rail",
+          lapply(theme_choices, function(theme) {
+            actionButton(
+              session$ns(plot_theme_preset_id(theme)),
+              plot_theme_label(theme),
+              class = paste(
+                "aq-plot-theme-chip",
+                paste0("aq-plot-theme-chip-", gsub("[^A-Za-z0-9]+", "-", theme)),
+                if (identical(theme, selected_theme)) "is-active" else ""
+              )
+            )
+          })
+        )
+      )
     })
 
     observeEvent(input$build_plot, {
