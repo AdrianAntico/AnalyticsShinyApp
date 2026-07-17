@@ -376,8 +376,15 @@ server <- function(input, output, session) {
     isTRUE(ctx$genai_analysis_run_state$cancel_requested)
   }
   ctx$navigate_to <- function(page) {
-    updateTabsetPanel(session, "main_tabs", selected = page)
+    updateTabsetPanel(session, "main_tabs", selected = app_tab_value(page))
   }
+  observeEvent(input$shell_nav_target, {
+    target <- input$shell_nav_target %||% ""
+    if (!nzchar(target)) {
+      return(invisible(NULL))
+    }
+    updateTabsetPanel(session, "main_tabs", selected = app_tab_value(target))
+  }, ignoreInit = TRUE)
   ctx$inspect_artifact <- function(artifact_id) {
     ctx$artifact_studio_selected_artifact_id(artifact_id)
     ctx$navigate_to("Artifact Studio")

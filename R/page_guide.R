@@ -266,8 +266,42 @@ ui_guide_recommendation <- function(recommendation) {
   )
 }
 
+guide_flow_steps <- function() {
+  list(
+    questions = list(
+      title = "Business Questions",
+      label = "Business Questions",
+      message = "Start with the decision, opportunity, or uncertainty that makes the analysis worth doing.",
+      action = "Plan the investigation before choosing modules.",
+      target = "Workflow"
+    ),
+    knowledge = list(
+      title = "Knowledge",
+      label = "Knowledge",
+      message = "Capture what is known, unknown, assumed, and decision-ready as evidence accumulates.",
+      action = "Review current workspace state and knowledge gaps.",
+      target = "Project"
+    ),
+    evidence = list(
+      title = "Evidence",
+      label = "Evidence",
+      message = "Generate and inspect artifacts that support, weaken, or clarify analytical claims.",
+      action = "Open Artifact Studio to inspect evidence objects.",
+      target = "Artifact Studio"
+    ),
+    decisions = list(
+      title = "Decisions",
+      label = "Decisions",
+      message = "Use evidence, uncertainty, and recommendations to support a governed decision.",
+      action = "Open the decision workspace when alternatives are ready.",
+      target = "Decision Management"
+    )
+  )
+}
+
 page_guide_ui <- function(id) {
   ns <- NS(id)
+  flow_steps <- guide_flow_steps()
   tabPanel(
     "Guide",
     ui_page(
@@ -290,10 +324,12 @@ page_guide_ui <- function(id) {
           ),
           tags$div(
             class = "aq-guide-loop",
-            tags$span("Business Questions"),
-            tags$span("Knowledge"),
-            tags$span("Evidence"),
-            tags$span("Decisions")
+            tags$p(class = "aq-guide-loop-label", "Analytical flow"),
+            tags$div(
+              class = "aq-guide-loop-steps",
+              uiOutput(ns("flow_steps"))
+            ),
+            uiOutput(ns("flow_detail"))
           )
         ),
         ui_split_panel(
@@ -338,6 +374,8 @@ page_guide_server <- function(id, ctx) {
   moduleServer(id, function(input, output, session) {
     guide_state <- reactive(guide_state_from_context(ctx))
     guide_next <- reactive(guide_recommendation(guide_state()))
+    flow_steps <- guide_flow_steps()
+    selected_flow_step <- reactiveVal("questions")
 
     observeEvent(input$open_project, ctx$navigate_to("Project"), ignoreInit = TRUE)
     observeEvent(input$open_mission_control, ctx$navigate_to("Mission Control"), ignoreInit = TRUE)
@@ -349,6 +387,46 @@ page_guide_server <- function(id, ctx) {
     observeEvent(input$review_mission_control, ctx$navigate_to("Mission Control"), ignoreInit = TRUE)
     observeEvent(input$read_knowledge_library, ctx$navigate_to("Knowledge Library"), ignoreInit = TRUE)
     observeEvent(input$run_recommended, ctx$navigate_to(guide_next()$target %||% "Mission Control"), ignoreInit = TRUE)
+    observeEvent(input$go_flow_step, {
+      step <- flow_steps[[selected_flow_step()]]
+      ctx$navigate_to(step$target %||% "Workflow")
+    }, ignoreInit = TRUE)
+
+    lapply(names(flow_steps), function(step_id) {
+      observeEvent(input[[paste0("flow_", step_id)]], {
+        selected_flow_step(step_id)
+      }, ignoreInit = TRUE)
+    })
+
+    output$flow_steps <- renderUI({
+      step_id <- selected_flow_step()
+      tagList(lapply(names(flow_steps), function(candidate) {
+        actionButton(
+          session$ns(paste0("flow_", candidate)),
+          flow_steps[[candidate]]$label,
+          class = .aq_class(
+            "btn-link",
+            "aq-guide-flow-step",
+            if (identical(candidate, step_id)) "aq-guide-flow-step-active" else NULL
+          )
+        )
+      }))
+    })
+
+    output$flow_detail <- renderUI({
+      step_id <- selected_flow_step()
+      step <- flow_steps[[step_id]] %||% flow_steps$questions
+      tags$article(
+        class = "aq-guide-flow-detail",
+        tags$div(
+          tags$p(class = "aq-guide-flow-detail-label", "Selected step"),
+          tags$h3(step$title),
+          tags$p(step$message),
+          tags$span(class = "aq-guide-flow-next", step$action)
+        ),
+        actionButton(session$ns("go_flow_step"), "Go there", class = "btn-secondary btn-sm")
+      )
+    })
 
     output$current_workspace <- renderUI({
       state <- guide_state()

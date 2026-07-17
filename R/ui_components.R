@@ -83,6 +83,21 @@ ui_theme_switcher <- function(theme = "dark") {
   )
 }
 
+app_tab_value <- function(page) {
+  page <- page %||% ""
+  value_map <- c(
+    "Evidence Review" = "evidence_review",
+    "Decision Management" = "decision_management",
+    "Semantic Intelligence" = "semantic_intelligence",
+    "AI Runtime" = "ai_runtime",
+    "Product Experience" = "product_experience"
+  )
+  if (page %in% names(value_map)) {
+    return(unname(value_map[[page]]))
+  }
+  page
+}
+
 ui_page <- function(title, subtitle = NULL, ..., actions = NULL, eyebrow = NULL) {
   tags$div(
     class = "aq-page",
@@ -963,6 +978,8 @@ qa_ui_consistency <- function() {
       "empty_states",
       "responsive_layout",
       "dark_first_shell",
+      "app_branding",
+      "workspace_utility_shell",
       "theme_switcher",
       "cyberpunk_theme_tokens",
       "dark_first_tokens",
@@ -1003,6 +1020,12 @@ qa_ui_consistency <- function() {
       if (grepl("ui_empty_state", project_page, fixed = TRUE) && grepl("ui_empty_state", workflow_page, fixed = TRUE)) "success" else "error",
       if (grepl("@media (max-width: 900px)", css, fixed = TRUE) && grepl("aq-workspace-grid-main-sidebar", css, fixed = TRUE)) "success" else "error",
       if (grepl("theme = \"dark\"", app_ui, fixed = TRUE) && grepl("ui_app_shell <- function(..., theme = \"dark\")", ui_components, fixed = TRUE)) "success" else "error",
+      if (has_patterns(c("aq-brand-lockup", "aq-brand-mark", "analytics-workstation-mark.svg"), app_ui) &&
+          has_patterns(c(".aq-brand-lockup", ".aq-brand-mark", ".aq-brand-name", ".aq-brand-subtitle"), css) &&
+          file.exists(file.path("www", "brand", "analytics-workstation-mark.svg"))) "success" else "error",
+      if (has_patterns(c("aq-shell-primary-nav", "Project", "Data", "Analysis", "Evidence", "Decisions", "Delivery", "AI Runtime", "Knowledge Library", "Code Runner", "Product Experience"), app_ui) &&
+          has_patterns(c("shell_nav_target", "aq-main-tabset", "aq-shell-menu", "aq-shell-utility-link"), app_ui) &&
+          has_patterns(c(".aq-shell-primary-nav", ".aq-workstation-utilities", ".aq-main-tabset > .tabbable > .nav-tabs", "display: none"), css)) "success" else "error",
       if (has_patterns(c("ui_theme_switcher", "aq-theme-switcher", "aq-theme-select", "window.aqApplyTheme", "localStorage.setItem('aq.theme'"), ui_components) &&
           has_patterns(c("aq-workstation-header", "aq-workstation-utilities", "ui_theme_switcher(theme = \"dark\")"), app_ui)) "success" else "error",
       if (has_patterns(c("body.aq-theme-cyberpunk", "#00f5ff", "#ff2bd6", ".aq-theme-switcher"), css) && has_patterns(c("cyberpunk", "reactable_theme_cyberpunk"), table_theme)) "success" else "error",
@@ -1062,6 +1085,8 @@ qa_ui_consistency <- function() {
       "Empty states are present on workspace and workflow pages.",
       "Responsive workspace layouts are defined.",
       "The app shell defaults to the dark workstation theme.",
+      "The app shell uses the Analytics Workstation brand mark and wordmark.",
+      "The shell exposes static workspaces with fixed right-side utilities while preserving hidden tab routing.",
       "The app shell exposes a persistent selectable theme switcher.",
       "Cyberpunk theme tokens and table theme support are available.",
       "Dark-first tokens include base surfaces, focus states, and secondary accent.",

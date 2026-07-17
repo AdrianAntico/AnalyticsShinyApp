@@ -393,7 +393,7 @@ command_palette_server <- function(id, navigation_session = NULL) {
       recent_commands(command_history(recent_commands(), command_id))
       action <- command$action %||% list()
       if (identical(action$type, "navigate") && !is.null(action$target)) {
-        updateTabsetPanel(tab_session, "main_tabs", selected = action$target)
+        updateTabsetPanel(tab_session, "main_tabs", selected = app_tab_value(action$target))
       }
     }, ignoreInit = TRUE)
   })
