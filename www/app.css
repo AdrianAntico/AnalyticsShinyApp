@@ -7878,10 +7878,12 @@ body.aq-theme-cyberpunk .aq-plot-artifact-tray .aq-card {
 
 .aq-report-browser-visual-render {
   margin-bottom: 12px;
-  overflow: hidden;
+  overflow: visible;
+  padding: 12px;
   border: 1px solid color-mix(in srgb, var(--aq-primary) 28%, var(--aq-border));
   border-radius: 8px;
   background: var(--aq-surface-2);
+  box-sizing: border-box;
 }
 
 .aq-report-browser-demo-plot {
@@ -7895,8 +7897,9 @@ body.aq-theme-cyberpunk .aq-plot-artifact-tray .aq-card {
 .aq-report-browser-visual-render .echarts4r {
   display: block;
   width: 100% !important;
-  min-height: 420px;
-  height: 420px !important;
+  min-height: 500px;
+  height: 500px !important;
+  box-sizing: border-box;
 }
 
 .aq-report-browser-visual-render > script,

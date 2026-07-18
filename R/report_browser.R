@@ -555,19 +555,20 @@ report_browser_demo_observed_predicted_widget <- function() {
     YVar = "predicted",
     SampleSize = nrow(points),
     Theme = "dark",
-    MouseScroll = FALSE,
+    MouseScroll = TRUE,
     ShowLabels = FALSE,
     AddGLM = FALSE,
-    Height = "420px",
+    Height = NULL,
+    Width = NULL,
     title.text = "Observed vs Predicted",
-    title.Align = "left",
-    title.top = 12,
-    title.left = 12,
+    title.Align = "center",
+    title.top = 14,
+    title.left = "center",
     title.padding = c(4, 4, 10, 4),
     title.itemGap = 6,
     title.textStyle.color = "#FFFFFF",
     title.textStyle.fontWeight = "bolder",
-    title.textStyle.fontSize = 22,
+    title.textStyle.fontSize = 20,
     title.textStyle.textShadowColor = "#CE1141",
     title.textStyle.textShadowBlur = 14,
     title.textStyle.textShadowOffsetX = 0,
@@ -599,7 +600,7 @@ report_browser_demo_observed_predicted_widget <- function() {
     tooltip.backgroundColor = "rgba(12, 35, 64, 0.96)",
     tooltip.textStyle.color = "#FFFFFF",
     legend.show = FALSE,
-    toolbox.show = TRUE,
+    toolbox.show = FALSE,
     toolbox.iconStyle.borderColor = "#FFFFFF",
     toolbox.emphasis.iconStyle.borderColor = "#CE1141"
   )
@@ -618,10 +619,10 @@ report_browser_demo_observed_predicted_widget <- function() {
   chart <- tryCatch(
     AutoPlots::e_grid_full(
       chart,
-      grid.left = "8%",
-      grid.right = "8%",
-      grid.top = "16%",
-      grid.bottom = "18%",
+      grid.left = "10%",
+      grid.right = "6%",
+      grid.top = "18%",
+      grid.bottom = "20%",
       grid.containLabel = TRUE
     ),
     error = function(error) chart
@@ -689,6 +690,7 @@ report_browser_demo_observed_predicted_visual <- function() {
 report_browser_demo_artifacts <- function(prefix = "demo") {
   module_id <- if (identical(prefix, "regression")) "autoquant_regression_model_insights" else prefix
   source_function <- if (identical(prefix, "regression")) "deterministic_regression_report_demo_fixture" else "deterministic_report_demo_fixture"
+  observed_predicted_visual <- report_browser_demo_observed_predicted_visual()
   list(
     list(
       artifact_id = paste0(prefix, "_visual_observed_predicted"),
@@ -698,14 +700,14 @@ report_browser_demo_artifacts <- function(prefix = "demo") {
       section = "Prediction Diagnostics",
       source_module = module_id,
       status = "ready",
-      object = report_browser_demo_observed_predicted_visual(),
+      object = observed_predicted_visual,
       metadata = list(
         recommended_caption = "Predicted values should track observed values without systematic structure.",
         analytical_intent = "diagnostic",
         artifact_importance = "critical",
         demo_fixture = TRUE,
         source_function = source_function,
-        visual_source = attr(report_browser_demo_observed_predicted_visual(), "report_browser_visual_source") %||% "static_fallback"
+        visual_source = attr(observed_predicted_visual, "report_browser_visual_source") %||% "static_fallback"
       )
     ),
     list(
