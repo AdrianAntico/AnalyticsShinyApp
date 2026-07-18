@@ -89,9 +89,12 @@ build_app_ui <- function() {
             'Delivery': 'delivery',
             'Layout': 'delivery',
             'Export': 'delivery',
+            'Report Browser': 'delivery',
             'AI Runtime': 'ai',
             'Knowledge Library': 'library',
             'Code Runner': 'more',
+            'Build Week Demo': 'more',
+            'Agent Operations': 'more',
             'Product Experience': 'more'
           };
 
@@ -100,6 +103,8 @@ build_app_ui <- function() {
             'Decision Management': 'decision_management',
             'Semantic Intelligence': 'semantic_intelligence',
             'AI Runtime': 'ai_runtime',
+            'Build Week Demo': 'build_week_demo',
+            'Agent Operations': 'agent_operations',
             'Product Experience': 'product_experience'
           };
 
@@ -177,6 +182,20 @@ build_app_ui <- function() {
           document.addEventListener('DOMContentLoaded', function() {
             window.setTimeout(function() { setShellActive(currentTabLabel()); }, 300);
           });
+
+          function registerShellMessageHandlers() {
+            if (!window.Shiny || !Shiny.addCustomMessageHandler || window.__aqShellHandlersRegistered) return;
+            window.__aqShellHandlersRegistered = true;
+            Shiny.addCustomMessageHandler('aq-switch-tab', function(target) {
+              setShellActive(target);
+              activateExistingTab(target);
+              closeShellMenus();
+            });
+          }
+          registerShellMessageHandlers();
+          document.addEventListener('DOMContentLoaded', function() {
+            window.setTimeout(registerShellMessageHandlers, 300);
+          });
         })();
       ")),
       tags$header(
@@ -221,6 +240,7 @@ build_app_ui <- function() {
           ui_shell_menu("Delivery", "delivery", list(
             list(label = "Overview", target = "Delivery"),
             list(label = "Layout", target = "Layout"),
+            list(label = "Report Browser", target = "Report Browser"),
             list(label = "Export", target = "Export")
           ))
         ),
@@ -236,6 +256,8 @@ build_app_ui <- function() {
             tags$div(
               class = "aq-shell-menu-panel aq-shell-menu-panel-right",
               tags$div(class = "aq-shell-menu-theme", ui_theme_switcher(theme = "dark")),
+              ui_shell_route("Build Week Demo", "Build Week Demo", class = "aq-shell-menu-item"),
+              ui_shell_route("Agent Operations", "Agent Operations", class = "aq-shell-menu-item"),
               ui_shell_route("Code Runner", "Code Runner", class = "aq-shell-menu-item"),
               ui_shell_route("Product Experience", "Product Experience", class = "aq-shell-menu-item"),
               tags$div(class = "aq-shell-menu-divider"),
@@ -299,13 +321,17 @@ build_app_ui <- function() {
             "Workspace",
             actions = list(
               ui_shell_route("Open Layout", "Layout", class = "btn-primary"),
+              ui_shell_route("Open Report Browser", "Report Browser", class = "btn-secondary"),
               ui_shell_route("Open Export", "Export", class = "btn-secondary")
             )
           ),
           page_layouts_ui("layouts"),
+          page_report_browser_ui("report_browser"),
           page_export_ui("export"),
           page_knowledge_library_ui("knowledge_library"),
           page_ai_runtime_ui("ai_runtime"),
+          page_build_week_demo_ui("build_week_demo"),
+          page_agent_operations_ui("agent_operations"),
           page_code_runner_ui("code_runner"),
           page_product_experience_ui("product_experience")
         )

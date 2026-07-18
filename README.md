@@ -131,6 +131,44 @@ Rscript -e "shiny::runApp('.')"
 
 The app performs a lightweight startup dependency check through `check_app_dependencies()` before loading the Shiny UI.
 
+## Build Week Demo
+
+Analytics Workstation includes a dedicated **Build Week Demo** route under `More`.
+
+The demo shows one governed analytical investigation:
+
+```text
+User Objective
+-> GPT-5.6 or deterministic mock provider
+-> Agent Plan
+-> EDA
+-> Regression Model Insights
+-> Approval Gate
+-> SHAP Analysis
+-> Evidence
+-> Campaign ReportContract
+-> Interactive Report Browser
+-> Claim Verification
+```
+
+For live OpenAI operation, set one of:
+
+```powershell
+$env:OPENAI_API_KEY="sk-..."
+$env:ANALYTICS_GENAI_PROVIDER="openai"
+$env:ANALYTICS_GENAI_MODEL="gpt-5.6"
+```
+
+For deterministic local rehearsal, choose **Mock rehearsal** in the Build Week Demo page. The mock path exercises the same app contracts without calling a paid provider.
+
+Codex built the workstation: source code, UI, tests, contracts, and docs. GPT-5.6 operates the workstation through the provider-agnostic GenAI layer and bounded agent-operation contract; it does not receive arbitrary permission to mutate the project outside governed actions.
+
+See:
+
+- `docs/build_week_demo_guide.md`
+- `docs/build_week_demo_plan.md`
+- `docs/build_week_demo_gap_audit.md`
+
 ## Table Filters
 
 Reactable-backed table artifacts support text exclusion filters:

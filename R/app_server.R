@@ -55,6 +55,12 @@ server <- function(input, output, session) {
   ctx$analytical_campaign_state <- reactiveValues(
     campaigns = list()
   )
+  ctx$agent_session_state <- reactiveVal(NULL)
+  ctx$agent_report_contract <- reactiveVal(NULL)
+  ctx$build_week_demo_state <- reactiveValues(
+    preflight = NULL,
+    message = NULL
+  )
   ctx$decision_memory_state <- reactiveValues(
     decisions = list(),
     reviews = list(),
@@ -1509,6 +1515,8 @@ server <- function(input, output, session) {
   page_knowledge_library_server("knowledge_library", ctx)
   page_mission_control_server("mission_control", ctx)
   page_ai_runtime_server("ai_runtime", ctx)
+  page_agent_operations_server("agent_operations", ctx)
+  page_build_week_demo_server("build_week_demo", ctx)
   page_product_experience_server("product_experience", ctx)
   page_data_server("data", ctx)
   page_plot_builder_server("plot_builder", ctx)
@@ -1518,6 +1526,7 @@ server <- function(input, output, session) {
   page_causal_intelligence_server("causal_intelligence", ctx)
   page_code_runner_server("code_runner", ctx)
   page_layouts_server("layouts", ctx)
+  page_report_browser_server("report_browser", ctx)
   page_export_server("export", ctx)
   page_artifact_library_server("artifact_library", ctx)
   page_project_server("project", ctx)

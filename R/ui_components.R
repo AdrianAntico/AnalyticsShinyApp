@@ -90,6 +90,8 @@ app_tab_value <- function(page) {
     "Decision Management" = "decision_management",
     "Semantic Intelligence" = "semantic_intelligence",
     "AI Runtime" = "ai_runtime",
+    "Build Week Demo" = "build_week_demo",
+    "Agent Operations" = "agent_operations",
     "Product Experience" = "product_experience"
   )
   if (page %in% names(value_map)) {

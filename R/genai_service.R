@@ -68,6 +68,19 @@ genai_provider_registry <- function() {
       }
     )
   )
+  providers$openai <- genai_provider_contract(
+    "openai",
+    "OpenAI",
+    default_base_url = "https://api.openai.com/v1",
+    default_model = "gpt-5.6",
+    capabilities = genai_capabilities("chat", "generate", "structured_json", "vision", "streaming", "tool_calling", "remote", "paid"),
+    adapter = list(
+      available = genai_openai_available,
+      list_models = genai_openai_list_models,
+      chat = genai_openai_chat,
+      generate = genai_openai_generate
+    )
+  )
   providers$ollama <- genai_provider_contract(
     "ollama",
     "Ollama",
@@ -132,7 +145,8 @@ genai_config <- function(
   stream = identical(tolower(Sys.getenv("ANALYTICS_GENAI_STREAM", unset = "false")), "true"),
   vision_enabled = identical(tolower(Sys.getenv("ANALYTICS_GENAI_VISION_ENABLED", unset = "false")), "true"),
   max_image_bytes = as.integer(Sys.getenv("ANALYTICS_GENAI_MAX_IMAGE_BYTES", unset = "2500000")),
-  max_image_count = as.integer(Sys.getenv("ANALYTICS_GENAI_MAX_IMAGE_COUNT", unset = "1"))
+  max_image_count = as.integer(Sys.getenv("ANALYTICS_GENAI_MAX_IMAGE_COUNT", unset = "1")),
+  api_key = Sys.getenv("ANALYTICS_GENAI_API_KEY", unset = Sys.getenv("OPENAI_API_KEY", unset = ""))
 ) {
   provider <- if (!nzchar(provider %||% "")) "none" else provider
   contract <- genai_provider(provider)
@@ -147,7 +161,8 @@ genai_config <- function(
     stream = isTRUE(stream),
     vision_enabled = isTRUE(vision_enabled),
     max_image_bytes = max_image_bytes %||% 2500000L,
-    max_image_count = max_image_count %||% 1L
+    max_image_count = max_image_count %||% 1L,
+    api_key = api_key %||% ""
   )
 }
 
@@ -220,31 +235,44 @@ genai_from_json <- function(text) {
   jsonlite::fromJSON(text, simplifyVector = FALSE)
 }
 
-genai_http_get_json <- function(url, timeout = 20L) {
+genai_http_headers <- function(request, headers = list()) {
+  headers <- headers %||% list()
+  headers <- headers[nzchar(names(headers) %||% "")]
+  if (!length(headers)) {
+    return(request)
+  }
+  do.call(httr2::req_headers, c(list(request), headers))
+}
+
+genai_http_get_json <- function(url, timeout = 20L, headers = list()) {
   if (requireNamespace("httr2", quietly = TRUE)) {
-    response <- httr2::request(url) |>
-      httr2::req_timeout(timeout) |>
+    request <- httr2::request(url) |>
+      httr2::req_timeout(timeout)
+    response <- genai_http_headers(request, headers) |>
       httr2::req_perform()
     return(httr2::resp_body_json(response, simplifyVector = FALSE))
   }
   if (requireNamespace("httr", quietly = TRUE)) {
-    response <- httr::GET(url, httr::timeout(timeout))
+    header_call <- if (length(headers %||% list())) list(do.call(httr::add_headers, headers)) else list()
+    response <- do.call(httr::GET, c(list(url, httr::timeout(timeout)), header_call))
     httr::stop_for_status(response)
     return(genai_from_json(httr::content(response, as = "text", encoding = "UTF-8")))
   }
   stop("No HTTP client is available. Install httr2 or httr to call GenAI providers.", call. = FALSE)
 }
 
-genai_http_post_json <- function(url, body, timeout = 20L) {
+genai_http_post_json <- function(url, body, timeout = 20L, headers = list()) {
   if (requireNamespace("httr2", quietly = TRUE)) {
-    response <- httr2::request(url) |>
+    request <- httr2::request(url) |>
       httr2::req_timeout(timeout) |>
       httr2::req_body_json(body, auto_unbox = TRUE) |>
+      genai_http_headers(headers) |>
       httr2::req_perform()
     return(httr2::resp_body_json(response, simplifyVector = FALSE))
   }
   if (requireNamespace("httr", quietly = TRUE)) {
-    response <- httr::POST(url, httr::timeout(timeout), body = genai_to_json(body), httr::content_type_json())
+    header_call <- if (length(headers %||% list())) list(do.call(httr::add_headers, headers)) else list()
+    response <- do.call(httr::POST, c(list(url, httr::timeout(timeout), body = genai_to_json(body), httr::content_type_json()), header_call))
     httr::stop_for_status(response)
     return(genai_from_json(httr::content(response, as = "text", encoding = "UTF-8")))
   }
@@ -372,6 +400,67 @@ genai_openai_chat_payload <- function(messages, config = genai_config(provider =
   payload
 }
 
+genai_openai_auth_headers <- function(config) {
+  key <- config$api_key %||% ""
+  if (!nzchar(key)) {
+    return(list())
+  }
+  list(Authorization = paste("Bearer", key))
+}
+
+genai_openai_missing_key <- function(config) {
+  identical(config$provider %||% "", "openai") && !nzchar(config$api_key %||% "")
+}
+
+genai_openai_available <- function(config = genai_config(provider = "openai")) {
+  if (!genai_http_available()) {
+    return(service_result(status = "warning", value = FALSE, warnings = "No HTTP client is available. Install httr2 or httr for OpenAI.", metadata = list(provider = "openai", available = FALSE, diagnostic_reason = "http_client_missing")))
+  }
+  if (genai_openai_missing_key(config)) {
+    return(service_result(status = "needs_input", value = FALSE, warnings = "OpenAI API key is not configured. Set OPENAI_API_KEY or ANALYTICS_GENAI_API_KEY.", metadata = list(provider = "openai", available = FALSE, diagnostic_reason = "api_key_missing")))
+  }
+  tryCatch({
+    genai_http_get_json(genai_endpoint(config, "/models"), timeout = min(config$timeout %||% 20L, 5L), headers = genai_openai_auth_headers(config))
+    service_result(status = "success", value = TRUE, messages = "OpenAI endpoint is available.", metadata = list(provider = "openai", available = TRUE, diagnostic_reason = "available"))
+  }, error = function(e) service_result(status = "warning", value = FALSE, warnings = paste("OpenAI unavailable:", conditionMessage(e)), metadata = list(provider = "openai", available = FALSE, diagnostic_reason = "endpoint_unreachable")))
+}
+
+genai_openai_list_models <- function(config = genai_config(provider = "openai")) {
+  if (genai_openai_missing_key(config)) {
+    return(service_result(status = "needs_input", value = data.table::data.table(model = config$model %||% "gpt-5.6"), warnings = "OpenAI API key is not configured.", metadata = list(provider = "openai", diagnostic_reason = "api_key_missing")))
+  }
+  tryCatch({
+    raw <- genai_http_get_json(genai_endpoint(config, "/models"), timeout = config$timeout %||% 20L, headers = genai_openai_auth_headers(config))
+    models <- raw$data %||% list()
+    service_result(
+      status = "success",
+      value = data.table::rbindlist(lapply(models, function(model) data.table::data.table(model = model$id %||% "")), fill = TRUE),
+      messages = "OpenAI model list returned.",
+      metadata = list(provider = "openai")
+    )
+  }, error = function(e) service_result(status = "warning", warnings = conditionMessage(e), metadata = list(provider = "openai")))
+}
+
+genai_openai_chat <- function(messages, config = genai_config(provider = "openai"), response_format = NULL) {
+  if (genai_openai_missing_key(config)) {
+    return(service_result(status = "needs_input", errors = "OpenAI API key is not configured.", metadata = list(provider = "openai", error_code = "GENAI_OPENAI_API_KEY_MISSING")))
+  }
+  tryCatch({
+    raw <- genai_http_post_json(
+      genai_endpoint(config, "/chat/completions"),
+      genai_openai_chat_payload(messages, config, response_format),
+      timeout = config$timeout %||% 20L,
+      headers = genai_openai_auth_headers(config)
+    )
+    genai_normalize_response(raw, provider_id = "openai", model = config$model)
+  }, error = function(e) service_result(status = "error", errors = conditionMessage(e), metadata = list(provider = "openai", error_code = "GENAI_CHAT_FAILED")))
+}
+
+genai_openai_generate <- function(prompt, config = genai_config(provider = "openai"), response_format = NULL, images = NULL) {
+  content <- prompt %||% ""
+  genai_openai_chat(list(list(role = "user", content = content)), config = config, response_format = response_format)
+}
+
 genai_openai_compatible_available <- function(config = genai_config(provider = "openai_compatible")) {
   if (!genai_http_available()) {
     return(service_result(status = "warning", warnings = "No HTTP client is available. Install httr2 or httr for OpenAI-compatible endpoints.", metadata = list(available = FALSE)))
@@ -456,6 +545,8 @@ genai_provider_status <- function(config = genai_config(), check_availability = 
   availability_checked <- isTRUE(check_availability)
   diagnostic_reason <- if (!availability_checked) {
     "not_checked"
+  } else if (nzchar(availability$metadata$diagnostic_reason %||% "")) {
+    availability$metadata$diagnostic_reason
   } else if (!genai_http_available()) {
     "package_missing"
   } else if (isTRUE(available)) {
@@ -478,6 +569,8 @@ genai_provider_status <- function(config = genai_config(), check_availability = 
       model = config$model,
       local = isTRUE(capabilities[["local"]]),
       privacy_preserving = isTRUE(capabilities[["privacy_preserving"]]),
+      paid = isTRUE(capabilities[["paid"]]),
+      api_key_configured = if (identical(contract$provider_id, "openai")) nzchar(config$api_key %||% "") else NA,
       config_source = config$config_source %||% if (genai_env_configured()) "environment" else "manual_or_default",
       diagnostic_reason = diagnostic_reason
     )
@@ -546,6 +639,7 @@ genai_provider_diagnostics <- function(config = genai_default_config(auto_detect
   if (!genai_configured(config)) missing <- c(missing, "provider")
   if (genai_configured(config) && !nzchar(config$model %||% "")) missing <- c(missing, "model")
   if (genai_configured(config) && !nzchar(config$base_url %||% "")) missing <- c(missing, "base_url")
+  if (identical(config$provider %||% "", "openai") && !nzchar(config$api_key %||% "")) missing <- c(missing, "api_key")
   capabilities <- availability$value$capabilities %||% genai_capabilities()
   service_result(
     status = if (identical(availability$status, "error")) "error" else if (genai_configured(config)) "success" else "needs_input",
@@ -2733,7 +2827,7 @@ qa_genai_service_contract <- function() {
       "documentation"
     ),
     status = c(
-      if (all(c("none", "mock", "ollama", "lm_studio", "llama_cpp", "openai_compatible") %in% names(registry))) "success" else "error",
+      if (all(c("none", "mock", "openai", "ollama", "lm_studio", "llama_cpp", "openai_compatible") %in% names(registry))) "success" else "error",
       if (has(genai, c("genai_available <-", "genai_list_models <-", "genai_provider_status"))) "success" else "error",
       if (has(genai, c("genai_provider_diagnostics <-", "required_packages_available", "ollama_reachable", "missing_config_fields"))) "success" else "error",
       if (all(names(genai_capabilities()) %in% names(genai_normalize_capabilities(registry$ollama)))) "success" else "error",

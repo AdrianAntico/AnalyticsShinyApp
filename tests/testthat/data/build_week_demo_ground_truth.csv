@@ -1,0 +1,7 @@
+"mechanism","hidden_mechanism","expected_investigation","intended_reveal"
+"Search saturation","Search follows a diminishing-return curve, so high spend can look inefficient without implying that Search should be broadly cut.","Compare linear spend evidence with nonlinear saturation evidence.","Do not broadly reduce Search spend; tune high-spend marginal allocation."
+"Social audience interaction","Social is materially more effective for Career Changers than Degree Seekers.","Test Social spend by audience rather than using one pooled effect.","Target Social investment toward Career Changers."
+"Operational delay threshold","Enrollment loss accelerates when processing delays exceed roughly 36 hours.","Inspect processing delay and threshold behavior before blaming media.","Improve operational throughput as the largest actionable intervention."
+"Creative fatigue","Creative performance begins declining after roughly six weeks.","Compare older and newer creative cohorts.","Refresh aging creative."
+"Competitor pressure","Selected regional declines are caused by competitor promotions.","Separate competitor-promo weeks from normal regional performance.","Treat competitor pressure separately from channel quality."
+"Regional baseline","Regions differ in demand baseline and operating capacity.","Preserve region as a baseline control.","Do not treat all regions as exchangeable."

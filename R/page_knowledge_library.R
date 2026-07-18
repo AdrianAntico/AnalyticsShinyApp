@@ -174,7 +174,7 @@ knowledge_library_discover_documents <- function(root = knowledge_library_repo_r
     )),
     Roadmap = unique(c(
       md_files(file.path(root, "docs", "roadmap"), recursive = TRUE),
-      docs_md[grepl("roadmap|backlog", basename(docs_md), ignore.case = TRUE)],
+      docs_md[grepl("roadmap|backlog|plan", basename(docs_md), ignore.case = TRUE)],
       file.path(root, "book", "source", "chapter_mapping.md")
     )),
     `Open Questions` = unique(c(

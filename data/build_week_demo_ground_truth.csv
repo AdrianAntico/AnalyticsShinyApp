@@ -1,0 +1,7 @@
+"mechanism","encoded_truth","expected_demo_reveal"
+"Search saturation","Search contribution follows a Hill-like curve with diminishing marginal returns.","Do not broadly cut Search; target spend above the saturation region."
+"Audience-dependent social effect","Social is materially stronger for Career_Changer than Degree_Seeker.","Allocate Social selectively by audience rather than uniformly."
+"Operational delay threshold","Enrollment loss accelerates when processing delay exceeds 36 hours.","Operational throughput is the highest-impact intervention."
+"Creative fatigue","Performance declines once creative age exceeds roughly 6 weeks.","Refresh aging creative before blaming channel quality."
+"Competitor promotion","Competitor promotions reduce enrollments in selected region-weeks.","Separate competitor pressure from internal marketing performance."
+"Regional baseline variation","Regions differ in demand baseline and operational capacity.","Avoid treating all regions as exchangeable."
