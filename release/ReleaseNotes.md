@@ -15,6 +15,7 @@ Analytics Workstation is an evidence-governed AI investigation platform. This re
 - Repair and uninstall scripts.
 - Per-user application install under `%LOCALAPPDATA%\Programs\Analytics Workstation`.
 - Per-user writable state under `%LOCALAPPDATA%\AnalyticsWorkstation`.
+- Installed package resources under `AnalyticsShinyApp/app` rather than a copied developer source tree.
 - Stable Start Menu launcher.
 - Electron shell resources and launcher preparation.
 - Dependency installer covering direct dependencies, optional capability packages, first-party packages, and recursive dependencies.
@@ -26,6 +27,7 @@ Analytics Workstation is an evidence-governed AI investigation platform. This re
 - Electron dependency installation requires Node.js and npm. If unavailable, the installer completes with an explicit warning and the browser launcher remains available.
 - This release prepares a desktop Electron shell but does not yet produce a signed native `.exe` installer.
 - Windows taskbar pinning is manual because modern Windows restricts reliable programmatic taskbar pinning.
+- `R CMD check --no-manual` completes with one NOTE caused by data.table-style nonstandard evaluation/global-variable discovery; tests pass with no errors or warnings.
 
 ## Install
 

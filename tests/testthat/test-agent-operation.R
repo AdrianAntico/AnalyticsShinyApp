@@ -1,10 +1,5 @@
 agent_operation_test_env <- function() {
-  env <- new.env(parent = globalenv())
-  oldwd <- getwd()
-  on.exit(setwd(oldwd), add = TRUE)
-  setwd(normalizePath(file.path("..", ".."), winslash = "/", mustWork = TRUE))
-  source("app.R", local = env)
-  env$app_env
+  asNamespace("AnalyticsShinyApp")
 }
 
 test_that("agent operation runtime QA passes", {

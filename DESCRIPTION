@@ -1,6 +1,8 @@
 Package: AnalyticsShinyApp
 Title: Evidence-Governed AI Investigation Workstation
 Version: 1.0.0
+Depends:
+    R (>= 4.1.0)
 Authors@R:
     person("Adrian", "Antico", email = "adrianantico@gmail.com", role = c("aut", "cre"))
 Maintainer: Adrian Antico <adrianantico@gmail.com>
@@ -11,6 +13,7 @@ Imports:
     AutoPlots,
     AutoQuant,
     data.table,
+    echarts4r,
     htmltools,
     htmlwidgets,
     openxlsx,

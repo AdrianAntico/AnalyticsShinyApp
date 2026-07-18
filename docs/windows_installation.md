@@ -39,10 +39,10 @@ Application launcher:
 %LOCALAPPDATA%\Programs\Analytics Workstation\Analytics Workstation.cmd
 ```
 
-Copied application source:
+Installed application resources:
 
 ```text
-%LOCALAPPDATA%\Programs\Analytics Workstation\app-source
+R package library: AnalyticsShinyApp/app
 ```
 
 User-writable state:
@@ -105,7 +105,7 @@ Run:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\repair_windows.ps1
 ```
 
-Repair reinstalls package/dependency assets, refreshes copied app source, recreates launchers, and preserves user projects by default.
+Repair reinstalls package/dependency assets, recreates launchers, and preserves user projects by default.
 
 ## Uninstall
 

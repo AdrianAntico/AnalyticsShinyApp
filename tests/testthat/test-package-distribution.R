@@ -1,15 +1,5 @@
-package_distribution_test_env <- function() {
-  env <- new.env(parent = globalenv())
-  oldwd <- getwd()
-  on.exit(setwd(oldwd), add = TRUE)
-  setwd(normalizePath(file.path("..", ".."), winslash = "/", mustWork = TRUE))
-  source("app.R", local = env)
-  env$app_env
-}
-
 test_that("distribution paths are per-user and writable", {
-  app <- package_distribution_test_env()
-  paths <- app$workstation_standard_dirs(create = TRUE)
+  paths <- AnalyticsShinyApp:::workstation_standard_dirs(create = TRUE)
 
   expect_true(grepl("AnalyticsWorkstation", paths[["user_data"]], fixed = TRUE))
   expect_true(grepl("Programs/Analytics Workstation", paths[["program"]], fixed = TRUE))
@@ -18,14 +8,12 @@ test_that("distribution paths are per-user and writable", {
 })
 
 test_that("public package API and diagnostics are available", {
-  app <- package_distribution_test_env()
+  expect_true(is.function(AnalyticsShinyApp::run_workstation))
+  expect_true(is.function(AnalyticsShinyApp::launch_workstation))
+  expect_true(is.function(AnalyticsShinyApp::workstation_diagnostics))
+  expect_true(is.function(AnalyticsShinyApp::workstation_installation_info))
 
-  expect_true(is.function(app$run_workstation))
-  expect_true(is.function(app$launch_workstation))
-  expect_true(is.function(app$workstation_diagnostics))
-  expect_true(is.function(app$workstation_installation_info))
-
-  diagnostics <- app$workstation_diagnostics(create = TRUE)
+  diagnostics <- AnalyticsShinyApp::workstation_diagnostics(create = TRUE)
   expect_s3_class(diagnostics, "data.table")
   expect_true(all(c("item", "status", "value") %in% names(diagnostics)))
   expect_true(any(diagnostics$item == "Rscript"))
@@ -33,8 +21,7 @@ test_that("public package API and diagnostics are available", {
 })
 
 test_that("package distribution QA returns explicit status rows", {
-  app <- package_distribution_test_env()
-  qa <- app$qa_package_distribution()
+  qa <- AnalyticsShinyApp::qa_package_distribution()
 
   expect_s3_class(qa, "data.table")
   expect_true(all(c("check", "status", "message") %in% names(qa)))

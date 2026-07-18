@@ -20,13 +20,13 @@ The package exposes a deliberately small supported API:
 
 Installed R package directories may be read-only. Runtime state must not be written into the package library.
 
-Immutable resources live in the package or copied app source:
+Immutable resources live in the package:
 
 - `R/`
 - `inst/electron/`
-- `inst/templates/`
-- `www/`
-- application source copied during install
+- `inst/app/www/`
+- `inst/app/config/`
+- `inst/app/data/`
 
 Writable user state lives under:
 
@@ -42,15 +42,15 @@ R/installation_paths.R
 
 Application code should use these helpers instead of inventing new writable locations.
 
-## Installed Source Model
+## Installed Package Model
 
-The Windows installer copies the repository application source into:
+The Windows installer installs the R package and launches from the installed namespace:
 
-```text
-%LOCALAPPDATA%\Programs\Analytics Workstation\app-source
+```r
+AnalyticsShinyApp::run_workstation()
 ```
 
-Shortcuts point to this stable installed source, not to the developer checkout. This means the repository can move after installation without breaking Start Menu launch.
+Shortcuts do not point to the developer checkout or to a copied repository source tree. This means the repository can move or be deleted after installation without breaking Start Menu launch.
 
 ## Supported Launch Paths
 
@@ -71,6 +71,7 @@ The first opens through R/Shiny in the browser. The second starts the Electron s
 
 - User projects are never stored inside the package installation.
 - Shortcuts must not point to a temporary repository checkout.
+- Application UI/config/demo resources must resolve through installed package resources.
 - Missing optional desktop dependencies should produce diagnostics, not startup crashes.
 - Secrets and API keys must not be written to installation logs.
 - Electron owns only the R process it starts and must not kill unrelated R processes.

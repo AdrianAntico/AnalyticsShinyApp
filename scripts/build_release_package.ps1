@@ -8,6 +8,8 @@ $releaseDir = Join-Path $repoRoot "release"
 $stageRoot = Join-Path $env:TEMP "AnalyticsWorkstationRelease-$Version"
 $stageApp = Join-Path $stageRoot "AnalyticsWorkstation-$Version"
 $zipPath = Join-Path $releaseDir "AnalyticsWorkstation-$Version.zip"
+$tarballSource = Join-Path $repoRoot "AnalyticsShinyApp_1.0.0.tar.gz"
+$tarballPath = Join-Path $releaseDir "AnalyticsShinyApp_1.0.0.tar.gz"
 $shaPath = Join-Path $releaseDir "SHA256.txt"
 
 if (Test-Path $stageRoot) {
@@ -16,8 +18,8 @@ if (Test-Path $stageRoot) {
 New-Item -ItemType Directory -Force -Path $stageApp | Out-Null
 New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
 
-$excludeDirs = @(".git", ".Rproj.user", ".agents", "exports", "runtime", "project_artifact_collector", "release", "node_modules")
-$excludeFiles = @("*.Rproj", "*.zip")
+$excludeDirs = @(".git", ".Rproj.user", ".agents", "AnalyticsShinyApp.Rcheck", "exports", "runtime", "project_artifact_collector", "release", "node_modules")
+$excludeFiles = @("*.Rproj", "*.zip", "autoplots_project.rds")
 
 robocopy $repoRoot $stageApp /E /XD $excludeDirs /XF $excludeFiles | Out-Null
 $code = $LASTEXITCODE
@@ -30,8 +32,18 @@ if (Test-Path $zipPath) {
 }
 Compress-Archive -Path $stageApp -DestinationPath $zipPath -CompressionLevel Optimal
 
-$hash = Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath
-"$($hash.Hash)  $(Split-Path -Leaf $zipPath)" | Set-Content -Path $shaPath -Encoding UTF8
+if (Test-Path $tarballSource) {
+  Copy-Item -LiteralPath $tarballSource -Destination $tarballPath -Force
+}
+
+$hashLines = @()
+foreach ($path in @($zipPath, $tarballPath)) {
+  if (Test-Path $path) {
+    $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $path
+    $hashLines += "$($hash.Hash)  $(Split-Path -Leaf $path)"
+  }
+}
+$hashLines | Set-Content -Path $shaPath -Encoding UTF8
 
 Write-Host "Release package created:"
 Write-Host "  $zipPath"

@@ -27,5 +27,5 @@ test_that("report browser degrades gracefully for malformed contracts", {
   rendered <- render_report_browser(list(title = "Bad report"))
   html <- as.character(htmltools::renderTags(rendered)$html)
 
-  expect_match(html, "Invalid ReportContract", fixed = TRUE)
+  expect_match(html, "Invalid report record", fixed = TRUE)
 })

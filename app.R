@@ -133,8 +133,6 @@ source(file.path("R", "page_semantic_intelligence.R"), local = app_env)
 source(file.path("R", "page_causal_intelligence.R"), local = app_env)
 source(file.path("R", "app_ui.R"), local = app_env)
 source(file.path("R", "app_server.R"), local = app_env)
+source(file.path("R", "workstation_runtime.R"), local = app_env)
 
-ui <- app_env$build_app_ui()
-server <- app_env$server
-
-shinyApp(ui, server)
+app_env$workstation_app()

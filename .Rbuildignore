@@ -6,6 +6,12 @@
 ^exports$
 ^runtime$
 ^project_artifact_collector$
+^app\.R$
+^www$
+^config$
+^data$
+^scripts$
+^release$
 ^inst/electron/node_modules$
 ^book/source/raw_conversations$
 ^book/source/source_packs$

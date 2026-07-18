@@ -1,8 +1,5 @@
 source_app_for_multi_service_report_tests <- function() {
-  root <- normalizePath(file.path(testthat::test_path(), "..", ".."), winslash = "/", mustWork = TRUE)
-  old <- setwd(root)
-  on.exit(setwd(old), add = TRUE)
-  source("app.R", local = globalenv())
+  assign("app_env", asNamespace("AnalyticsShinyApp"), envir = globalenv())
 }
 
 testthat::test_that("SHAP Analysis adapter creates a valid renderer-free ReportContract", {

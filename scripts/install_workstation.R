@@ -33,20 +33,6 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
 }
 remotes::install_local(repo_root, dependencies = FALSE, upgrade = "never", quiet = FALSE)
 
-app_source <- paths[["app_source"]]
-if (dir.exists(app_source)) {
-  unlink(app_source, recursive = TRUE, force = TRUE)
-}
-dir.create(app_source, recursive = TRUE, showWarnings = FALSE)
-
-copy_items <- c("app.R", "DESCRIPTION", "LICENSE", "README.md", "R", "www", "docs", "data", "inst", "config", "scripts", "tests")
-for (item in copy_items) {
-  src <- file.path(repo_root, item)
-  if (file.exists(src)) {
-    invisible(file.copy(src, app_source, recursive = TRUE, copy.date = TRUE, overwrite = TRUE))
-  }
-}
-
 electron_src <- file.path(repo_root, "inst", "electron")
 electron_dest <- file.path(paths[["program"]], "electron")
 if (dir.exists(electron_dest)) {
@@ -65,8 +51,7 @@ launcher <- paths[["launcher"]]
 launcher_lines <- c(
   "@echo off",
   "setlocal",
-  paste0("set \"ANALYTICS_WORKSTATION_APP_SOURCE=", app_source, "\""),
-  paste0("\"", rscript, "\" \"", file.path(app_source, "scripts", "launch_installed_workstation.R"), "\" \"", app_source, "\""),
+  paste0("\"", rscript, "\" -e \"AnalyticsShinyApp::run_workstation(host='127.0.0.1', launch_browser=TRUE)\""),
   "endlocal"
 )
 writeLines(launcher_lines, launcher, useBytes = TRUE)
@@ -75,7 +60,6 @@ electron_launcher <- file.path(paths[["program"]], "Analytics Workstation Electr
 electron_lines <- c(
   "@echo off",
   "setlocal",
-  paste0("set \"ANALYTICS_WORKSTATION_APP_SOURCE=", app_source, "\""),
   paste0("cd /d \"", electron_dest, "\""),
   "if exist node_modules\\electron\\dist\\electron.exe (",
   "  node_modules\\electron\\dist\\electron.exe .",
@@ -147,7 +131,7 @@ emit("Analytics Workstation")
 emit("Version: ", workstation_release_version())
 emit("")
 emit(if (requireNamespace("AnalyticsShinyApp", quietly = TRUE)) "\u2713 R package installed" else "x R package not installed")
-emit(if (file.exists(file.path(app_source, "app.R"))) "\u2713 Application source installed" else "x Application source missing")
+emit(if (dir.exists(AnalyticsShinyApp:::workstation_resource_path(mustWork = FALSE))) "\u2713 Application resources installed" else "x Application resources missing")
 emit(if (electron_status == "PASS") "\u2713 Electron application installed" else "! Electron application needs attention")
 emit(if (file.exists(start_shortcut)) "\u2713 Start Menu shortcut created" else "! Start Menu shortcut not found")
 emit(if (file.exists(desktop_shortcut)) "\u2713 Desktop shortcut created" else "! Desktop shortcut not created")
@@ -195,7 +179,7 @@ emit("  3. Select \"Pin to taskbar.\"")
 emit("")
 emit("Validation:")
 emit("  R package: ", if (requireNamespace("AnalyticsShinyApp", quietly = TRUE)) "PASS" else "FAIL")
-emit("  Application resources: ", if (file.exists(file.path(app_source, "app.R"))) "PASS" else "FAIL")
+emit("  Application resources: ", if (dir.exists(AnalyticsShinyApp:::workstation_resource_path(mustWork = FALSE))) "PASS" else "FAIL")
 emit("  Electron shell: ", electron_status)
 emit("  Distribution QA: ", if (ok) "PASS" else "FAIL")
 emit("")

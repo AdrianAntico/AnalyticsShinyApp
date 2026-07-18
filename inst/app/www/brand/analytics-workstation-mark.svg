@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Analytics Workstation</title>
+  <desc id="desc">Layered analytical evidence mark with blue, cyan, and green strokes.</desc>
+  <defs>
+    <linearGradient id="aw-blue" x1="18" y1="20" x2="110" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0ea5ff"/>
+      <stop offset="1" stop-color="#1677ff"/>
+    </linearGradient>
+    <linearGradient id="aw-cyan" x1="12" y1="58" x2="116" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#09bde7"/>
+      <stop offset="1" stop-color="#00d8ff"/>
+    </linearGradient>
+    <linearGradient id="aw-green" x1="12" y1="82" x2="116" y2="124" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8bdc4a"/>
+      <stop offset="1" stop-color="#a8f12f"/>
+    </linearGradient>
+    <filter id="aw-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.8" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.02 0 0 0 0 0.78 0 0 0 0 1 0 0 0 .62 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="128" height="128" rx="24" fill="#07111f"/>
+  <g filter="url(#aw-glow)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M64 12 113 42 82 61" stroke="url(#aw-blue)" stroke-width="12"/>
+    <path d="M46 61 15 42 64 12" stroke="url(#aw-blue)" stroke-width="12"/>
+    <path d="M27 58 12 68 47 89" stroke="url(#aw-cyan)" stroke-width="10"/>
+    <path d="M101 58 116 68 81 89" stroke="url(#aw-cyan)" stroke-width="10"/>
+    <path d="M64 54 81 66 64 78 47 66Z" fill="url(#aw-cyan)" stroke="none"/>
+    <path d="M26 83 12 92 64 122 116 92 102 83" stroke="url(#aw-green)" stroke-width="10"/>
+    <path d="M64 86v27" stroke="url(#aw-green)" stroke-width="10"/>
+    <path d="M50 100 64 114 78 100" stroke="url(#aw-green)" stroke-width="10"/>
+  </g>
+</svg>

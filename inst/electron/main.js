@@ -7,11 +7,6 @@ const path = require("path");
 let rProcess = null;
 let mainWindow = null;
 
-function appRoot() {
-  return process.env.ANALYTICS_WORKSTATION_APP_SOURCE ||
-    path.join(process.env.LOCALAPPDATA || app.getPath("userData"), "Programs", "Analytics Workstation", "app-source");
-}
-
 function userRoot() {
   return process.env.ANALYTICS_WORKSTATION_USER_DATA ||
     path.join(process.env.LOCALAPPDATA || app.getPath("userData"), "AnalyticsWorkstation");
@@ -74,20 +69,14 @@ function createErrorWindow(message) {
 }
 
 async function startWorkstation() {
-  const root = appRoot();
   const logs = logDir();
   const port = getPort() === "0" ? String(42000 + Math.floor(Math.random() * 10000)) : getPort();
   const url = `http://127.0.0.1:${port}`;
   const out = fs.openSync(path.join(logs, "electron-shiny.log"), "a");
   const err = fs.openSync(path.join(logs, "electron-shiny-error.log"), "a");
 
-  if (!fs.existsSync(path.join(root, "app.R"))) {
-    createErrorWindow(`Installed app source was not found at ${root}. Run repair_windows.ps1.`);
-    return;
-  }
-
-  rProcess = childProcess.spawn(findRscript(), ["-e", `setwd(${JSON.stringify(root)}); shiny::runApp('.', host='127.0.0.1', port=${port}, launch.browser=FALSE)`], {
-    cwd: root,
+  rProcess = childProcess.spawn(findRscript(), ["-e", `AnalyticsShinyApp::run_workstation(host='127.0.0.1', port=${port}, launch_browser=FALSE)`], {
+    cwd: userRoot(),
     env: { ...process.env, ANALYTICS_WORKSTATION_PORT: port },
     detached: false,
     stdio: ["ignore", out, err]

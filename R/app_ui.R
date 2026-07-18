@@ -54,7 +54,7 @@ ui_workspace_overview_tab <- function(title, subtitle, eyebrow, actions = NULL) 
 }
 
 build_app_ui <- function() {
-  css_file <- file.path("www", "app.css")
+  css_file <- workstation_resource_path("www", "app.css", mustWork = FALSE)
   css_version <- if (file.exists(css_file)) {
     as.integer(file.info(css_file)$mtime)
   } else {
@@ -63,8 +63,8 @@ build_app_ui <- function() {
   fluidPage(
     tags$head(
       tags$title("Analytics Workstation"),
-      tags$link(rel = "icon", type = "image/svg+xml", href = paste0("brand/analytics-workstation-mark.svg?v=", css_version)),
-      tags$link(rel = "stylesheet", type = "text/css", href = paste0("app.css?v=", css_version))
+      tags$link(rel = "icon", type = "image/svg+xml", href = paste0("aw-assets/brand/analytics-workstation-mark.svg?v=", css_version)),
+      tags$link(rel = "stylesheet", type = "text/css", href = paste0("aw-assets/app.css?v=", css_version))
     ),
     ui_app_shell(
       theme = "dark",
@@ -210,7 +210,7 @@ build_app_ui <- function() {
           class = "aq-brand-lockup",
           icon = tags$img(
             class = "aq-brand-mark",
-            src = paste0("brand/analytics-workstation-mark.svg?v=", css_version),
+            src = paste0("aw-assets/brand/analytics-workstation-mark.svg?v=", css_version),
             alt = ""
           )
         ),

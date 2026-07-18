@@ -330,16 +330,7 @@ build_layout_code <- function(plot_names, section_plot_names = list(), layout_ty
 build_export_code <- function(export_dir = "path/to/output", export_name = "autoplots_report") {
   paste0(
     "html_path <- file.path(", r_string(export_dir), ", ", r_string(paste0(tools::file_path_sans_ext(basename(export_name)), ".html")), ")\n",
-    "if (\"save_widget\" %in% getNamespaceExports(\"AutoPlots\")) {\n",
-    "  AutoPlots::save_widget(\n",
-    "    widget = report,\n",
-    "    path = ", r_string(export_dir), ",\n",
-    "    name = ", r_string(export_name), ",\n",
-    "    selfcontained = TRUE,\n",
-    "    overwrite = TRUE,\n",
-    "    open = FALSE\n",
-    "  )\n",
-    "} else if (inherits(report, \"htmlwidget\")) {\n",
+    "if (inherits(report, \"htmlwidget\")) {\n",
     "  htmlwidgets::saveWidget(\n",
     "    widget = report,\n",
     "    file = html_path,\n",

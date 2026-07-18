@@ -1,0 +1,259 @@
+{
+  "workspace_version": "cross_repo_workspace_v1",
+  "description": "Bounded cross-repository workspace manifest for Analytics Workstation agents.",
+  "expected_r_version": ">= 4.5.0",
+  "path_resolution": {
+    "strategies": [
+      "environment_variable",
+      "manifest_relative_path",
+      "sibling_directory"
+    ],
+    "environment_variables": {
+      "AnalyticsShinyApp": "ANALYTICS_WORKSTATION_REPO",
+      "Rodeo": "RODEO_REPO",
+      "AutoQuant": "AUTOQUANT_REPO",
+      "AutoPlots": "AUTOPLOTS_REPO"
+    }
+  },
+  "temporary_library": {
+    "enabled": true,
+    "default_install": false,
+    "cleanup": true,
+    "allow_global_fallback": false
+  },
+  "repositories": [
+    {
+      "name": "AnalyticsShinyApp",
+      "package": "AnalyticsShinyApp",
+      "required": true,
+      "is_package": true,
+      "role": "Product shell, workflow orchestration, artifacts, collector, GenAI action layer, and cross-repo validation owner.",
+      "relative_path": ".",
+      "env_var": "ANALYTICS_WORKSTATION_REPO",
+      "docs": [
+        "README.md",
+        "docs/ecosystem_operating_model.md",
+        "docs/agent_task_template.md",
+        "docs/repo_contracts.md"
+      ],
+      "validation": {
+        "fast": [
+          {
+            "id": "app_source",
+            "type": "r_expression",
+            "expression": "source('app.R'); TRUE",
+            "required": true,
+            "timeout_seconds": 120
+          }
+        ],
+        "standard": [
+          {
+            "id": "cross_system_invariants",
+            "type": "app_env_qa",
+            "function": "qa_cross_system_invariants",
+            "required": true,
+            "timeout_seconds": 180
+          },
+          {
+            "id": "analysis_modules_integration",
+            "type": "app_env_qa",
+            "function": "qa_analysis_modules_integration",
+            "required": false,
+            "timeout_seconds": 600
+          }
+        ],
+        "full": [
+          {
+            "id": "production_workflow_exercise",
+            "type": "app_env_qa",
+            "function": "qa_production_workflow_exercise",
+            "required": false,
+            "timeout_seconds": 600
+          },
+          {
+            "id": "analytical_improvement_campaign_catboost",
+            "type": "app_env_qa",
+            "function": "qa_analytical_improvement_campaign",
+            "args": "run_catboost = TRUE",
+            "required": false,
+            "timeout_seconds": 900
+          }
+        ]
+      },
+      "expected_exports": []
+    },
+    {
+      "name": "Rodeo",
+      "package": "Rodeo",
+      "required": true,
+      "is_package": true,
+      "role": "Feature engineering and fit/apply transformation contracts.",
+      "relative_path": "../Rodeo",
+      "env_var": "RODEO_REPO",
+      "docs": [
+        "README.md"
+      ],
+      "validation": {
+        "fast": [
+          {
+            "id": "package_load",
+            "type": "package_load",
+            "required": false,
+            "timeout_seconds": 120
+          }
+        ],
+        "standard": [
+          {
+            "id": "rodeo_package",
+            "type": "package_qa",
+            "function": "qa_rodeo_package",
+            "qa_scope": "public",
+            "required": false,
+            "timeout_seconds": 180
+          }
+        ],
+        "full": []
+      },
+      "expected_exports": [
+        "generate_rodeo_feature_engineering_artifacts",
+        "generate_rodeo_model_prep_artifacts",
+        "qa_rodeo_package"
+      ]
+    },
+    {
+      "name": "AutoQuant",
+      "package": "AutoQuant",
+      "required": true,
+      "is_package": true,
+      "role": "Analytical artifact generators for EDA, readiness, model assessment, model insights, SHAP, and CatBoost Builder.",
+      "relative_path": "../AutoQuant",
+      "env_var": "AUTOQUANT_REPO",
+      "docs": [
+        "README.md"
+      ],
+      "validation": {
+        "fast": [
+          {
+            "id": "package_load",
+            "type": "package_load",
+            "required": false,
+            "timeout_seconds": 120
+          }
+        ],
+        "standard": [
+          {
+            "id": "autoquant_package",
+            "type": "package_qa",
+            "function": "qa_autoquant_package",
+            "qa_scope": "public",
+            "required": false,
+            "timeout_seconds": 900
+          }
+        ],
+        "full": []
+      },
+      "expected_exports": [
+        "generate_eda_artifacts",
+        "generate_model_assessment_artifacts",
+        "generate_regression_model_insights_artifacts",
+        "generate_binary_classification_model_insights_artifacts",
+        "generate_regression_shap_analysis_artifacts",
+        "generate_binary_classification_shap_analysis_artifacts",
+        "generate_catboost_builder_artifacts",
+        "qa_autoquant_package"
+      ]
+    },
+    {
+      "name": "AutoPlots",
+      "package": "AutoPlots",
+      "required": true,
+      "is_package": true,
+      "role": "Production chart rendering, themes, widget display helpers, and screenshot-compatible plot objects.",
+      "relative_path": "../AutoPlots",
+      "env_var": "AUTOPLOTS_REPO",
+      "docs": [
+        "README.md"
+      ],
+      "validation": {
+        "fast": [
+          {
+            "id": "package_load",
+            "type": "package_load",
+            "required": false,
+            "timeout_seconds": 120
+          }
+        ],
+        "standard": [
+          {
+            "id": "autoplots_package",
+            "type": "package_qa",
+            "function": "qa_autoplots_package",
+            "qa_scope": "public",
+            "required": false,
+            "timeout_seconds": 180
+          }
+        ],
+        "full": []
+      },
+      "expected_exports": [
+        "Bar",
+        "Line",
+        "Area",
+        "Scatter",
+        "Box",
+        "HeatMap",
+        "CorrMatrix",
+        "VariableImportance",
+        "ImportancePareto",
+        "display_plots_grid",
+        "display_plots_sections",
+        "save_image",
+        "qa_autoplots_package"
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "contract_id": "app_to_rodeo_feature_preparation",
+      "consumer": "AnalyticsShinyApp",
+      "provider": "Rodeo",
+      "required_exports": [
+        "generate_rodeo_feature_engineering_artifacts",
+        "generate_rodeo_model_prep_artifacts"
+      ]
+    },
+    {
+      "contract_id": "app_to_autoquant_artifact_generators",
+      "consumer": "AnalyticsShinyApp",
+      "provider": "AutoQuant",
+      "required_exports": [
+        "generate_eda_artifacts",
+        "generate_model_assessment_artifacts",
+        "generate_regression_model_insights_artifacts",
+        "generate_binary_classification_model_insights_artifacts",
+        "generate_regression_shap_analysis_artifacts",
+        "generate_binary_classification_shap_analysis_artifacts",
+        "generate_catboost_builder_artifacts"
+      ]
+    },
+    {
+      "contract_id": "app_to_autoplots_rendering",
+      "consumer": "AnalyticsShinyApp",
+      "provider": "AutoPlots",
+      "required_exports": [
+        "Bar",
+        "Line",
+        "Area",
+        "Scatter",
+        "Box",
+        "HeatMap",
+        "CorrMatrix",
+        "VariableImportance",
+        "ImportancePareto",
+        "display_plots_grid",
+        "display_plots_sections",
+        "save_image"
+      ]
+    }
+  ]
+}

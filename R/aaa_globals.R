@@ -1,0 +1,4 @@
+APP_VERSION <- "1.0.0"
+APP_RELEASE <- "1.0.0-buildweek"
+MAX_UPLOAD_MB <- 50
+

@@ -10,6 +10,9 @@ workstation_installation_info(create = TRUE)
 qa_package_distribution()
 qa_electron_distribution()
 }
+\arguments{
+\item{create}{Whether to create missing per-user diagnostic directories before checking them.}
+}
 \description{
 Return structured installation, dependency, path, launcher, and Electron readiness diagnostics.
 }

@@ -26,18 +26,6 @@
 }
 
 .export_save_widget <- function(report, export_dir, export_name, html_path) {
-  if ("save_widget" %in% getNamespaceExports("AutoPlots")) {
-    AutoPlots::save_widget(
-      widget = report,
-      path = export_dir,
-      name = export_name,
-      selfcontained = TRUE,
-      overwrite = TRUE,
-      open = FALSE
-    )
-    return("autoplots")
-  }
-
   if (inherits(report, "htmlwidget")) {
     htmlwidgets::saveWidget(
       widget = report,
@@ -152,10 +140,7 @@ export_html_service <- function(report, export_dir, export_name) {
   tryCatch({
     export_method <- .export_save_widget(report, export_dir, export_name, html_path)
     fallback_warning <- if (identical(export_method, "htmltools")) {
-      paste(
-        "AutoPlots::save_widget() is unavailable; exported HTML with an asset directory beside",
-        basename(html_path)
-      )
+      paste("Exported HTML with an asset directory beside", basename(html_path))
     } else {
       character()
     }

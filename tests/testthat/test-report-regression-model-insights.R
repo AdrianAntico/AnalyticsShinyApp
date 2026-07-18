@@ -1,8 +1,5 @@
 source_app_for_regression_report_tests <- function() {
-  root <- normalizePath(file.path(testthat::test_path(), "..", ".."), winslash = "/", mustWork = TRUE)
-  old <- setwd(root)
-  on.exit(setwd(old), add = TRUE)
-  source("app.R", local = globalenv())
+  assign("app_env", asNamespace("AnalyticsShinyApp"), envir = globalenv())
 }
 
 regression_report_fixture_result <- function() {
@@ -78,4 +75,3 @@ testthat::test_that("Regression Model Insights adapter round-trips and degrades 
   testthat::expect_true("missing_regression_visualizations" %in% component_ids)
   testthat::expect_identical(app_env$validate_report(missing_report)$status, "success")
 })
-

@@ -150,11 +150,22 @@ generate_build_week_demo_data <- function(output_dir = "data", seed = 20260717L,
 }
 
 build_week_demo_data_path <- function() {
-  file.path("data", "build_week_demo.csv")
+  candidates <- c(
+    workstation_resource_path("data", "build_week_demo.csv", mustWork = FALSE),
+    file.path("tests", "testthat", "data", "build_week_demo.csv"),
+    file.path("data", "build_week_demo.csv")
+  )
+  found <- candidates[file.exists(candidates)]
+  if (length(found)) normalizePath(found[[1]], winslash = "/", mustWork = FALSE) else candidates[[1]]
 }
 
 build_week_demo_ground_truth_path <- function() {
-  file.path("data", "build_week_demo_ground_truth.csv")
+  candidates <- c(
+    file.path("tests", "testthat", "data", "build_week_demo_ground_truth.csv"),
+    file.path("data", "build_week_demo_ground_truth.csv")
+  )
+  found <- candidates[file.exists(candidates)]
+  if (length(found)) normalizePath(found[[1]], winslash = "/", mustWork = FALSE) else candidates[[1]]
 }
 
 build_week_demo_dataset <- function(write_if_missing = FALSE) {
