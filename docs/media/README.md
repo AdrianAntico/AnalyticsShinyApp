@@ -1,17 +1,17 @@
 # Media Exhibits
 
-This folder contains product evidence exhibits used by the README and submission materials.
+This folder contains product captures, curated evidence exhibits, and browser-recorded video used by the README and submission materials.
 
 ## Figures
 
 | File | Purpose |
 |---|---|
-| `hero.png` | Arrival experience and visual identity. |
-| `investigation.png` | Build Week investigation state with preflight, campaign state, and claim verification visible. |
-| `belief_revision.gif` | Compact motion exhibit showing the investigation progressing across captured app states. |
-| `claim_verification.png` | Evidence trace for the final claim. |
-| `integrity_review.png` | Integrity-review exhibit for trust and decision readiness. |
-| `architecture.png` | One-frame architecture summary. |
+| `hero.png` | Product capture of the arrival experience and visual identity. |
+| `investigation.png` | Curated evidence exhibit showing the investigation opening with uncertainty, readiness checks, competing explanations, and an evidence plan. |
+| `belief_revision.gif` | Compact motion exhibit showing the investigation progressing across its major evidence states. |
+| `claim_verification.png` | Curated evidence exhibit tracing the final claim through belief, evidence, recommendation, and caveat. |
+| `integrity_review.png` | Curated evidence exhibit showing the workstation challenging its own recommendation before asking for trust. |
+| `architecture.png` | Curated one-frame architecture summary. |
 
 ## Video
 
