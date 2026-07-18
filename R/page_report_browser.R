@@ -30,6 +30,8 @@ page_report_browser_ui <- function(id) {
 
 page_report_browser_server <- function(id, ctx) {
   moduleServer(id, function(input, output, session) {
+    campaign_auto_selected <- reactiveVal(FALSE)
+
     available_reports <- reactive({
       reports <- report_browser_demo_reports()
       campaign <- tryCatch(ctx$agent_report_contract(), error = function(e) NULL)
@@ -42,6 +44,14 @@ page_report_browser_server <- function(id, ctx) {
     observe({
       reports <- available_reports()
       selected <- input$report_family
+      campaign_available <- "Agent Campaign" %in% names(reports)
+      if (!isTRUE(campaign_available)) {
+        campaign_auto_selected(FALSE)
+      }
+      if (isTRUE(campaign_available) && !isTRUE(campaign_auto_selected()) && (is.null(selected) || identical(selected, "Regression"))) {
+        selected <- "Agent Campaign"
+        campaign_auto_selected(TRUE)
+      }
       if (is.null(selected) || !selected %in% names(reports)) selected <- names(reports)[[1]]
       updateSelectInput(session, "report_family", choices = names(reports), selected = selected)
     })

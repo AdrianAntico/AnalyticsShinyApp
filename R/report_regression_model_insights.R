@@ -358,6 +358,7 @@ build_regression_model_insights_report <- function(
     } else if (identical(artifact$artifact_type, "table")) {
       add_to_section(section_id, report_component_table(
         table_ref = artifact_id,
+        data = if (is.data.frame(artifact$content)) artifact$content else if (is.data.frame(artifact$object)) artifact$object else NULL,
         table_contract = .rmi_report_table_contract(artifact),
         component_id = paste0("table_", artifact_id),
         title = .rmi_report_artifact_label(artifact),

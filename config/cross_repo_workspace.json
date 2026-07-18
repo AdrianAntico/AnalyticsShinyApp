@@ -12,7 +12,8 @@
       "AnalyticsShinyApp": "ANALYTICS_WORKSTATION_REPO",
       "Rodeo": "RODEO_REPO",
       "AutoQuant": "AUTOQUANT_REPO",
-      "AutoPlots": "AUTOPLOTS_REPO"
+      "AutoPlots": "AUTOPLOTS_REPO",
+      "AutoNLS": "AUTONLS_REPO"
     }
   },
   "temporary_library": {
@@ -161,6 +162,42 @@
         "generate_binary_classification_shap_analysis_artifacts",
         "generate_catboost_builder_artifacts",
         "qa_autoquant_package"
+      ]
+    },
+    {
+      "name": "AutoNLS",
+      "package": "AutoNLS",
+      "required": false,
+      "is_package": true,
+      "role": "Optional nonlinear effect-curve backend used by AutoQuant SHAP effect-curve paths when available.",
+      "relative_path": "../AutoNLS",
+      "env_var": "AUTONLS_REPO",
+      "docs": [
+        "README.md"
+      ],
+      "validation": {
+        "fast": [
+          {
+            "id": "package_load",
+            "type": "package_load",
+            "required": false,
+            "timeout_seconds": 120
+          }
+        ],
+        "standard": [
+          {
+            "id": "autonls_package",
+            "type": "package_qa",
+            "function": "qa_autonls_package",
+            "qa_scope": "public",
+            "required": false,
+            "timeout_seconds": 180
+          }
+        ],
+        "full": []
+      },
+      "expected_exports": [
+        "qa_autonls_package"
       ]
     },
     {

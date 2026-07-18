@@ -22,6 +22,11 @@ Imports:
     openxlsx,
     shiny,
     tools
+Remotes:
+    AdrianAntico/AutoPlots,
+    AdrianAntico/AutoQuant,
+    AdrianAntico/AutoNLS,
+    AdrianAntico/Rodeo
 Suggests:
     AutoNLS,
     arrow,

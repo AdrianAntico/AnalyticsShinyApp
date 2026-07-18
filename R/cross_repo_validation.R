@@ -1153,6 +1153,7 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
   app_fingerprint <- cross_repo_source_fingerprint(discovery$AnalyticsShinyApp)
   package_qa_contracts <- list(
     Rodeo = "qa_rodeo_package",
+    AutoNLS = "qa_autonls_package",
     AutoQuant = "qa_autoquant_package",
     AutoPlots = "qa_autoplots_package"
   )
@@ -1208,6 +1209,7 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       "analytics_repo_discovered",
       "rodeo_repo_discovered",
       "autoquant_repo_discovered",
+      "autonls_repo_discovered",
       "autoplots_repo_discovered",
       "mode_fast_suites_exist",
       "mode_standard_extends_fast",
@@ -1232,6 +1234,7 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       if (isTRUE(discovery$AnalyticsShinyApp$exists)) "success" else "error",
       if (isTRUE(discovery$Rodeo$exists)) "success" else "warning",
       if (isTRUE(discovery$AutoQuant$exists)) "success" else "warning",
+      if (isTRUE(discovery$AutoNLS$exists)) "success" else "warning",
       if (isTRUE(discovery$AutoPlots$exists)) "success" else "warning",
       if (length(fast_suites) > 0L) "success" else "error",
       if (length(standard_suites) >= length(fast_suites)) "success" else "error",
@@ -1243,7 +1246,7 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       if (isTRUE(discovery$AnalyticsShinyApp$git$available)) "success" else "warning",
       if (isTRUE(discovery$AnalyticsShinyApp$package_metadata$available)) "success" else "error",
       if (nzchar(app_fingerprint$fingerprint %||% "")) "success" else "error",
-      if (all(c("Rodeo", "AutoPlots", "AutoQuant") %in% package_order)) "success" else "error",
+      if (all(c("Rodeo", "AutoNLS", "AutoPlots", "AutoQuant") %in% package_order)) "success" else "error",
       if (isTRUE(aggregate_qa_declared)) "success" else "error",
       if (isTRUE(rodeo_policy$roxygen_used) && nzchar(rodeo_policy$regeneration_command %||% "")) "success" else "error",
       if (all(c("namespace_exports", "rd_aliases", "classification") %in% names(autoplots_drift))) "success" else "error",
@@ -1256,6 +1259,7 @@ qa_cross_repo_validation_orchestrator <- function(output_dir = file.path(tempdir
       discovery$AnalyticsShinyApp$path %||% "missing",
       discovery$Rodeo$path %||% "missing",
       discovery$AutoQuant$path %||% "missing",
+      discovery$AutoNLS$path %||% "missing",
       discovery$AutoPlots$path %||% "missing",
       paste(length(fast_suites), "fast suite(s) discovered for AnalyticsShinyApp."),
       paste(length(standard_suites), "standard suite(s) after mode expansion."),

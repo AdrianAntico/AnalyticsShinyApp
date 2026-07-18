@@ -11,6 +11,8 @@ source("app.R", local = env)
 app <- env$app_env
 
 result <- app$generate_build_week_demo_data(output_dir = "data", seed = 20260717L, write_files = TRUE)
+invisible(app$generate_build_week_demo_data(output_dir = file.path("inst", "app", "data"), seed = 20260717L, write_files = TRUE))
 cat(sprintf("Generated Build Week mystery dataset: %s rows x %s columns\n", nrow(result$data), ncol(result$data)))
 cat("Data: data/build_week_demo.csv\n")
+cat("Package data: inst/app/data/build_week_demo.csv\n")
 cat("Ground truth: data/build_week_demo_ground_truth.csv\n")

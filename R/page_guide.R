@@ -401,7 +401,7 @@ home_art_boundary_lines <- function(state) {
   drift <- log1p(max(1, state$plan_count %||% 0L)) / 7
   xs <- seq(8, 92, length.out = 33)
   ys <- seq(12, 88, length.out = 25)
-  grid <- expand.grid(x = xs, y = ys)
+  grid <- expand.grid(x = xs, y = ys, KEEP.OUT.ATTRS = FALSE)
 
   lapply(seq_len(nrow(grid)), function(i) {
     x <- grid$x[i]
@@ -503,7 +503,8 @@ home_blank_flow_data <- function(kind, state) {
   grid_step <- if (identical(kind, "boundary")) 0.095 else 0.075
   vals <- expand.grid(
     x = seq(-1.25, 1.25, by = grid_step),
-    y = seq(-1.25, 1.25, by = grid_step)
+    y = seq(-1.25, 1.25, by = grid_step),
+    KEEP.OUT.ATTRS = FALSE
   )
   artifacts <- log1p(max(1, state$artifact_count %||% 0L))
   collector <- log1p(max(1, state$collector_artifacts %||% 0L))
@@ -555,6 +556,8 @@ home_art_echart <- function(kind, state) {
   palette <- home_blank_flow_palette(kind)
   density <- if (identical(kind, "instrument")) 96 else if (identical(kind, "boundary")) 82 else 112
   particle_size <- if (identical(kind, "instrument")) 4 else if (identical(kind, "boundary")) 3 else 5
+  color_min <- unname(min(vals$color, na.rm = TRUE))
+  color_max <- unname(quantile(vals$color, probs = 0.96, na.rm = TRUE))
 
   vals |>
     echarts4r::e_charts(x) |>
@@ -568,8 +571,8 @@ home_art_echart <- function(kind, state) {
       itemStyle = list(opacity = 0.86)
     ) |>
     echarts4r::e_visual_map(
-      min = min(vals$color, na.rm = TRUE),
-      max = quantile(vals$color, probs = 0.96, na.rm = TRUE),
+      min = color_min,
+      max = color_max,
       dimension = 4,
       scale = echarts4r::e_scale,
       show = FALSE,

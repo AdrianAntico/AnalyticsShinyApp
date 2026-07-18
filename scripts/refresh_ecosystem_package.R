@@ -1,15 +1,15 @@
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 2L) {
-  stop("Usage: Rscript scripts/refresh_ecosystem_package.R <Rodeo|AutoQuant|AutoPlots|all> <destination_library>", call. = FALSE)
+  stop("Usage: Rscript scripts/refresh_ecosystem_package.R <Rodeo|AutoQuant|AutoPlots|AutoNLS|all> <destination_library>", call. = FALSE)
 }
 
 target <- args[[1]]
 destination_library <- normalizePath(args[[2]], winslash = "/", mustWork = FALSE)
-allowed <- c("Rodeo", "AutoQuant", "AutoPlots", "all")
+allowed <- c("Rodeo", "AutoQuant", "AutoPlots", "AutoNLS", "all")
 
 if (!target %in% allowed) {
-  stop("Unknown package target. Use Rodeo, AutoQuant, AutoPlots, or all.", call. = FALSE)
+  stop("Unknown package target. Use Rodeo, AutoQuant, AutoPlots, AutoNLS, or all.", call. = FALSE)
 }
 
 if (!dir.exists(destination_library)) {

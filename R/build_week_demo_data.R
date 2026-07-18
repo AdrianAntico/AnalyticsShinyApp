@@ -151,9 +151,9 @@ generate_build_week_demo_data <- function(output_dir = "data", seed = 20260717L,
 
 build_week_demo_data_path <- function() {
   candidates <- c(
-    workstation_resource_path("data", "build_week_demo.csv", mustWork = FALSE),
     file.path("tests", "testthat", "data", "build_week_demo.csv"),
-    file.path("data", "build_week_demo.csv")
+    file.path("data", "build_week_demo.csv"),
+    workstation_resource_path("data", "build_week_demo.csv", mustWork = FALSE)
   )
   found <- candidates[file.exists(candidates)]
   if (length(found)) normalizePath(found[[1]], winslash = "/", mustWork = FALSE) else candidates[[1]]
@@ -162,7 +162,8 @@ build_week_demo_data_path <- function() {
 build_week_demo_ground_truth_path <- function() {
   candidates <- c(
     file.path("tests", "testthat", "data", "build_week_demo_ground_truth.csv"),
-    file.path("data", "build_week_demo_ground_truth.csv")
+    file.path("data", "build_week_demo_ground_truth.csv"),
+    workstation_resource_path("data", "build_week_demo_ground_truth.csv", mustWork = FALSE)
   )
   found <- candidates[file.exists(candidates)]
   if (length(found)) normalizePath(found[[1]], winslash = "/", mustWork = FALSE) else candidates[[1]]
@@ -175,10 +176,22 @@ build_week_demo_dataset <- function(write_if_missing = FALSE) {
     return(generated$data)
   }
   data <- read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)
+  if ("audience" %in% names(data)) {
+    data$audience <- gsub("_", " ", data$audience)
+    data$audience <- sub("^Career Changer$", "Career Changers", data$audience)
+    data$audience <- sub("^Degree Seeker$", "Degree Seekers", data$audience)
+  }
   data$week <- as.Date(data$week)
   data$region <- factor(data$region, levels = c("West", "Southwest", "Midwest", "Northeast"))
   data$audience <- factor(data$audience, levels = c("Career Changers", "Degree Seekers"))
   data$competitor_promo <- as.integer(data$competitor_promo)
+  if (isTRUE(write_if_missing) && (
+    !all(build_week_demo_schema() %in% names(data)) ||
+      any(is.na(data[build_week_demo_schema()]))
+  )) {
+    generated <- generate_build_week_demo_data(write_files = TRUE)
+    return(generated$data)
+  }
   data
 }
 
