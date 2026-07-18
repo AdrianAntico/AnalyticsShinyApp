@@ -10,6 +10,55 @@ The central idea is simple:
 
 > Analytics Workstation does not just produce answers. It conducts transparent investigations that can revise their conclusions as evidence accumulates, then critique their own recommendations before asking for trust.
 
+<p align="center"><strong>This project is both a software product and a documented experiment in AI-assisted software engineering.</strong></p>
+
+## Evidence Exhibits
+
+The figures below are not decorative screenshots. They are evidence exhibits: each one shows a part of the investigation loop the product preserves.
+
+### Figure 1 - Arrival At The Edge Of The Known
+
+The workstation opens as a place to think before it becomes a place to operate.
+
+![Arrival at the edge of the known](docs/media/hero.png)
+
+### Figure 2 - The Investigation Begins
+
+The Build Week demonstration starts with an objective, preflight checks, campaign state, and visible claim verification.
+
+![The investigation begins](docs/media/investigation.png)
+
+### Figure 3 - Belief Revision
+
+The recommendation is allowed to change because the evidence changed.
+
+![Belief revision sequence](docs/media/belief_revision.gif)
+
+### Figure 4 - Claim Verification
+
+The system can answer why a final claim deserves belief by tracing it through evidence, diagnostics, methodology, and limitations.
+
+![Claim verification](docs/media/claim_verification.png)
+
+### Figure 5 - Integrity Review
+
+The investigation ends by challenging its own conclusion before asking the user to trust it.
+
+![Integrity review](docs/media/integrity_review.png)
+
+### Figure 6 - Architecture In One Frame
+
+Deterministic services compute evidence; GPT-5.6 supports synthesis, belief evolution, verification, and integrity review inside bounded contracts.
+
+![Architecture overview](docs/media/architecture.png)
+
+### Video Evidence
+
+- [Build Week browser recording](docs/media/demo.webm): a recorded pass through the running app.
+- [Short teaser clip](docs/media/youtube_intro.webm): the same captured run, kept as a small web-ready teaser source.
+
+MP4 export is intentionally not checked in here because this machine does not currently have an MP4 encoder available. The checked-in WebM files are generated from the real local browser runtime and validated by the repository's product-experience video checker.
+
 ## Why This Project Took This Shape
 
 Analytics Workstation is also a record of an AI-assisted development experiment.
@@ -196,16 +245,6 @@ The AI operates through bounded provider, context, and action contracts. It does
 - Reward curiosity without weakening rigor.
 
 See `docs/design_principles.md` for the short principle set.
-
-## Screenshots To Include
-
-The submission should lead with three large visuals:
-
-1. **Build Week investigation path**: shows the objective, competing explanations, and evidence progression.
-2. **Why should I believe this?**: shows claim verification, belief revision, limitations, and integrity review.
-3. **Report Browser**: shows the investigation preserved as a readable evidence record.
-
-Screenshots should communicate the story before the reader studies the implementation.
 
 ## What The Demo Shows
 
