@@ -10,6 +10,16 @@ The central idea is simple:
 
 > Analytics Workstation does not just produce answers. It conducts transparent investigations that can revise their conclusions as evidence accumulates, then critique their own recommendations before asking for trust.
 
+## Why This Project Took This Shape
+
+Analytics Workstation is also a record of an AI-assisted development experiment.
+
+As implementation became dramatically cheaper, the project did not spend all of that savings on adding more disconnected features. It reinvested much of it into harder questions about evidence, governance, representation, trust, product experience, and architectural coherence.
+
+The result is unusually comprehensive because the work repeatedly asked: if this principle is true, what else follows?
+
+For the full technical history, see `docs/development_ordeal.md`.
+
 ## The Problem
 
 Most analytics systems are optimized for outputs.
