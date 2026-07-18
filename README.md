@@ -1,10 +1,68 @@
-# Analytics Shiny App
+# Analytics Workstation
 
-Analytics Shiny App is a local-first Shiny visualization builder powered by AutoPlots.
+Analytics Workstation is an evidence-governed AI investigation platform that transparently evolves its recommendations as evidence accumulates.
 
-It lets users load data, build AutoPlots charts, save plots, organize report layouts, export HTML/R code, and save or load local project bundles.
+It is not a dashboard and it is not a chat wrapper. It is a local-first analytical operating environment where business questions become governed investigations, investigations produce evidence, evidence revises beliefs, and recommendations are challenged before anyone is asked to trust them.
 
-AutoPlots is the rendering engine. This app owns the Shiny product layer and calls exported AutoPlots functions; it does not own or modify AutoPlots plotting internals.
+The Build Week demonstration shows one complete loop:
+
+```text
+Objective
+-> Observation
+-> Uncertainty
+-> Competing explanations
+-> Evidence collection
+-> Belief revision
+-> Recommendation evolution
+-> Claim verification
+-> Investigation integrity review
+-> Decision readiness
+```
+
+The core idea is simple: Analytics Workstation does not merely produce an answer. It preserves the reasoning path that made the answer credible.
+
+## Why It Is Different
+
+Most analytical tools optimize for output production: a dashboard, a notebook, a model, or a report. Analytics Workstation optimizes for accountable investigation.
+
+- **Evidence before conclusions**: artifacts are treated as durable evidence, not disposable outputs.
+- **Governed AI operation**: AI can frame, synthesize, and propose within bounded contracts; deterministic services compute the facts.
+- **Belief revision**: recommendations are allowed to evolve as new evidence changes the investigation state.
+- **Claim verification**: final claims remain traceable to evidence, diagnostics, methods, assumptions, and limitations.
+- **Skeptical self-review**: the investigation explicitly searches for reasons its own recommendation could be wrong.
+- **Local-first fallback**: the demo can run deterministically with a mock provider when a live model is unavailable.
+
+## Build Week Submission Package
+
+Start here for judging, recording, or reviewing the final demo:
+
+- `docs/submission_package.md`: concise product summary, architecture diagram, submission text, and screenshot checklist.
+- `docs/demo_script_3_minute.md`: three-minute recording script.
+- `docs/judge_faq.md`: short answers to likely judge questions.
+- `docs/final_demo_reliability_checklist.md`: fresh-run checklist before recording.
+- `docs/design_principles.md`: the product principles that govern the experience.
+- `docs/build_week_demo_guide.md`: operational demo guide and presenter pacing.
+
+## Architecture At A Glance
+
+```mermaid
+flowchart LR
+    Q["Business Objective"] --> I["Governed Investigation"]
+    I --> E["Deterministic Evidence Services"]
+    E --> A["Evidence Artifacts"]
+    A --> B["Belief Revision"]
+    B --> R["Recommendation Evolution"]
+    R --> C["Claim Verification"]
+    C --> S["Investigation Integrity Review"]
+    S --> D["Decision Readiness"]
+    G["GPT-5.6 / GenAI Provider"] --> I
+    G --> B
+    G --> R
+    G --> C
+    G --> S
+```
+
+Deterministic services perform data generation, EDA, regression diagnostics, SHAP evidence, validation, and report-contract construction. GPT-5.6 operates through the provider-agnostic GenAI layer for investigation framing, semantic synthesis, belief evolution, recommendation narrative, claim verification, and integrity review. The AI does not receive arbitrary permission to mutate the project.
 
 ## Repository Boundary
 
