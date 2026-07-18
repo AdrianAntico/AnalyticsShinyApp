@@ -137,41 +137,59 @@ Workflow terminology:
 
 ## Dependencies
 
-Required R packages include:
+Core R packages required for the workstation include:
 
 - `AutoPlots`
+- `AutoQuant`
 - `shiny`
 - `data.table`
 - `htmltools`
 - `htmlwidgets`
-- `tools`
+- `openxlsx`
 
 Install released dependencies in R:
 
 ```r
-install.packages(c("shiny", "data.table", "htmltools", "htmlwidgets"))
+install.packages(c("shiny", "data.table", "htmltools", "htmlwidgets", "openxlsx"))
 ```
 
-Install `AutoPlots` separately before running this app. If you use a GitHub-hosted AutoPlots build:
+Install the local ecosystem packages separately before running this app. If you use GitHub-hosted builds:
 
 ```r
 install.packages("remotes")
 remotes::install_github("AdrianAntico/AutoPlots")
+remotes::install_github("AdrianAntico/AutoQuant")
 ```
 
-During local AutoPlots development, point your R library at a local AutoPlots install instead of adding dev-only loading to this app:
+During local ecosystem development, point your R library at local package installs instead of adding dev-only loading to this app:
 
 ```r
 remotes::install_local("../AutoPlots")
+remotes::install_local("../AutoQuant")
 ```
 
-Production app code should load AutoPlots with:
+Production app code should call package APIs through the installed packages:
 
 ```r
 library(AutoPlots)
+library(AutoQuant)
 ```
 
-Do not add `devtools::load_all("../AutoPlots")` or source internal AutoPlots files in this repository.
+Do not add `devtools::load_all("../AutoPlots")`, `devtools::load_all("../AutoQuant")`, or source internal package files in this repository.
+
+Optional feature packages used by richer workstation paths include:
+
+- `reactable` for premium interactive tables;
+- `jsonlite` for JSON sidecars, manifests, and runtime bundles;
+- `httr2` and `curl` for GenAI provider endpoints;
+- `mirai` and `callr` for async or isolated execution paths;
+- `arrow` for Parquet data loading;
+- `commonmark` for markdown rendering in the Knowledge Library;
+- `base64enc` and `png` for artifact previews and screenshots;
+- `digest` and `yaml` for audit, storage, and technical-debt utilities;
+- `testthat` for deterministic QA.
+
+The app should degrade gracefully when optional integrations are unavailable, but full Build Week validation expects the local development environment to include them.
 
 ## Run Locally
 

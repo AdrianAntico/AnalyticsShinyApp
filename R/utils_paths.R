@@ -99,7 +99,7 @@ active_mappings <- function(plot_type) {
 
 
 required_app_packages <- function() {
-  c("shiny", "AutoPlots", "data.table", "htmltools", "htmlwidgets")
+  c("shiny", "AutoPlots", "AutoQuant", "data.table", "htmltools", "htmlwidgets", "openxlsx")
 }
 
 check_app_dependencies <- function(packages = required_app_packages()) {
