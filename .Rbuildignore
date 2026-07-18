@@ -1,2 +1,12 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.git$
+^\.github$
+^\.agents$
+^exports$
+^runtime$
+^project_artifact_collector$
+^inst/electron/node_modules$
+^book/source/raw_conversations$
+^book/source/source_packs$
+^autoplots_project\.rds$

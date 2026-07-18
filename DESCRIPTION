@@ -1,9 +1,10 @@
 Package: AnalyticsShinyApp
-Title: Local-First AutoPlots Visualization Builder
-Version: 0.1.0
+Title: Evidence-Governed AI Investigation Workstation
+Version: 1.0.0
 Authors@R:
-    person("Adrian", "Antico", role = c("aut", "cre"))
-Description: A local-first Shiny visualization builder powered by AutoPlots.
+    person("Adrian", "Antico", email = "adrianantico@gmail.com", role = c("aut", "cre"))
+Maintainer: Adrian Antico <adrianantico@gmail.com>
+Description: A local-first analytical workstation for governed investigations, evidence artifacts, belief revision, claim verification, and decision-ready reporting.
 License: file LICENSE
 Encoding: UTF-8
 Imports:
@@ -15,3 +16,23 @@ Imports:
     openxlsx,
     shiny,
     tools
+Suggests:
+    AutoNLS,
+    arrow,
+    base64enc,
+    callr,
+    chromote,
+    commonmark,
+    curl,
+    digest,
+    httr,
+    httr2,
+    jsonlite,
+    mirai,
+    png,
+    ps,
+    reactable,
+    Rodeo,
+    roxygen2,
+    testthat,
+    yaml

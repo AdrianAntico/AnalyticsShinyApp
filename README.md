@@ -1,143 +1,320 @@
 # Analytics Workstation
 
-Analytics Workstation is an evidence-governed AI investigation platform that transparently evolves its recommendations as evidence accumulates.
+**Version:** `1.0.0-buildweek`
 
-It is not a dashboard and it is not a chat wrapper. It is a local-first analytical operating environment where business questions become governed investigations, investigations produce evidence, evidence revises beliefs, and recommendations are challenged before anyone is asked to trust them.
+Analytics Workstation is an evidence-governed AI investigation platform.
 
-The Build Week demonstration shows one complete loop:
+It is built for analytical work that cannot be reduced to a dashboard, a notebook, or a one-shot AI answer. The workstation helps a user move from a business objective to a decision-ready recommendation by preserving the investigation itself: what was observed, what was uncertain, which explanations competed, what evidence was gathered, how beliefs changed, which claims were verified, and why the final recommendation deserves trust.
+
+The central idea is simple:
+
+> Analytics Workstation does not just produce answers. It conducts transparent investigations that can revise their conclusions as evidence accumulates, then critique their own recommendations before asking for trust.
+
+## The Problem
+
+Most analytics systems are optimized for outputs.
+
+They generate dashboards. They generate reports. They generate model summaries. Newer systems generate AI explanations on top of those outputs.
+
+Experienced analysts do something different. They investigate.
+
+They notice an anomaly. They form competing explanations. They gather evidence. They revise beliefs. They reject tempting conclusions. They communicate uncertainty. They decide whether the available evidence is strong enough to act.
+
+That reasoning path is often scattered across dashboards, notebooks, slide decks, chat transcripts, model artifacts, and memory. When a recommendation becomes important, the hardest questions are not always technical:
+
+- Why did we reach this conclusion?
+- What evidence supports it?
+- What evidence weakens it?
+- Which explanations were rejected?
+- What assumptions are still carrying the recommendation?
+- Would more analysis likely change the decision?
+
+Analytics Workstation models that workflow directly.
+
+## The Investigation Loop
 
 ```text
 Objective
--> Observation
--> Uncertainty
--> Competing explanations
--> Evidence collection
--> Belief revision
--> Recommendation evolution
--> Claim verification
--> Investigation integrity review
--> Decision readiness
+  |
+  v
+Observation
+  |
+  v
+Competing Explanations
+  |
+  v
+Investigation
+  |
+  v
+Evidence
+  |
+  v
+Belief Revision
+  |
+  v
+Recommendation Evolution
+  |
+  v
+Claim Verification
+  |
+  v
+Integrity Review
+  |
+  v
+Decision Readiness
 ```
 
-The core idea is simple: Analytics Workstation does not merely produce an answer. It preserves the reasoning path that made the answer credible.
+The workstation treats evidence as a first-class product object. Reports, visualizations, AI summaries, and recommendations are different ways to communicate that evidence. They are not substitutes for the investigation.
 
-## Why It Is Different
+## Why Analytics Workstation Is Different
 
-Most analytical tools optimize for output production: a dashboard, a notebook, a model, or a report. Analytics Workstation optimizes for accountable investigation.
+| Traditional analytics | LLM dashboards | Analytics Workstation |
+|---|---|---|
+| Shows metrics and outputs | Adds natural-language summaries | Preserves the investigation path |
+| Often hides rejected explanations | May explain whatever context is pasted in | Tracks competing explanations explicitly |
+| Produces static recommendations | Produces fluent answers | Revises recommendations as evidence changes |
+| Separates reports from evidence | Summarizes artifacts after the fact | Links claims back to evidence |
+| Leaves trust to the presenter | Can sound confident without proof | Performs skeptical integrity review before action |
 
-- **Evidence before conclusions**: artifacts are treated as durable evidence, not disposable outputs.
-- **Governed AI operation**: AI can frame, synthesize, and propose within bounded contracts; deterministic services compute the facts.
-- **Belief revision**: recommendations are allowed to evolve as new evidence changes the investigation state.
-- **Claim verification**: final claims remain traceable to evidence, diagnostics, methods, assumptions, and limitations.
-- **Skeptical self-review**: the investigation explicitly searches for reasons its own recommendation could be wrong.
-- **Local-first fallback**: the demo can run deterministically with a mock provider when a live model is unavailable.
+The product is not trying to make analytics feel magical. It is trying to make analytical reasoning visible, governed, and reusable.
 
-## Build Week Submission Package
+## Build Week Demonstration
 
-Start here for judging, recording, or reviewing the final demo:
+The Build Week demo is a focused investigation over a deterministic synthetic enrollment-growth dataset.
 
-- `docs/submission_package.md`: concise product summary, architecture diagram, submission text, and screenshot checklist.
-- `docs/demo_script_3_minute.md`: three-minute recording script.
-- `docs/judge_faq.md`: short answers to likely judge questions.
-- `docs/final_demo_reliability_checklist.md`: fresh-run checklist before recording.
-- `docs/design_principles.md`: the product principles that govern the experience.
-- `docs/build_week_demo_guide.md`: operational demo guide and presenter pacing.
+The investigation begins with a plausible but incomplete belief: a marketing channel appears inefficient and may deserve budget cuts. The workstation does not stop there. It compares competing explanations, gathers deterministic evidence, revises the belief, and evolves the recommendation.
+
+By the end, the recommendation is more specific and more defensible:
+
+- improve operational throughput before cutting demand generation;
+- refresh aging creative where fatigue is visible;
+- tune saturated Search spend rather than broadly reducing it;
+- account for competitor pressure separately from channel quality;
+- preserve unresolved uncertainty instead of hiding it.
+
+The most important moment is not that the system gives an answer. The important moment is that the system can answer:
+
+> Why should I believe this?
+
+It shows the initial belief, evidence discovered, belief revisions, final claim, diagnostics, methodology, limitations, contradictory evidence, assumptions, integrity review, and decision readiness.
+
+## What GPT-5.6 Does
+
+GPT-5.6 is used where probabilistic reasoning is useful:
+
+- investigation framing;
+- semantic synthesis;
+- belief-evolution narrative;
+- recommendation evolution;
+- claim verification;
+- integrity-review explanation.
+
+It is not used to invent evidence or replace deterministic analytics.
+
+Deterministic services remain responsible for:
+
+- synthetic demo data generation;
+- EDA;
+- regression diagnostics;
+- SHAP evidence;
+- validation;
+- replay;
+- report-contract construction;
+- QA.
+
+This separation is deliberate. Deterministic knowledge should be computed deterministically. Probabilistic reasoning should be reserved for ambiguity, synthesis, judgment, and explanation.
+
+## How Codex Was Used
+
+Codex accelerated the implementation of a large, coherent product system.
+
+It helped build:
+
+- provider-agnostic GenAI services;
+- governed agent sessions;
+- inquiry state;
+- belief revision;
+- recommendation evolution;
+- claim verification;
+- investigation integrity review;
+- semantic report contracts;
+- UI refinement;
+- deterministic QA;
+- documentation and submission materials.
+
+Codex was used as an engineering collaborator, not as a replacement for product direction. The architecture remained intentional: evidence first, governed AI operation, deterministic computation, traceable claims, and explicit uncertainty.
 
 ## Architecture At A Glance
 
 ```mermaid
-flowchart LR
-    Q["Business Objective"] --> I["Governed Investigation"]
-    I --> E["Deterministic Evidence Services"]
-    E --> A["Evidence Artifacts"]
-    A --> B["Belief Revision"]
-    B --> R["Recommendation Evolution"]
-    R --> C["Claim Verification"]
-    C --> S["Investigation Integrity Review"]
-    S --> D["Decision Readiness"]
-    G["GPT-5.6 / GenAI Provider"] --> I
-    G --> B
-    G --> R
-    G --> C
-    G --> S
+flowchart TD
+    Objective["Business objective"] --> Inquiry["Governed inquiry state"]
+    Inquiry --> Explanations["Competing explanations"]
+    Explanations --> Plan["Selected investigation"]
+    Plan --> Services["Deterministic analytical services"]
+    Services --> Evidence["Evidence artifacts"]
+    Evidence --> Beliefs["Belief revision"]
+    Beliefs --> Recommendations["Recommendation evolution"]
+    Recommendations --> Claims["Claim verification"]
+    Claims --> Integrity["Investigation integrity review"]
+    Integrity --> Readiness["Decision readiness"]
+
+    GenAI["GPT-5.6 / provider layer"] --> Inquiry
+    GenAI --> Beliefs
+    GenAI --> Recommendations
+    GenAI --> Claims
+    GenAI --> Integrity
+
+    Evidence --> ReportContract["Semantic report contract"]
+    Claims --> ReportContract
+    Integrity --> ReportContract
+    ReportContract --> Browser["Report Browser"]
 ```
 
-Deterministic services perform data generation, EDA, regression diagnostics, SHAP evidence, validation, and report-contract construction. GPT-5.6 operates through the provider-agnostic GenAI layer for investigation framing, semantic synthesis, belief evolution, recommendation narrative, claim verification, and integrity review. The AI does not receive arbitrary permission to mutate the project.
+The AI operates through bounded provider, context, and action contracts. It does not receive arbitrary permission to mutate the project. When provider setup is missing, the workstation should fail visibly and gracefully rather than pretending a capability exists.
 
-## Repository Boundary
+## Design Principles
 
-This repository owns the app/product layer:
+- Evidence before conclusions.
+- Govern investigations, not just outputs.
+- Recommendations may evolve as evidence evolves.
+- Claims must remain traceable.
+- Make uncertainty visible.
+- Challenge conclusions before asking users to trust them.
+- Use AI inside contracts.
+- Remove unnecessary limits while respecting real constraints.
+- Reward curiosity without weakening rigor.
 
-- Shiny app logic
-- AutoPlots calls
-- plot registries and options
-- project state
-- export behavior
-- generated report code
-- UI behavior inside the Shiny app
+See `docs/design_principles.md` for the short principle set.
 
-The AutoPlots package remains an external dependency. AutoPlots plotting internals should not be copied into this repository.
+## Screenshots To Include
 
-## Ecosystem Operating Model
+The submission should lead with three large visuals:
 
-AnalyticsShinyApp is the central product and coordination repo for the local-first analytics report builder ecosystem.
+1. **Build Week investigation path**: shows the objective, competing explanations, and evidence progression.
+2. **Why should I believe this?**: shows claim verification, belief revision, limitations, and integrity review.
+3. **Report Browser**: shows the investigation preserved as a readable evidence record.
 
-Start with these docs before architecture-affecting work:
+Screenshots should communicate the story before the reader studies the implementation.
 
-- `docs/architecture_constitution.md`: product principles, boundary rules, QA expectations, and deferred scope.
-- `docs/public_private_ip_boundary.md`: public AutoQuant vs private AnalyticsShinyApp placement rules for APIs, docs, compiler assets, lever management, roadmap, and product intelligence.
-- `docs/cross_repository_agent_guide.md`: cross-repository workspace manifest, validation modes, failure classification, and agent entry commands.
-- `docs/ecosystem_operating_model.md`: single-developer operating loop, workflow lifecycle, artifact flow, and Code Runner rules.
-- `docs/repo_contracts.md`: ownership boundaries for AnalyticsShinyApp, AutoQuant, AutoPlots, Rodeo, PolarsFE, Benchmarks, and shinyelectron.
-- `docs/project_artifact_collector.md`: project-level artifact aggregation contract, bundle lifecycle, manifest, screenshot policy, and DOCX collector workflow.
-- `docs/render_target_architecture.md`: explicit human vs LLM render target policies and `ExportPNG` semantics.
-- `docs/artifact_quality_policy.md`: shared artifact component expectations, completeness scoring, and graceful degradation rules.
-- `docs/table_artifact_architecture.md`: canonical table artifacts, table render targets, sorting policies, previews, and backing data sidecars.
-- `docs/semantic_intelligence_integration.md`: project-authored business intent, decision memory, semantic workspace validation, and AutoQuant Semantic Intelligence integration.
-- `docs/decision_workflow_architecture.md`: governed decision follow-through, proportional workflow, review/approval, implementation, outcome learning, Mission Control work queue, and bounded GenAI guardrails.
-- `docs/decision_workflow_user_guide.md`: practical route from business question to closed decision.
-- `docs/epistemic_integrity_architecture_review.md`: architectural review of reasoning vulnerability, human intervention provenance, claim governance, and reuse boundaries.
-- `docs/epistemic_integrity_phase1.md`: implemented portable epistemic contracts, provenance, claim governance, gates, app integration, and compiled runtime linkage.
-- `docs/knowledge_compilation_runtime_architecture.md`: Phase 0 architecture for compiling source philosophy and contracts into AI runtime bundles.
-- `docs/knowledge_compilation_runtime_phase1.md`: implemented Phase 1 source registry, curated knowledge units, runtime bundles, task routing, context packages, and QA.
-- `docs/knowledge_compilation_runtime_phase2.md`: implemented Phase 2 epistemic runtime expansion, model-tier context compilation, governed operator validation, diagnostics, caching, benchmarking, and AI Runtime page.
-- `docs/knowledge_compilation_runtime_phase3.md`: implemented Phase 3 task-scoped model qualification, benchmark artifacts, epistemic fidelity scoring, bundle variant comparison, and safe Class 2 validation boundaries.
-- `docs/knowledge_compilation_runtime_phase4.md`: implemented Phase 4 progressive artifact retrieval, read-only artifact navigation, digest caching, context sufficiency, retrieval diagnostics, and retrieve-everything benchmarks.
-- `docs/knowledge_compilation_runtime_phase5.md`: implemented Phase 5 cross-artifact synthesis planning, applicability, contradiction handling, evidence sufficiency, coverage, structured cited synthesis, and synthesis compression benchmarks.
-- `docs/knowledge_compilation_runtime_phase6.md`: implemented Phase 6 governed evidence review, evidence binders, sufficiency for action, ranked supported next actions, preview-only drafts, and operator audit records.
-- `docs/knowledge_compilation_runtime_phase7.md`: implemented Phase 7 confirmed draft persistence for evidence-review and campaign-seed drafts through governed Class 3 handlers, project state, collector append, audit, and undo/archive lifecycle.
-- `docs/knowledge_compilation_runtime_phase8.md`: implemented Phase 8 mutation taxonomy, risk assessment, governance policy, review-request draft persistence, evidence-link draft persistence, mutation audit, and lifecycle management.
-- `docs/platform_productization_phase1.md`: platform-level bottleneck assessment, subsystem maturity, PFSD observations, and productization roadmap.
-- `docs/product_experience_intelligence_architecture.md`: deterministic demo worlds, Golden Workflow replay, repo-local browser runtime provisioning, scenario contracts, review artifacts, UX regression metrics, Playwright recorder decision, and product-experience campaign loop.
-- `docs/api_surface_audit.md`: aggressive pre-product API/product surface audit and cleanup recommendations.
-- `docs/agent_task_template.md`: recommended Codex task framing.
+## What The Demo Shows
 
-Core operating rules:
+In three minutes, the viewer should experience:
 
-- AutoQuant owns analytics, artifact generators, and analytical report rendering.
-- AutoPlots owns high-level plot functions, themes, and display helpers.
-- The Project Artifact Collector owns project-level artifact aggregation and the primary project DOCX.
-- Human reports and LLM collectors are independent render targets built from the same underlying artifacts.
-- AnalyticsShinyApp owns the conservative deterministic Feature Engineering / Model Preparation workflow that creates visible prepared-data artifacts without mutating source data.
-- AnalyticsShinyApp owns the project-authored Semantic Intelligence workspace; AutoQuant owns the canonical business-intent and decision-management analytical contracts.
-- AnalyticsShinyApp owns the operational decision-workflow experience: guided authoring, proportional governance recommendations, evidence inboxes, next-action queues, stale-state explanations, and collector registration.
-- Rodeo and PolarsFE remain future homes for richer R/Python feature engineering engines if they are integrated intentionally.
-- Benchmarks owns performance evidence.
-- shinyelectron owns packaging/runtime.
-- Code Runner is the only custom code execution system.
-- Workflow actions are user-triggered unless explicitly designed otherwise.
+1. A business objective becomes a governed investigation.
+2. The system records uncertainty before recommending action.
+3. Competing explanations remain visible.
+4. Deterministic analytics generate evidence.
+5. The recommendation changes as evidence changes.
+6. The final claim is verified against evidence.
+7. The workstation challenges its own conclusion.
+8. Decision readiness is stated transparently.
 
-Workflow terminology:
+Use `docs/demo_script_3_minute.md` for the recording script and `docs/build_week_demo_guide.md` for presenter pacing.
 
-- Model Readiness is pre-model Target Analysis: target diagnostics, leakage checks, drift, class balance, missingness, and readiness recommendations.
-- Feature Engineering / Model Preparation creates reproducible prepared-data artifacts and transformation lineage before training.
-- CatBoost Builder trains and scores models when the user runs it.
-- Model Assessment is post-model evaluation of trained/scored output: RMSE, MAE, ROC, PR, lift, gains, calibration, residual diagnostics, and holdout performance.
-- The preferred pre-model AutoQuant adapter id is `autoquant_model_readiness`; `autoquant_model_assessment` is a legacy compatibility alias only.
+## Submission Package
 
-## Dependencies
+- `docs/submission_package.md`: product summary, architecture diagram, submission text, and screenshot checklist.
+- `docs/demo_script_3_minute.md`: three-minute demo script.
+- `docs/judge_faq.md`: short answers to likely judge questions.
+- `docs/final_demo_reliability_checklist.md`: fresh-run validation checklist.
+- `docs/build_week_demo_guide.md`: operational demo guide.
+- `docs/build_week_demo_walkthrough.md`: narration-oriented walkthrough.
 
-Core R packages required for the workstation include:
+## Running Locally
+
+From the repository root:
+
+```r
+shiny::runApp(".")
+```
+
+Or from PowerShell:
+
+```powershell
+Rscript -e "shiny::runApp('.')"
+```
+
+The app performs a startup dependency check before loading the Shiny UI.
+
+## Install On Windows
+
+For the normal Windows desktop workflow, run the one-command installer from the repository root:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install_windows.ps1
+```
+
+For a Desktop shortcut:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install_windows.ps1 -DesktopShortcut
+```
+
+The installer:
+
+- installs R dependencies and sibling first-party packages;
+- installs the `AnalyticsShinyApp` R package;
+- copies app source to a stable per-user program directory;
+- prepares the Electron shell when Node.js and npm are available;
+- creates a Start Menu launcher;
+- runs package and distribution diagnostics.
+
+Installed app assets live under:
+
+```text
+%LOCALAPPDATA%\Programs\Analytics Workstation\
+```
+
+User projects, exports, logs, cache, and runtime state live under:
+
+```text
+%LOCALAPPDATA%\AnalyticsWorkstation\
+```
+
+See:
+
+- `docs/windows_installation.md`
+- `docs/package_architecture.md`
+- `docs/electron_distribution.md`
+- `docs/troubleshooting_installation.md`
+
+## Build Week Demo Path
+
+Open:
+
+```text
+More -> Build Week Demo
+```
+
+For deterministic rehearsal, select `Mock rehearsal`. This exercises the same app contracts without a paid provider call.
+
+For a live GPT-5.6 path, set:
+
+```powershell
+$env:OPENAI_API_KEY="sk-..."
+$env:ANALYTICS_GENAI_PROVIDER="openai"
+$env:ANALYTICS_GENAI_MODEL="gpt-5.6"
+```
+
+Then run:
+
+1. `Run Preflight`
+2. `Launch Demo`
+3. `Why should I believe this?`
+4. `Report Browser`
+5. `Replay`
+6. `Reset`
+
+## Installation And Dependencies
+
+The Windows installer is preferred for end-user setup. For local development or after switching R versions, run the dependency installer directly:
+
+```powershell
+& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" scripts/install_app_dependencies.R
+```
+
+Core R packages required for startup:
 
 - `AutoPlots`
 - `AutoQuant`
@@ -147,13 +324,22 @@ Core R packages required for the workstation include:
 - `htmlwidgets`
 - `openxlsx`
 
-Install released dependencies in R:
+The dependency installer reads this repository's `DESCRIPTION`, installs declared CRAN packages with recursive dependencies, then installs sibling first-party packages when their repositories exist:
+
+- `../AutoPlots`
+- `../AutoQuant`
+- `../AutoNLS`
+- `../Rodeo`
+
+This is the preferred path after switching R versions or refreshing sibling repositories.
+
+Install released CRAN dependencies:
 
 ```r
 install.packages(c("shiny", "data.table", "htmltools", "htmlwidgets", "openxlsx"))
 ```
 
-Install the local ecosystem packages separately before running this app. If you use GitHub-hosted builds:
+Install the local ecosystem packages:
 
 ```r
 install.packages("remotes")
@@ -161,148 +347,72 @@ remotes::install_github("AdrianAntico/AutoPlots")
 remotes::install_github("AdrianAntico/AutoQuant")
 ```
 
-During local ecosystem development, point your R library at local package installs instead of adding dev-only loading to this app:
+For the full analytical ecosystem, install optional provider packages:
+
+```r
+remotes::install_github("AdrianAntico/AutoNLS")
+remotes::install_github("AdrianAntico/Rodeo")
+```
+
+During local development, use local installs:
 
 ```r
 remotes::install_local("../AutoPlots")
 remotes::install_local("../AutoQuant")
+remotes::install_local("../AutoNLS")
+remotes::install_local("../Rodeo")
 ```
 
-Production app code should call package APIs through the installed packages:
+AutoNLS is the optional nonlinear effect-curve backend exposed through SHAP effect-curve controls and executed through AutoQuant when available. It is not required for app startup. If AutoNLS is unavailable, the app should keep running and effect-curve paths should degrade explicitly.
 
-```r
-library(AutoPlots)
-library(AutoQuant)
-```
+Other optional packages used by richer workstation paths include:
 
-Do not add `devtools::load_all("../AutoPlots")`, `devtools::load_all("../AutoQuant")`, or source internal package files in this repository.
-
-Optional feature packages used by richer workstation paths include:
-
-- `reactable` for premium interactive tables;
+- `reactable` for interactive tables;
 - `jsonlite` for JSON sidecars, manifests, and runtime bundles;
-- `httr2` and `curl` for GenAI provider endpoints;
-- `mirai` and `callr` for async or isolated execution paths;
-- `arrow` for Parquet data loading;
-- `commonmark` for markdown rendering in the Knowledge Library;
-- `base64enc` and `png` for artifact previews and screenshots;
+- `httr2`, `httr`, and `curl` for GenAI provider endpoints;
+- `mirai`, `callr`, and `ps` for async or isolated execution paths;
+- `arrow` for Parquet loading;
+- `commonmark` for markdown rendering;
+- `base64enc`, `png`, and `chromote` for artifact previews and screenshots;
 - `digest` and `yaml` for audit, storage, and technical-debt utilities;
-- `testthat` for deterministic QA.
+- `roxygen2` and `testthat` for development and QA.
 
-The app should degrade gracefully when optional integrations are unavailable, but full Build Week validation expects the local development environment to include them.
+Do not use `devtools::load_all()` or source internal package files from sibling repositories in production app code. Install package dependencies into the active R library instead.
 
-## Run Locally
-
-From this repository root:
+To check whether the active R runtime sees the expected capability set:
 
 ```r
-shiny::runApp(".")
+source("app.R")
+app_env$app_dependency_inventory()
+app_env$qa_app_dependency_capabilities()
 ```
 
-Or from a terminal:
+## Repository Layout
+
+- `R/`: application services, pages, contracts, QA helpers, and orchestration.
+- `www/`: workstation styling, branding, and client assets.
+- `docs/`: architecture, demo, product, and submission documentation.
+- `data/`: deterministic Build Week demo data.
+- `tests/`: deterministic testthat coverage.
+- `scripts/`: data generation and validation helpers.
+- `exports/`: generated local outputs and experiment artifacts.
+
+## Validation
+
+Useful checks before recording or submitting:
 
 ```powershell
-Rscript -e "shiny::runApp('.')"
+& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'source("app.R"); qa <- app_env$qa_build_week_demo(); print(qa)'
+& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'source("app.R"); qa <- app_env$qa_report_browser(); print(qa)'
+& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'source("app.R"); qa <- app_env$qa_agent_operation_runtime(); print(qa)'
+& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'testthat::test_file("tests/testthat/test-build-week-demo.R")'
+git diff --check
 ```
 
-The app performs a lightweight startup dependency check through `check_app_dependencies()` before loading the Shiny UI.
+See `docs/final_demo_reliability_checklist.md` for the full recording gate.
 
-## Build Week Demo
+## Current Scope
 
-Analytics Workstation includes a dedicated **Build Week Demo** route under `More`.
+The Build Week path is a focused product demonstration, not a claim of general autonomous analysis. It deliberately avoids arbitrary action execution, broad task planning, hidden evidence mutation, and unsupported provider behavior.
 
-The demo shows one governed analytical investigation:
-
-```text
-User Objective
--> GPT-5.6 or deterministic mock provider
--> Agent Plan
--> EDA
--> Regression Model Insights
--> Approval Gate
--> SHAP Analysis
--> Evidence
--> Campaign ReportContract
--> Interactive Report Browser
--> Claim Verification
-```
-
-For live OpenAI operation, set one of:
-
-```powershell
-$env:OPENAI_API_KEY="sk-..."
-$env:ANALYTICS_GENAI_PROVIDER="openai"
-$env:ANALYTICS_GENAI_MODEL="gpt-5.6"
-```
-
-For deterministic local rehearsal, choose **Mock rehearsal** in the Build Week Demo page. The mock path exercises the same app contracts without calling a paid provider.
-
-Codex built the workstation: source code, UI, tests, contracts, and docs. GPT-5.6 operates the workstation through the provider-agnostic GenAI layer and bounded agent-operation contract; it does not receive arbitrary permission to mutate the project outside governed actions.
-
-See:
-
-- `docs/build_week_demo_guide.md`
-- `docs/build_week_demo_plan.md`
-- `docs/build_week_demo_gap_audit.md`
-
-## Table Filters
-
-Reactable-backed table artifacts support text exclusion filters:
-
-- `Impressions` keeps rows containing `Impressions`
-- `!Impressions` excludes rows containing `Impressions`
-- `-Impressions` also excludes rows containing `Impressions`
-
-Text filtering is case-insensitive. Numeric and date columns keep their standard table behavior.
-
-## Sample Data
-
-Sample QA data is available at:
-
-- `inst/sample_data/app_qa_transactional.csv`
-
-It includes `Date`, `Channel`, `Category`, `Spend`, `Revenue`, `Clicks`, `XNum`, `YNum`, and `ZVal`.
-
-## Electron Wrapper
-
-This app may be run inside an Electron shell maintained outside this repository.
-
-Known Electron wrapper source:
-
-- `AdrianAntico/<ELECTRON_FORK_REPO_NAME>`
-
-The Electron wrapper repository owns Electron startup, R/Shiny process launch, desktop window behavior, packaging, local server lifecycle, and Electron-specific file/path behavior.
-
-If a smoke test fails in both browser Shiny and Electron, fix this repository. If it fails only in Electron, inspect the Electron wrapper repository first.
-
-See `docs/electron_smoke_test.md`.
-
-## Smoke Test Checklist
-
-Detailed smoke steps are in `docs/smoke_test.md`.
-
-Basic Shiny app smoke:
-
-- app launches from this repository
-- upload `inst/sample_data/app_qa_transactional.csv`
-- build Line plot
-- add `p1`
-- build Bar plot
-- add `p2`
-- preview Grid layout
-- assign sections
-- preview Sections layout
-- export R code
-- export HTML; when `AutoPlots::save_widget()` is unavailable, the app falls back to an HTML file plus asset directory
-- save/load project `.rds`
-- save/load project bundle
-
-Generated code smoke:
-
-- report code uses `AutoPlots::<PlotType>()`
-- report code uses `AutoPlots::display_plots_grid()` or `AutoPlots::display_plots_sections()`
-- bundle-loaded report code uses the bundled `data.csv` path
-
-## Notes
-
-This repository was copied out of the AutoPlots package repository so app/product code can evolve separately from the plotting package. Do not delete the old app copy from AutoPlots until this repository has passed the expected app and Electron smoke tests.
+That restraint is part of the product philosophy: the workstation should earn trust through transparent evidence, not through unchecked automation.

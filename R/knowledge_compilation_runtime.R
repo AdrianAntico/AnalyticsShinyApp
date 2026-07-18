@@ -1428,7 +1428,15 @@ run_ai_runtime_qualification_benchmark <- function(ctx = NULL, models = ai_runti
       package <- package_result$value
       start <- proc.time()[["elapsed"]]
       response <- if (isTRUE(live) && isTRUE(model$available[[1]]) && exists("genai_compiled_runtime_guidance", mode = "function")) {
-        live_result <- tryCatch(genai_compiled_runtime_guidance(task$question[[1]], package = package), error = function(e) service_result("error", errors = conditionMessage(e)))
+        live_result <- tryCatch(
+          genai_compiled_runtime_guidance(
+            ctx = ctx,
+            user_request = task$question[[1]],
+            explicit_task = task$task_code[[1]],
+            model_tier = model$tier[[1]]
+          ),
+          error = function(e) service_result("error", errors = conditionMessage(e))
+        )
         if (identical(live_result$status, "success")) live_result$value$response %||% knowledge_operator_default_proposal(package) else knowledge_operator_default_proposal(package)
       } else {
         ai_runtime_mock_model_response(package)

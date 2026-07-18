@@ -418,10 +418,10 @@ causal_observational_register_artifact <- function(ctx, state, study_id = causal
       overlap_state = plan$overlap$overlap_state[[1]],
       no_effect_estimated = TRUE,
       prohibited_claims = plan$plan$prohibited_claims,
-      source_contract = plan$aq_artifact$artifact_envelope$artifact_type %||% "observational_causal_planning_artifact"
-    ),
-    render_targets = c("artifact_studio", "llm_docx", "human_report"),
-    quality = list(completeness = 0.9, warnings = character())
+      source_contract = plan$aq_artifact$artifact_envelope$artifact_type %||% "observational_causal_planning_artifact",
+      render_targets = c("artifact_studio", "llm_docx", "human_report"),
+      quality = list(completeness = 0.9, warnings = character())
+    )
   )
   ctx$saved_module_artifacts$artifacts[[artifact_id]] <- artifact
   state$artifact_registry <- unique(c(state$artifact_registry, artifact_id))
@@ -466,10 +466,10 @@ causal_observational_register_effect_artifact <- function(ctx, state, study_id =
       no_estimator_shopping = TRUE,
       requires_human_review = TRUE,
       prohibited_claims = effect$result$prohibited_claims,
-      source_contract = effect$aq_artifact$artifact_envelope$artifact_type %||% "observational_effect_artifact"
-    ),
-    render_targets = c("artifact_studio", "llm_docx", "human_report"),
-    quality = list(completeness = 0.92, warnings = "Observational causal evidence remains assumption-dependent.")
+      source_contract = effect$aq_artifact$artifact_envelope$artifact_type %||% "observational_effect_artifact",
+      render_targets = c("artifact_studio", "llm_docx", "human_report"),
+      quality = list(completeness = 0.92, warnings = "Observational causal evidence remains assumption-dependent.")
+    )
   )
   ctx$saved_module_artifacts$artifacts[[artifact_id]] <- artifact
   state$artifact_registry <- unique(c(state$artifact_registry, artifact_id))
@@ -516,10 +516,10 @@ causal_observational_register_did_artifact <- function(ctx, state, study_id = ca
       no_generalized_did = TRUE,
       requires_human_review = TRUE,
       prohibited_claims = did$result$prohibited_claims,
-      source_contract = did$aq_artifact$artifact_envelope$artifact_type %||% "did_effect_artifact"
-    ),
-    render_targets = c("artifact_studio", "llm_docx", "human_report"),
-    quality = list(completeness = 0.92, warnings = "DiD causal evidence remains assumption-dependent.")
+      source_contract = did$aq_artifact$artifact_envelope$artifact_type %||% "did_effect_artifact",
+      render_targets = c("artifact_studio", "llm_docx", "human_report"),
+      quality = list(completeness = 0.92, warnings = "DiD causal evidence remains assumption-dependent.")
+    )
   )
   ctx$saved_module_artifacts$artifacts[[artifact_id]] <- artifact
   state$artifact_registry <- unique(c(state$artifact_registry, artifact_id))

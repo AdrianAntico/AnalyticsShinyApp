@@ -10,11 +10,15 @@ if (!isTRUE(dependency_check$ok)) {
 library(shiny)
 library(AutoPlots)
 
-app_env$APP_VERSION <- "0.1.0"
+app_env$APP_VERSION <- "1.0.0"
+app_env$APP_RELEASE <- "1.0.0-buildweek"
 app_env$MAX_UPLOAD_MB <- 50
 options(shiny.maxRequestSize = app_env$MAX_UPLOAD_MB * 1024^2)
 
 source(file.path("R", "service_result.R"), local = app_env)
+source(file.path("R", "installation_paths.R"), local = app_env)
+source(file.path("R", "installation_diagnostics.R"), local = app_env)
+source(file.path("R", "package_launch.R"), local = app_env)
 source(file.path("R", "technical_debt_register.R"), local = app_env)
 source(file.path("R", "storage_architecture.R"), local = app_env)
 source(file.path("R", "code_execution_policy.R"), local = app_env)

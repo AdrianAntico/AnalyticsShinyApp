@@ -1,0 +1,13 @@
+{
+  "name": "analytics-workstation-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Per-user Electron shell for Analytics Workstation.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "31.7.7"
+  }
+}
