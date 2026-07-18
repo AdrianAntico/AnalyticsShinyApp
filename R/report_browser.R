@@ -233,19 +233,40 @@ report_browser_render_narrative <- function(component, report = NULL, registry =
   )
 }
 
+report_browser_render_visual_payload <- function(visual) {
+  if (is.null(visual)) {
+    return(NULL)
+  }
+  if (inherits(visual, "shiny.tag") || inherits(visual, "shiny.tag.list")) {
+    return(visual)
+  }
+  if (inherits(visual, "htmlwidget")) {
+    return(htmltools::as.tags(visual))
+  }
+  if (is.character(visual) && length(visual) == 1L && grepl("^\\s*<", visual)) {
+    return(htmltools::HTML(visual))
+  }
+  NULL
+}
+
+report_browser_visual_placeholder <- function(component, payload, spec) {
+  tags$div(
+    class = "aq-report-browser-visual-placeholder",
+    tags$span(class = "aq-report-browser-visual-glyph", ""),
+    tags$strong(component$title %||% "Visualization"),
+    tags$p(report_browser_text(payload$caption %||% spec$purpose, "Semantic visualization reference."))
+  )
+}
+
 report_browser_render_visualization <- function(component, report = NULL, registry = NULL) {
   payload <- component$payload %||% list()
   spec <- payload$specification %||% list()
   source_id <- spec$source_artifact_id %||% component$metadata$source_artifact_id %||% payload$plot_ref %||% payload$visual_ref
+  visual <- report_browser_render_visual_payload(payload$visual %||% component$metadata$visual)
   report_browser_component_shell(
     component,
     class = "aq-report-browser-visualization",
-    tags$div(
-      class = "aq-report-browser-visual-placeholder",
-      tags$span(class = "aq-report-browser-visual-glyph", ""),
-      tags$strong(component$title %||% "Visualization"),
-      tags$p(report_browser_text(payload$caption %||% spec$purpose, "Semantic visualization reference."))
-    ),
+    if (is.null(visual)) report_browser_visual_placeholder(component, payload, spec) else tags$div(class = "aq-report-browser-visual-render", visual),
     report_browser_key_values(list(
       source_artifact = source_id %||% "Not linked",
       interaction = paste(spec$interaction_capability %||% component$interaction_descriptor$capabilities %||% "interactive", collapse = ", "),
@@ -467,6 +488,58 @@ render_report_browser <- function(report_contract, registry = report_browser_com
 
 render_report <- render_report_browser
 
+report_browser_demo_observed_predicted_visual <- function() {
+  points <- data.frame(
+    observed = c(18, 28, 37, 45, 53, 63, 70, 80, 88),
+    predicted = c(21, 26, 39, 43, 57, 60, 73, 77, 91)
+  )
+  x <- 48 + points$observed * 4.2
+  y <- 420 - points$predicted * 3.6
+  tags$svg(
+    class = "aq-report-browser-demo-plot",
+    viewBox = "0 0 520 440",
+    role = "img",
+    `aria-label` = "Observed versus predicted diagnostic plot",
+    tags$defs(
+      tags$linearGradient(
+        id = "reportDemoPlotGradient",
+        x1 = "0%", y1 = "0%", x2 = "100%", y2 = "100%",
+        tags$stop(offset = "0%", `stop-color` = "#61a8ff", `stop-opacity` = "0.95"),
+        tags$stop(offset = "100%", `stop-color` = "#48e0c2", `stop-opacity` = "0.85")
+      )
+    ),
+    tags$rect(x = 0, y = 0, width = 520, height = 440, rx = 18, fill = "rgba(11, 20, 38, 0.94)"),
+    tags$g(
+      stroke = "rgba(132, 163, 213, 0.22)",
+      `stroke-width` = 1,
+      lapply(seq(80, 400, by = 80), function(pos) {
+        tagList(
+          tags$line(x1 = 52, y1 = pos, x2 = 460, y2 = pos),
+          tags$line(x1 = pos + 20, y1 = 40, x2 = pos + 20, y2 = 392)
+        )
+      })
+    ),
+    tags$line(x1 = 58, y1 = 374, x2 = 430, y2 = 54, stroke = "rgba(255,255,255,0.32)", `stroke-width` = 2, `stroke-dasharray` = "8 10"),
+    tags$polyline(
+      points = paste(paste(round(x), round(y), sep = ","), collapse = " "),
+      fill = "none",
+      stroke = "url(#reportDemoPlotGradient)",
+      `stroke-width` = 4,
+      `stroke-linecap` = "round",
+      `stroke-linejoin` = "round"
+    ),
+    tags$g(
+      fill = "#e8f1ff",
+      stroke = "#48e0c2",
+      `stroke-width` = 2,
+      lapply(seq_along(x), function(i) tags$circle(cx = round(x[[i]]), cy = round(y[[i]]), r = 6))
+    ),
+    tags$text(x = 58, y = 410, fill = "#9db7df", `font-size` = 16, `font-weight` = 700, "Observed"),
+    tags$text(x = 20, y = 60, fill = "#9db7df", `font-size` = 16, `font-weight` = 700, transform = "rotate(-90 20 60)", "Predicted"),
+    tags$text(x = 58, y = 34, fill = "#e8f1ff", `font-size` = 20, `font-weight` = 800, "Observed vs Predicted")
+  )
+}
+
 report_browser_demo_artifacts <- function(prefix = "demo") {
   list(
     list(
@@ -477,6 +550,7 @@ report_browser_demo_artifacts <- function(prefix = "demo") {
       section = "Prediction Diagnostics",
       source_module = prefix,
       status = "ready",
+      object = report_browser_demo_observed_predicted_visual(),
       metadata = list(
         recommended_caption = "Predicted values should track observed values without systematic structure.",
         analytical_intent = "diagnostic",
@@ -576,6 +650,7 @@ qa_report_browser <- function() {
     data.table::data.table(check = "report renderer returns html", status = if (inherits(rendered_report, "shiny.tag") || inherits(rendered_report, "shiny.tag.list")) "success" else "error"),
     data.table::data.table(check = "section navigation rendered", status = if (grepl("aq-report-browser-nav", rendered_html, fixed = TRUE) && grepl("section-", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "findings rendered prominently", status = if (grepl("aq-report-browser-findings", rendered_html, fixed = TRUE) && grepl("What the report asserts", rendered_html, fixed = TRUE)) "success" else "error"),
+    data.table::data.table(check = "visualization renders inline visual", status = if (grepl("aq-report-browser-demo-plot", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "presentation profile class rendered", status = if (grepl("aq-report-browser-density-", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "malformed contract degrades gracefully", status = if (inherits(malformed, "shiny.tag") || inherits(malformed, "shiny.tag.list")) "success" else "error")
   )

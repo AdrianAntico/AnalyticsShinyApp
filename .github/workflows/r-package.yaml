@@ -42,10 +42,7 @@ jobs:
         run: Rscript -e "rcmdcheck::rcmdcheck(args = '--no-manual', error_on = 'error')"
 
       - name: Deterministic QA
-        run: |
-          Rscript -e "source('app.R'); stopifnot(all(app_env$qa_build_week_demo()$status != 'error'))"
-          Rscript -e "source('app.R'); stopifnot(all(app_env$qa_report_browser()$status != 'error'))"
-          Rscript -e "source('app.R'); stopifnot(all(app_env$qa_agent_operation_runtime()$status != 'error'))"
+        run: Rscript scripts/run_deterministic_qa.R
 
   pkgdown:
     name: pkgdown

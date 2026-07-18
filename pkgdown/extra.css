@@ -1,0 +1,25 @@
+pre,
+pre code {
+  background: #0b1220;
+  color: #eaf2ff;
+}
+
+pre {
+  border-color: rgba(96, 165, 250, 0.28);
+}
+
+.bg-white,
+.bg-light,
+.card.bg-white,
+.card.bg-light,
+.alert-light {
+  color: #0f172a;
+}
+
+.bg-white code,
+.bg-light code,
+.card.bg-white code,
+.card.bg-light code,
+.alert-light code {
+  color: #0f172a;
+}

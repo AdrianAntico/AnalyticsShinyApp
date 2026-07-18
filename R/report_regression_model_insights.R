@@ -351,6 +351,7 @@ build_regression_model_insights_report <- function(
         plot_ref = artifact_id,
         specification = .rmi_report_visual_spec(artifact),
         caption = (artifact$metadata %||% list())$recommended_caption %||% .rmi_report_artifact_label(artifact),
+        visual = artifact$object %||% (artifact$metadata %||% list())$visual,
         component_id = paste0("visual_", artifact_id),
         title = .rmi_report_artifact_label(artifact),
         metadata = list(source_artifact_id = artifact_id)

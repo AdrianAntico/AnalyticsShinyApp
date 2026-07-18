@@ -245,8 +245,8 @@ report_component_narrative <- function(text, component_id = NULL, title = "Narra
   create_report_component("narrative", component_id = component_id, title = title, payload = list(text = text), metadata = metadata)
 }
 
-report_component_visualization <- function(plot_ref = NULL, visual_ref = NULL, specification = NULL, caption = NULL, component_id = NULL, title = "Visualization", metadata = list()) {
-  create_report_component("visualization", component_id = component_id, title = title, payload = list(plot_ref = plot_ref, visual_ref = visual_ref, specification = specification, caption = caption), metadata = metadata)
+report_component_visualization <- function(plot_ref = NULL, visual_ref = NULL, specification = NULL, caption = NULL, visual = NULL, component_id = NULL, title = "Visualization", metadata = list()) {
+  create_report_component("visualization", component_id = component_id, title = title, payload = list(plot_ref = plot_ref, visual_ref = visual_ref, specification = specification, caption = caption, visual = visual), metadata = metadata)
 }
 
 report_component_table <- function(table_ref = NULL, data = NULL, table_contract = NULL, component_id = NULL, title = "Table", metadata = list()) {
