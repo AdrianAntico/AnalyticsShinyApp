@@ -6,6 +6,7 @@ if (!file.exists(file.path(repo_root, "app.R")) || !file.exists(file.path(repo_r
   stop("Run scripts/install_workstation.R from the AnalyticsShinyApp repository root.", call. = FALSE)
 }
 
+source(file.path(repo_root, "R", "aaa_globals.R"))
 source(file.path(repo_root, "R", "utils_paths.R"))
 source(file.path(repo_root, "R", "installation_paths.R"))
 source(file.path(repo_root, "R", "installation_diagnostics.R"))

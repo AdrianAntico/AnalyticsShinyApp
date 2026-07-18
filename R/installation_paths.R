@@ -7,7 +7,25 @@ workstation_package_name <- function() {
 }
 
 workstation_release_version <- function() {
-  APP_RELEASE
+  release <- get0("APP_RELEASE", ifnotfound = NA_character_, inherits = TRUE)
+  if (is.character(release) && length(release) == 1L && !is.na(release) && nzchar(release)) {
+    return(release)
+  }
+
+  version <- get0("APP_VERSION", ifnotfound = NA_character_, inherits = TRUE)
+  if (is.character(version) && length(version) == 1L && !is.na(version) && nzchar(version)) {
+    return(version)
+  }
+
+  desc <- tryCatch(
+    utils::packageDescription(workstation_package_name(), fields = "Version"),
+    error = function(e) NA_character_
+  )
+  if (is.character(desc) && length(desc) == 1L && !is.na(desc) && nzchar(desc)) {
+    return(desc)
+  }
+
+  "unknown"
 }
 
 workstation_local_app_data <- function() {
