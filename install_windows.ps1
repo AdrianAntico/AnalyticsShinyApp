@@ -48,9 +48,17 @@ if ($DesktopShortcut) {
 
 Push-Location $repoRoot
 try {
-  & $rscript @args 2>&1 | Tee-Object -FilePath $logPath
-  if ($LASTEXITCODE -ne 0) {
-    throw "Installation failed with exit code $LASTEXITCODE. See log: $logPath"
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    & $rscript @args 2>&1 | Tee-Object -FilePath $logPath
+    $installExitCode = $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+  if ($installExitCode -ne 0) {
+    throw "Installation failed with exit code $installExitCode. See log: $logPath"
   }
 }
 finally {

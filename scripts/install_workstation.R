@@ -6,6 +6,13 @@ if (!file.exists(file.path(repo_root, "app.R")) || !file.exists(file.path(repo_r
   stop("Run scripts/install_workstation.R from the AnalyticsShinyApp repository root.", call. = FALSE)
 }
 
+options(cli.unicode = FALSE, crayon.enabled = FALSE)
+Sys.setenv(
+  CLI_NUM_COLORS = "1",
+  R_CLI_NUM_COLORS = "1",
+  NO_COLOR = "1"
+)
+
 source(file.path(repo_root, "R", "aaa_globals.R"))
 source(file.path(repo_root, "R", "utils_paths.R"))
 source(file.path(repo_root, "R", "installation_paths.R"))
@@ -131,12 +138,12 @@ emit("")
 emit("Analytics Workstation")
 emit("Version: ", workstation_release_version())
 emit("")
-emit(if (requireNamespace("AnalyticsShinyApp", quietly = TRUE)) "\u2713 R package installed" else "x R package not installed")
-emit(if (dir.exists(AnalyticsShinyApp:::workstation_resource_path(mustWork = FALSE))) "\u2713 Application resources installed" else "x Application resources missing")
-emit(if (electron_status == "PASS") "\u2713 Electron application installed" else "! Electron application needs attention")
-emit(if (file.exists(start_shortcut)) "\u2713 Start Menu shortcut created" else "! Start Menu shortcut not found")
-emit(if (file.exists(desktop_shortcut)) "\u2713 Desktop shortcut created" else "! Desktop shortcut not created")
-emit(if (ok) "\u2713 Validation passed" else "x Validation failed")
+emit(if (requireNamespace("AnalyticsShinyApp", quietly = TRUE)) "[OK] R package installed" else "[FAIL] R package not installed")
+emit(if (dir.exists(AnalyticsShinyApp:::workstation_resource_path(mustWork = FALSE))) "[OK] Application resources installed" else "[FAIL] Application resources missing")
+emit(if (electron_status == "PASS") "[OK] Electron application installed" else "[ATTENTION] Electron application needs attention")
+emit(if (file.exists(start_shortcut)) "[OK] Start Menu shortcut created" else "[ATTENTION] Start Menu shortcut not found")
+emit(if (file.exists(desktop_shortcut)) "[OK] Desktop shortcut created" else "[ATTENTION] Desktop shortcut not created")
+emit(if (ok) "[OK] Validation passed" else "[FAIL] Validation failed")
 emit("")
 emit("Launch:")
 emit("  Start Menu > Analytics Workstation")

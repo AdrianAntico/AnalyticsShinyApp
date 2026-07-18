@@ -7884,17 +7884,24 @@ body.aq-theme-cyberpunk .aq-plot-artifact-tray .aq-card {
   background: var(--aq-surface-2);
 }
 
-.aq-report-browser-visual-render > *,
 .aq-report-browser-demo-plot {
   display: block;
   width: 100%;
   min-height: 420px;
 }
 
+.aq-report-browser-visual-render > .html-widget,
 .aq-report-browser-visual-render .html-widget,
 .aq-report-browser-visual-render .echarts4r {
+  display: block;
   width: 100% !important;
+  min-height: 420px;
   height: 420px !important;
+}
+
+.aq-report-browser-visual-render > script,
+.aq-report-browser-visual-render script[type="application/json"] {
+  display: none !important;
 }
 
 .aq-report-browser-table-preview {
