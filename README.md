@@ -172,7 +172,7 @@ The app performs startup dependency checks before loading the Shiny UI.
 
 ## Install On Windows
 
-For the normal Windows desktop workflow, run the installer from the repository root:
+For the normal Windows desktop workflow, run the installer from the repository root. This installs the R package, prepares the Electron shell when Node.js/npm are available, and creates a Start Menu launcher:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install_windows.ps1
@@ -192,6 +192,36 @@ The installer:
 - prepares the Electron shell when Node.js and npm are available;
 - creates a Start Menu launcher;
 - runs package and distribution diagnostics.
+
+### Run The Electron Desktop App
+
+After installation, launch the desktop app from:
+
+```text
+Start Menu > Analytics Workstation
+```
+
+Or run the installed Electron launcher directly:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Analytics Workstation\Analytics Workstation Electron.cmd"
+```
+
+The main launcher is:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Analytics Workstation\Analytics Workstation.cmd"
+```
+
+It opens Electron when Electron dependencies are installed. If Electron is not available, it falls back to the browser launcher so the workstation still opens.
+
+To intentionally run the browser version:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Analytics Workstation\Analytics Workstation Browser.cmd"
+```
+
+If Chrome or your default browser opens, you are using the browser fallback path rather than the Electron shell.
 
 Installed app assets live under:
 

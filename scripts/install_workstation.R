@@ -56,13 +56,29 @@ if (is.na(rscript) || !file.exists(rscript)) {
   stop("Rscript was not found. Install R 4.5.x or add Rscript.exe to PATH.", call. = FALSE)
 }
 launcher <- paths[["launcher"]]
+browser_launcher <- file.path(paths[["program"]], "Analytics Workstation Browser.cmd")
 launcher_lines <- c(
+  "@echo off",
+  "setlocal",
+  paste0("set \"ELECTRON_DIR=", electron_dest, "\""),
+  paste0("set \"RSCRIPT=", rscript, "\""),
+  "if exist \"%ELECTRON_DIR%\\node_modules\\electron\\dist\\electron.exe\" (",
+  "  cd /d \"%ELECTRON_DIR%\"",
+  "  \"%ELECTRON_DIR%\\node_modules\\electron\\dist\\electron.exe\" .",
+  ") else (",
+  "  \"%RSCRIPT%\" -e \"AnalyticsShinyApp::run_workstation(host='127.0.0.1', launch_browser=TRUE)\"",
+  ")",
+  "endlocal"
+)
+writeLines(launcher_lines, launcher, useBytes = TRUE)
+
+browser_launcher_lines <- c(
   "@echo off",
   "setlocal",
   paste0("\"", rscript, "\" -e \"AnalyticsShinyApp::run_workstation(host='127.0.0.1', launch_browser=TRUE)\""),
   "endlocal"
 )
-writeLines(launcher_lines, launcher, useBytes = TRUE)
+writeLines(browser_launcher_lines, browser_launcher, useBytes = TRUE)
 
 electron_launcher <- file.path(paths[["program"]], "Analytics Workstation Electron.cmd")
 electron_lines <- c(
@@ -173,6 +189,12 @@ emit("  ", paths[["program"]])
 emit("")
 emit("Installed launcher:")
 emit("  ", launcher)
+emit("")
+emit("Electron launcher:")
+emit("  ", electron_launcher)
+emit("")
+emit("Browser fallback launcher:")
+emit("  ", browser_launcher)
 emit("")
 emit("User projects:")
 emit("  ", paths[["projects"]])

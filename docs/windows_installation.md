@@ -33,10 +33,24 @@ install_windows.cmd
 
 ## Installed Locations
 
-Application launcher:
+Main application launcher:
 
 ```text
 %LOCALAPPDATA%\Programs\Analytics Workstation\Analytics Workstation.cmd
+```
+
+The main launcher opens Electron when Electron dependencies are installed. If Electron is not available, it falls back to the browser version.
+
+Electron launcher:
+
+```text
+%LOCALAPPDATA%\Programs\Analytics Workstation\Analytics Workstation Electron.cmd
+```
+
+Browser fallback launcher:
+
+```text
+%LOCALAPPDATA%\Programs\Analytics Workstation\Analytics Workstation Browser.cmd
 ```
 
 Installed application resources:
@@ -68,11 +82,25 @@ Use:
 Start Menu > Analytics Workstation
 ```
 
-Or run the installed launcher directly:
+Or run the installed main launcher directly:
 
 ```text
 %LOCALAPPDATA%\Programs\Analytics Workstation\Analytics Workstation.cmd
 ```
+
+To force the Electron shell:
+
+```text
+%LOCALAPPDATA%\Programs\Analytics Workstation\Analytics Workstation Electron.cmd
+```
+
+To force the browser fallback:
+
+```text
+%LOCALAPPDATA%\Programs\Analytics Workstation\Analytics Workstation Browser.cmd
+```
+
+If Chrome or the default browser opens, the browser fallback path is being used rather than Electron.
 
 ## Pin to Taskbar
 
