@@ -560,12 +560,48 @@ report_browser_demo_observed_predicted_widget <- function() {
     AddGLM = FALSE,
     Height = "420px",
     title.text = "Observed vs Predicted",
-    title.Align = "center",
+    title.Align = "left",
+    title.top = 12,
+    title.left = 12,
+    title.padding = c(4, 4, 10, 4),
+    title.itemGap = 6,
+    title.textStyle.color = "#FFFFFF",
+    title.textStyle.fontWeight = "bolder",
     title.textStyle.fontSize = 22,
+    title.textStyle.textShadowColor = "#CE1141",
+    title.textStyle.textShadowBlur = 14,
+    title.textStyle.textShadowOffsetX = 0,
+    title.textStyle.textShadowOffsetY = 0,
+    title.subtextStyle.color = "#CE1141",
+    title.subtextStyle.textShadowColor = "#CE1141",
+    title.subtextStyle.textShadowBlur = 8,
+    title.subtextStyle.textShadowOffsetX = 0,
+    title.subtextStyle.textShadowOffsetY = 0,
+    title.subtextStyle.fontWeight = "bold",
     xAxis.title = "Observed",
+    xAxis.nameTextStyle.fontSize = 20,
+    xAxis.nameTextStyle.color = "#FFFFFF",
+    xAxis.nameTextStyle.textShadowColor = "#CE1141",
+    xAxis.nameTextStyle.textShadowBlur = 8,
+    xAxis.nameTextStyle.textShadowOffsetX = 0,
+    xAxis.nameTextStyle.textShadowOffsetY = 0,
+    xAxis.axisLabel.color = "#E8EEF7",
+    xAxis.axisLabel.overflow = "truncate",
     yAxis.title = "Predicted",
+    yAxis.nameTextStyle.fontSize = 20,
+    yAxis.nameTextStyle.padding = 60,
+    yAxis.nameTextStyle.color = "#CE1141",
+    yAxis.nameTextStyle.textShadowColor = "#CE1141",
+    yAxis.nameTextStyle.textShadowBlur = 10,
+    yAxis.nameTextStyle.textShadowOffsetX = 0,
+    yAxis.nameTextStyle.textShadowOffsetY = 0,
+    yAxis.axisLabel.color = "#F3F6FB",
+    tooltip.backgroundColor = "rgba(12, 35, 64, 0.96)",
+    tooltip.textStyle.color = "#FFFFFF",
     legend.show = FALSE,
-    toolbox.show = TRUE
+    toolbox.show = TRUE,
+    toolbox.iconStyle.borderColor = "#FFFFFF",
+    toolbox.emphasis.iconStyle.borderColor = "#CE1141"
   )
   if (requireNamespace("echarts4r", quietly = TRUE)) {
     chart <- tryCatch(
@@ -579,6 +615,17 @@ report_browser_demo_observed_predicted_widget <- function() {
       error = function(error) chart
     )
   }
+  chart <- tryCatch(
+    AutoPlots::e_grid_full(
+      chart,
+      grid.left = "8%",
+      grid.right = "8%",
+      grid.top = "16%",
+      grid.bottom = "18%",
+      grid.containLabel = TRUE
+    ),
+    error = function(error) chart
+  )
   attr(chart, "report_browser_visual_source") <- "AutoPlots::Scatter"
   chart
 }
