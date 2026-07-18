@@ -11,12 +11,15 @@ reports/
 results/
 runtime/
 node_modules/
+pkgdown-site/
 playwright-report/
 test-results/
 .playwright/
 .cache/ms-playwright/
 *.webm
+!docs/media/*.webm
 *.mp4
+!docs/media/*.mp4
 *.trace.zip
 session_data/
 temp/

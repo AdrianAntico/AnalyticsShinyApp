@@ -1,0 +1,14 @@
+---
+title: "Development Story"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Development Story}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Analytics Workstation is also a documented experiment in AI-assisted software engineering.
+
+The repository evolved through architecture, product design, release engineering, QA hardening, and public-readiness passes. As implementation became cheaper, more attention moved to evidence, trust, governance, product identity, and reproducibility.
+
+The development record is preserved in `docs/the_story.md` and `docs/development_ordeal.md`.

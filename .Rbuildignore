@@ -13,6 +13,8 @@
 ^data$
 ^scripts$
 ^release$
+^pkgdown-site$
+^tools/product-experience/node_modules$
 ^inst/electron/node_modules$
 ^book/source/raw_conversations$
 ^book/source/source_packs$

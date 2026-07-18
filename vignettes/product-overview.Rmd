@@ -1,0 +1,25 @@
+---
+title: "Product Overview"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Product Overview}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Analytics Workstation is software that investigates before it recommends.
+
+It preserves the path from objective to evidence to recommendation: what was observed, what remained uncertain, which explanations competed, how evidence changed belief, and why the final claim deserves trust.
+
+The Build Week release is intentionally narrow. It demonstrates a governed investigation over a deterministic synthetic dataset, with deterministic services producing evidence and a bounded AI layer supporting synthesis, belief revision, claim verification, and integrity review.
+
+## Start
+
+Install the package, then launch:
+
+```r
+library(AnalyticsShinyApp)
+run_workstation()
+```
+
+The browser opens the workstation shell. The brand mark returns to Home, workspaces stay in fixed locations, and the Build Week demo is available from `More`.

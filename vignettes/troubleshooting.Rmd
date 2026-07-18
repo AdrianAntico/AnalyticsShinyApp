@@ -1,0 +1,30 @@
+---
+title: "Troubleshooting"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Troubleshooting}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+If the app does not launch, check the active R version and library paths first.
+
+```r
+R.version.string
+.libPaths()
+```
+
+Then verify package visibility:
+
+```r
+library(AnalyticsShinyApp)
+run_workstation(launch_browser = FALSE)
+```
+
+If optional capabilities are unavailable, run the dependency installer from the repository root:
+
+```sh
+Rscript scripts/install_app_dependencies.R
+```
+
+See `docs/windows_installation.md` and `docs/troubleshooting_installation.md` for the Windows desktop workflow.

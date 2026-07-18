@@ -1,0 +1,14 @@
+---
+title: "Evidence and Integrity Review"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Evidence and Integrity Review}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Analytics Workstation treats artifacts as evidence, not disposable outputs.
+
+The Build Week path keeps rejected and weakened explanations visible, links final claims back to evidence, and ends with an integrity review. That review summarizes evidence strength, contradictory evidence, evidence gaps, assumptions, sensitivity, robustness, and decision readiness.
+
+The integrity review is not another model opinion. It is a structured audit of the investigation that asks whether the recommendation deserves action.

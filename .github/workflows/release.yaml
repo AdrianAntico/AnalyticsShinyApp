@@ -1,0 +1,82 @@
+name: Build Week release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to package, for example v1.0.0-buildweek"
+        required: true
+        default: "v1.0.0-buildweek"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::devtools
+            any::pkgdown
+            any::remotes
+            any::testthat
+          needs: check
+
+      - name: Install dependencies
+        run: Rscript scripts/install_app_dependencies.R
+
+      - name: Run release preflight
+        run: Rscript scripts/preflight_release.R
+
+      - name: Build source package
+        shell: pwsh
+        run: |
+          R CMD build .
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item AnalyticsShinyApp_*.tar.gz release/AnalyticsShinyApp_1.0.0.tar.gz -Force
+
+      - name: Build Windows distribution
+        shell: pwsh
+        run: |
+          if (Test-Path scripts/build_windows_distribution.ps1) {
+            powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_windows_distribution.ps1
+          } elseif (Test-Path release/AnalyticsWorkstation-1.0.0-buildweek.zip) {
+            Write-Host "Using existing Windows distribution zip."
+          } else {
+            Compress-Archive -Path inst, R, DESCRIPTION, NAMESPACE, README.md, docs/windows_installation.md, scripts/launch_installed_workstation.R -DestinationPath release/AnalyticsWorkstation-1.0.0-buildweek.zip -Force
+          }
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem release -File | Where-Object { $_.Name -match '\\.(zip|tar\\.gz)$' } |
+            ForEach-Object {
+              $hash = Get-FileHash $_.FullName -Algorithm SHA256
+              "$($hash.Hash)  $($_.Name)"
+            } | Set-Content release/SHA256.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: Analytics Workstation ${{ github.event.inputs.tag || github.ref_name }}
+          body_path: release/ReleaseNotes.md
+          files: |
+            release/AnalyticsShinyApp_1.0.0.tar.gz
+            release/AnalyticsWorkstation-1.0.0-buildweek.zip
+            release/SHA256.txt

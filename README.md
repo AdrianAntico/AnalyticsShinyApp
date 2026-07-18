@@ -217,7 +217,7 @@ See:
 The Windows installer is preferred for end-user setup. For local development or after switching R versions, run the dependency installer directly:
 
 ```powershell
-& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" scripts/install_app_dependencies.R
+Rscript scripts/install_app_dependencies.R
 ```
 
 Core R packages required for startup:
@@ -231,14 +231,14 @@ Core R packages required for startup:
 - `openxlsx`
 - `shiny`
 
-The dependency installer reads `DESCRIPTION`, installs declared CRAN packages with recursive dependencies, then installs sibling first-party packages when their repositories exist:
+The dependency installer reads `DESCRIPTION`, installs declared CRAN packages with recursive dependencies, then installs first-party ecosystem packages from sibling repositories when available:
 
 - `../AutoPlots`
 - `../AutoQuant`
 - `../AutoNLS`
 - `../Rodeo`
 
-This is the preferred path after switching R versions or refreshing sibling repositories.
+If a sibling repository is not available, the installer falls back to the canonical GitHub repository for that package and fails loudly if any required first-party capability remains unavailable. This is the preferred path after switching R versions, refreshing sibling repositories, or validating a fresh machine.
 
 Install released CRAN dependencies:
 
@@ -294,10 +294,10 @@ app_env$qa_app_dependency_capabilities()
 Useful checks before recording or submitting:
 
 ```powershell
-& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'source("app.R"); qa <- app_env$qa_build_week_demo(); print(qa)'
-& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'source("app.R"); qa <- app_env$qa_report_browser(); print(qa)'
-& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'source("app.R"); qa <- app_env$qa_agent_operation_runtime(); print(qa)'
-& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'testthat::test_file("tests/testthat/test-build-week-demo.R")'
+Rscript -e 'source("app.R"); qa <- app_env$qa_build_week_demo(); print(qa)'
+Rscript -e 'source("app.R"); qa <- app_env$qa_report_browser(); print(qa)'
+Rscript -e 'source("app.R"); qa <- app_env$qa_agent_operation_runtime(); print(qa)'
+Rscript -e 'testthat::test_file("tests/testthat/test-build-week-demo.R")'
 git diff --check
 ```
 

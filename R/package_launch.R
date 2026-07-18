@@ -1,3 +1,17 @@
+workstation_resolve_port <- function(port = NULL) {
+  if (is.null(port)) {
+    port <- suppressWarnings(as.integer(Sys.getenv("ANALYTICS_WORKSTATION_PORT", unset = NA_character_)))
+  } else {
+    port <- suppressWarnings(as.integer(port))
+  }
+
+  if (length(port) != 1L || is.na(port) || port <= 0L) {
+    return(sample.int(10000L, 1L) + 42000L)
+  }
+
+  port
+}
+
 run_workstation <- function(
   host = "127.0.0.1",
   port = NULL,
@@ -12,12 +26,7 @@ run_workstation <- function(
   if (!is.null(app_dir)) {
     warning("app_dir is ignored. Analytics Workstation now launches from installed package resources.", call. = FALSE)
   }
-  if (is.null(port)) {
-    port <- suppressWarnings(as.integer(Sys.getenv("ANALYTICS_WORKSTATION_PORT", unset = "0")))
-    if (is.na(port)) {
-      port <- 0L
-    }
-  }
+  port <- workstation_resolve_port(port)
 
   app <- workstation_app(options = options)
   shiny::runApp(app, port = port, host = host, launch.browser = launch_browser)

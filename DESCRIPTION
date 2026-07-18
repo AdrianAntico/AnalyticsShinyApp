@@ -8,7 +8,8 @@ Authors@R:
 Maintainer: Adrian Antico <adrianantico@gmail.com>
 Description: A local-first analytical workstation for governed investigations, evidence artifacts, belief revision, claim verification, and decision-ready reporting.
 License: file LICENSE
-URL: https://github.com/AdrianAntico/AnalyticsShinyApp
+URL: https://github.com/AdrianAntico/AnalyticsShinyApp,
+    https://adrianantico.github.io/AnalyticsShinyApp/
 BugReports: https://github.com/AdrianAntico/AnalyticsShinyApp/issues
 Encoding: UTF-8
 Imports:
@@ -33,11 +34,15 @@ Suggests:
     httr,
     httr2,
     jsonlite,
+    knitr,
     mirai,
     png,
     ps,
+    pkgdown,
     reactable,
     Rodeo,
+    rmarkdown,
     roxygen2,
     testthat,
     yaml
+VignetteBuilder: knitr

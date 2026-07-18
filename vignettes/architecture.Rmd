@@ -1,0 +1,18 @@
+---
+title: "Architecture"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Architecture}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+The release centers on a small set of contracts:
+
+- deterministic analytical services produce evidence;
+- artifacts preserve provenance and quality metadata;
+- ReportContracts translate analytical meaning into semantic report structure;
+- the Build Week runtime records inquiry state, belief revision, recommendation evolution, claim verification, and integrity review;
+- the package launch path runs from installed resources, not developer source files.
+
+The public demo is deliberately bounded. It is not an unconstrained autonomous analytics agent.

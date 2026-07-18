@@ -1,0 +1,52 @@
+url: https://adrianantico.github.io/AnalyticsShinyApp/
+destination: pkgdown-site
+template:
+  bootstrap: 5
+  bootswatch: darkly
+  bslib:
+    primary: "#60a5fa"
+    bg: "#07111f"
+    fg: "#eaf2ff"
+    border-radius: 0.5rem
+home:
+  title: Analytics Workstation
+  description: Evidence-governed AI investigation workstation.
+navbar:
+  title: Analytics Workstation
+  structure:
+    left: [intro, articles, reference, news]
+    right: [github]
+  components:
+    articles:
+      text: Guides
+      menu:
+      - text: Product Overview
+        href: articles/product-overview.html
+      - text: Build Week Demo
+        href: articles/build-week-demo.html
+      - text: Evidence and Integrity Review
+        href: articles/evidence-integrity-review.html
+      - text: Architecture
+        href: articles/architecture.html
+      - text: Development Story
+        href: articles/development-story.html
+      - text: Troubleshooting
+        href: articles/troubleshooting.html
+reference:
+- title: Package API
+  contents:
+  - run_workstation
+  - workstation_diagnostics
+articles:
+- title: Product
+  navbar: Product
+  contents:
+  - product-overview
+  - build-week-demo
+  - evidence-integrity-review
+- title: Architecture
+  navbar: Architecture
+  contents:
+  - architecture
+  - development-story
+  - troubleshooting

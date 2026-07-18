@@ -10,5 +10,8 @@ writeLines(as.character(Sys.getpid()), pid_file)
 sink(log_file, append = TRUE, split = TRUE)
 on.exit(sink(), add = TRUE)
 message("Starting Analytics Workstation from installed AnalyticsShinyApp package")
-port <- suppressWarnings(as.integer(Sys.getenv("ANALYTICS_WORKSTATION_PORT", unset = "0")))
+port <- suppressWarnings(as.integer(Sys.getenv("ANALYTICS_WORKSTATION_PORT", unset = NA_character_)))
+if (length(port) != 1L || is.na(port) || port <= 0L) {
+  port <- NULL
+}
 AnalyticsShinyApp::run_workstation(host = "127.0.0.1", port = port, launch_browser = TRUE)

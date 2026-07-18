@@ -5,7 +5,8 @@
   "description": "Repository-local Playwright runtime for deterministic Analytics Workstation product-experience replay.",
   "scripts": {
     "validate": "playwright --version",
-    "golden": "node ../../scripts/product_experience/golden_workflow_replay.js"
+    "golden": "node ../../scripts/product_experience/golden_workflow_replay.js",
+    "record-build-week": "node ../../scripts/product_experience/record_build_week_demo.js"
   },
   "devDependencies": {
     "@playwright/test": "1.49.1"

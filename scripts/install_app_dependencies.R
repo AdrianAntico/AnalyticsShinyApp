@@ -11,7 +11,13 @@ if (!file.exists(file.path(repo_root, "DESCRIPTION"))) {
 }
 
 cran_repo <- Sys.getenv("ANALYTICS_CRAN_REPO", unset = "https://cloud.r-project.org")
-first_party <- c("AutoPlots", "AutoQuant", "AutoNLS", "Rodeo")
+first_party_remotes <- c(
+  AutoPlots = "AdrianAntico/AutoPlots",
+  AutoQuant = "AdrianAntico/AutoQuant",
+  AutoNLS = "AdrianAntico/AutoNLS",
+  Rodeo = "AdrianAntico/Rodeo"
+)
+first_party <- names(first_party_remotes)
 fields <- read.dcf(file.path(repo_root, "DESCRIPTION"))[1, ]
 
 description_field <- function(name) {
@@ -67,11 +73,28 @@ if (length(available_repos)) {
       quiet = FALSE
     )
   }
-} else {
-  warning("No sibling first-party package repositories were found.", call. = FALSE)
 }
 
-final_packages <- unique(c(first_party[names(first_party_paths) %in% names(available_repos)], declared))
+remaining_first_party <- first_party[
+  !vapply(first_party, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))
+]
+remote_first_party <- setdiff(remaining_first_party, names(available_repos))
+
+if (length(remote_first_party)) {
+  message("Installing first-party packages from GitHub because sibling repositories were not available:")
+  for (pkg in remote_first_party) {
+    remote <- first_party_remotes[[pkg]]
+    message(" - ", pkg, " from ", remote)
+    remotes::install_github(
+      remote,
+      dependencies = TRUE,
+      upgrade = "never",
+      quiet = FALSE
+    )
+  }
+}
+
+final_packages <- unique(c(first_party, declared))
 availability <- data.frame(
   package = final_packages,
   available = vapply(final_packages, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1)),
