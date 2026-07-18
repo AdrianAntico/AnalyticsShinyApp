@@ -148,7 +148,15 @@ Then run:
 
 ## Run Locally
 
-From the repository root:
+For the installed-package path:
+
+```r
+install.packages("release/AnalyticsShinyApp_1.0.0.tar.gz", repos = NULL, type = "source")
+library(AnalyticsShinyApp)
+run_workstation()
+```
+
+For source-tree development from the repository root:
 
 ```r
 shiny::runApp(".")
@@ -180,7 +188,7 @@ The installer:
 
 - installs R dependencies and sibling first-party packages;
 - installs the `AnalyticsShinyApp` R package;
-- copies app source to a stable per-user program directory;
+- launches from installed package resources rather than copied developer source;
 - prepares the Electron shell when Node.js and npm are available;
 - creates a Start Menu launcher;
 - runs package and distribution diagnostics.
@@ -188,7 +196,7 @@ The installer:
 Installed app assets live under:
 
 ```text
-%LOCALAPPDATA%\Programs\Analytics Workstation\
+R package library: AnalyticsShinyApp/app
 ```
 
 User projects, exports, logs, cache, and runtime state live under:
@@ -217,6 +225,7 @@ Core R packages required for startup:
 - `AutoPlots`
 - `AutoQuant`
 - `data.table`
+- `echarts4r`
 - `htmltools`
 - `htmlwidgets`
 - `openxlsx`
@@ -234,7 +243,7 @@ This is the preferred path after switching R versions or refreshing sibling repo
 Install released CRAN dependencies:
 
 ```r
-install.packages(c("shiny", "data.table", "htmltools", "htmlwidgets", "openxlsx"))
+install.packages(c("shiny", "data.table", "echarts4r", "htmltools", "htmlwidgets", "openxlsx"))
 ```
 
 Install the local ecosystem packages:
@@ -297,13 +306,26 @@ See [docs/final_demo_reliability_checklist.md](docs/final_demo_reliability_check
 ## Repository Layout
 
 - `R/`: application services, pages, contracts, QA helpers, and orchestration.
-- `www/`: workstation styling, branding, and client assets.
+- `inst/app/`: package-installed UI assets, config defaults, and deterministic demo data.
+- `www/`: source-tree mirror of workstation styling, branding, and client assets for development.
 - `docs/`: architecture, demo, product, and submission documentation.
 - `docs/media/`: product captures, evidence exhibits, and browser-recorded videos.
 - `data/`: deterministic Build Week demo data.
 - `tests/`: deterministic testthat coverage.
 - `scripts/`: data generation, validation, and dependency helpers.
 - `release/`: Build Week release candidate artifacts.
+
+## Contributor Starting Points
+
+If you are new to the repository, start here:
+
+1. [docs/architecture_orientation.md](docs/architecture_orientation.md)
+2. [docs/development_principles.md](docs/development_principles.md)
+3. [docs/contributor_roadmap.md](docs/contributor_roadmap.md)
+4. [CONTRIBUTING.md](CONTRIBUTING.md)
+5. [docs/README.md](docs/README.md)
+
+Before opening a pull request, run the validation commands in [CONTRIBUTING.md](CONTRIBUTING.md) and check [docs/open_source_readiness.md](docs/open_source_readiness.md) for known repository-health follow-ups.
 
 ## Current Scope
 

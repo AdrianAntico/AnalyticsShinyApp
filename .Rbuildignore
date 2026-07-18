@@ -1,4 +1,5 @@
 ^.*\.Rproj$
+^\.editorconfig$
 ^\.Rproj\.user$
 ^\.git$
 ^\.github$

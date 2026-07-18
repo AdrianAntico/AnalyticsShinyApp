@@ -1,0 +1,6 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Contributor roadmap
+    url: https://github.com/AdrianAntico/AnalyticsShinyApp/blob/main/docs/contributor_roadmap.md
+    about: Start here if you want to find a contribution area.
+
