@@ -233,7 +233,12 @@ report_browser_render_narrative <- function(component, report = NULL, registry =
   )
 }
 
-report_browser_render_visual_payload <- function(visual) {
+report_browser_visual_output_id <- function(component) {
+  id <- component$component_id %||% component$title %||% "visual"
+  plot_service_output_id(id, prefix = "report_visual")
+}
+
+report_browser_render_visual_payload <- function(visual, component = NULL, output = NULL, session = NULL) {
   if (is.null(visual)) {
     return(NULL)
   }
@@ -241,7 +246,8 @@ report_browser_render_visual_payload <- function(visual) {
     return(visual)
   }
   if (inherits(visual, "htmlwidget")) {
-    return(htmltools::as.tags(visual))
+    output_id <- report_browser_visual_output_id(component %||% list(component_id = "visual"))
+    return(render_plot_service_widget(visual, output = output, session = session, output_id = output_id, height = "520px"))
   }
   if (is.character(visual) && length(visual) == 1L && grepl("^\\s*<", visual)) {
     return(htmltools::HTML(visual))
@@ -298,13 +304,13 @@ report_browser_visual_placeholder <- function(component, payload, spec) {
   )
 }
 
-report_browser_render_visualization <- function(component, report = NULL, registry = NULL) {
+report_browser_render_visualization <- function(component, report = NULL, registry = NULL, output = NULL, session = NULL) {
   payload <- component$payload %||% list()
   spec <- payload$specification %||% list()
   source_id <- spec$source_artifact_id %||% component$metadata$source_artifact_id %||% payload$plot_ref %||% payload$visual_ref
   visual_payload <- payload$visual %||% component$metadata$visual
   visual_mode <- report_browser_visual_mode(visual_payload)
-  visual <- report_browser_render_visual_payload(visual_payload)
+  visual <- report_browser_render_visual_payload(visual_payload, component = component, output = output, session = session)
   report_browser_component_shell(
     component,
     class = "aq-report-browser-visualization",
@@ -399,17 +405,21 @@ report_browser_render_unknown <- function(component, report = NULL, registry = N
   )
 }
 
-render_report_component <- function(component, report = NULL, registry = report_browser_component_registry()) {
+render_report_component <- function(component, report = NULL, registry = report_browser_component_registry(), output = NULL, session = NULL) {
   if (!inherits(component, "report_component")) {
     return(tags$article(class = "aq-report-browser-component aq-report-browser-invalid", "Invalid report component."))
   }
   renderer <- registry[[component$component_type %||% "unknown"]] %||% registry$unknown
-  renderer(component, report = report, registry = registry)
+  renderer_args <- list(component = component, report = report, registry = registry)
+  renderer_formals <- names(formals(renderer))
+  if ("output" %in% renderer_formals) renderer_args$output <- output
+  if ("session" %in% renderer_formals) renderer_args$session <- session
+  do.call(renderer, renderer_args)
 }
 
 render_component <- render_report_component
 
-render_report_section <- function(section, report, registry = report_browser_component_registry()) {
+render_report_section <- function(section, report, registry = report_browser_component_registry(), output = NULL, session = NULL) {
   components <- report_browser_component_map(report)
   component_ids <- section$components %||% character()
   section_components <- components[component_ids]
@@ -428,7 +438,7 @@ render_report_section <- function(section, report, registry = report_browser_com
     tags$div(
       class = "aq-report-browser-section-body",
       if (length(section_components)) {
-        lapply(section_components, render_report_component, report = report, registry = registry)
+        lapply(section_components, render_report_component, report = report, registry = registry, output = output, session = session)
       } else {
         ui_empty_state("No report material in this section.", "The section is valid, but no readable material is attached yet.")
       }
@@ -460,7 +470,7 @@ render_report_browser_navigation <- function(report) {
   )
 }
 
-render_report_browser <- function(report_contract, registry = report_browser_component_registry()) {
+render_report_browser <- function(report_contract, registry = report_browser_component_registry(), output = NULL, session = NULL) {
   if (!inherits(report_contract, "report_contract")) {
     return(tags$section(
       class = "aq-report-browser aq-report-browser-invalid",
@@ -519,7 +529,7 @@ render_report_browser <- function(report_contract, registry = report_browser_com
           tags$h3("Report body")
         ),
         if (length(sections)) {
-          lapply(sections, render_report_section, report = report_contract, registry = registry)
+          lapply(sections, render_report_section, report = report_contract, registry = registry, output = output, session = session)
         } else {
           ui_empty_state("No report sections supplied.", "A valid interactive report needs at least one section.")
         }
@@ -630,6 +640,8 @@ report_browser_demo_observed_predicted_visual <- function() {
 }
 
 report_browser_demo_artifacts <- function(prefix = "demo") {
+  module_id <- if (identical(prefix, "regression")) "autoquant_regression_model_insights" else prefix
+  source_function <- if (identical(prefix, "regression")) "deterministic_regression_report_demo_fixture" else "deterministic_report_demo_fixture"
   list(
     list(
       artifact_id = paste0(prefix, "_visual_observed_predicted"),
@@ -637,13 +649,16 @@ report_browser_demo_artifacts <- function(prefix = "demo") {
       label = "Observed vs Predicted",
       artifact_type = "plot",
       section = "Prediction Diagnostics",
-      source_module = prefix,
+      source_module = module_id,
       status = "ready",
       object = report_browser_demo_observed_predicted_visual(),
       metadata = list(
         recommended_caption = "Predicted values should track observed values without systematic structure.",
         analytical_intent = "diagnostic",
-        artifact_importance = "critical"
+        artifact_importance = "critical",
+        demo_fixture = TRUE,
+        source_function = source_function,
+        visual_source = attr(report_browser_demo_observed_predicted_visual(), "report_browser_visual_source") %||% "static_fallback"
       )
     ),
     list(
@@ -652,13 +667,15 @@ report_browser_demo_artifacts <- function(prefix = "demo") {
       label = "Model Metrics",
       artifact_type = "table",
       section = "Model Overview",
-      source_module = prefix,
+      source_module = module_id,
       status = "ready",
       metadata = list(
         recommended_caption = "Core performance metrics for report review.",
         analytical_intent = "comparison",
         artifact_importance = "critical",
-        table_architecture = list(pinned_columns = "metric", grouped_rows = FALSE)
+        table_architecture = list(pinned_columns = "metric", grouped_rows = FALSE),
+        demo_fixture = TRUE,
+        source_function = source_function
       ),
       content = data.frame(metric = c("RMSE", "MAE", "R Squared"), value = c(12.4, 8.7, 0.82), stringsAsFactors = FALSE)
     ),
@@ -668,13 +685,15 @@ report_browser_demo_artifacts <- function(prefix = "demo") {
       label = "Model Fit Finding",
       artifact_type = "text",
       section = "Model Overview",
-      source_module = prefix,
+      source_module = module_id,
       status = "ready",
       content = "The current model has usable fit for directional review, but residual diagnostics should be checked before decision use.",
       metadata = list(
         confidence = "source_supplied",
         artifact_importance = "recommended",
-        quality_status = "ready"
+        quality_status = "ready",
+        demo_fixture = TRUE,
+        source_function = source_function
       )
     ),
     list(
@@ -683,10 +702,10 @@ report_browser_demo_artifacts <- function(prefix = "demo") {
       label = "Review Residuals",
       artifact_type = "recommendation",
       section = "Recommendations",
-      source_module = prefix,
+      source_module = module_id,
       status = "ready",
       content = "Review residual structure before presenting model conclusions.",
-      metadata = list(artifact_importance = "recommended")
+      metadata = list(artifact_importance = "recommended", demo_fixture = TRUE, source_function = source_function)
     )
   )
 }
@@ -731,6 +750,18 @@ qa_report_browser <- function() {
   rendered_report <- render_report_browser(regression, registry)
   rendered_html <- as.character(htmltools::renderTags(rendered_report)$html)
   malformed <- render_report_browser(list(title = "Malformed"))
+  visual_binding_html <- ""
+  if (requireNamespace("AutoPlots", quietly = TRUE) && requireNamespace("echarts4r", quietly = TRUE)) {
+    fake_output <- new.env(parent = emptyenv())
+    fake_session <- list(ns = identity)
+    visual_binding <- report_browser_render_visual_payload(
+      report_browser_demo_observed_predicted_visual(),
+      component = list(component_id = "qa_observed_predicted"),
+      output = fake_output,
+      session = fake_session
+    )
+    visual_binding_html <- as.character(htmltools::renderTags(visual_binding)$html)
+  }
 
   rows <- list(
     data.table::data.table(check = "registry covers component types", status = if (all(report_component_types %in% names(registry))) "success" else "error"),
@@ -740,7 +771,9 @@ qa_report_browser <- function() {
     data.table::data.table(check = "section navigation rendered", status = if (grepl("aq-report-browser-nav", rendered_html, fixed = TRUE) && grepl("section-", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "findings rendered prominently", status = if (grepl("aq-report-browser-findings", rendered_html, fixed = TRUE) && grepl("What the report asserts", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "visualization renders real payload", status = if (grepl("html-widget", rendered_html, fixed = TRUE) || grepl("echarts4r", rendered_html, fixed = TRUE) || grepl("aq-report-browser-demo-plot", rendered_html, fixed = TRUE)) "success" else "error"),
+    data.table::data.table(check = "Shiny visual binding uses echarts4r output", status = if (!requireNamespace("AutoPlots", quietly = TRUE) || grepl("html-widget-output", visual_binding_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "demo visual uses modern AutoPlots when available", status = if (!requireNamespace("AutoPlots", quietly = TRUE) || identical(attr(report_browser_demo_observed_predicted_visual(), "report_browser_visual_source"), "AutoPlots::Scatter")) "success" else "error"),
+    data.table::data.table(check = "regression demo artifact provenance is explicit", status = if (identical((report_browser_demo_artifacts("regression")[[1]]$metadata %||% list())$demo_fixture, TRUE) && identical(report_browser_demo_artifacts("regression")[[1]]$source_module, "autoquant_regression_model_insights")) "success" else "error"),
     data.table::data.table(check = "visual interaction metadata matches payload", status = if (grepl("interactive, tooltip", rendered_html, fixed = TRUE) || grepl("static inline visual", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "presentation profile class rendered", status = if (grepl("aq-report-browser-density-", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "malformed contract degrades gracefully", status = if (inherits(malformed, "shiny.tag") || inherits(malformed, "shiny.tag.list")) "success" else "error")

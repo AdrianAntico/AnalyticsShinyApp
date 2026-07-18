@@ -26,6 +26,31 @@ build_autoplots_call <- function(plot_type, data, input) {
   do.call(plot_fun, args)
 }
 
+plot_service_output_id <- function(id, prefix = "plot") {
+  paste0(prefix, "_", gsub("[^A-Za-z0-9_]", "_", id %||% "visual"))
+}
+
+render_plot_service_widget <- function(widget, output, session, output_id, height = "520px") {
+  if (is.null(widget)) {
+    return(NULL)
+  }
+  if (!inherits(widget, "htmlwidget")) {
+    return(htmltools::tagList(widget))
+  }
+  if (is.null(output) || is.null(session)) {
+    return(htmltools::tagList(widget))
+  }
+  if (!requireNamespace("echarts4r", quietly = TRUE)) {
+    return(htmltools::tagList(widget))
+  }
+
+  local_widget <- widget
+  output[[output_id]] <- echarts4r::renderEcharts4r({
+    local_widget
+  })
+  echarts4r::echarts4rOutput(session$ns(output_id), width = "100%", height = height)
+}
+
 snapshot_plot_config <- function(plot_type, input, mapping_values = list()) {
   spec <- plot_spec(plot_type)
 

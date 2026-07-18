@@ -8,6 +8,89 @@ pre {
   border-color: rgba(96, 165, 250, 0.28);
 }
 
+pre code,
+pre code span,
+pre span,
+div.sourceCode,
+div.sourceCode pre,
+div.sourceCode code,
+.sourceCode,
+.sourceCode span {
+  color: #eaf2ff;
+}
+
+pre a,
+pre code a,
+div.sourceCode a,
+.sourceCode a {
+  color: #93c5fd;
+  text-decoration-color: rgba(147, 197, 253, 0.65);
+}
+
+pre .fu,
+pre .fn,
+pre .kw,
+pre .cf,
+pre .im,
+.sourceCode .fu,
+.sourceCode .fn,
+.sourceCode .kw,
+.sourceCode .cf,
+.sourceCode .im {
+  color: #93c5fd;
+}
+
+pre .st,
+pre .ch,
+pre .ss,
+.sourceCode .st,
+.sourceCode .ch,
+.sourceCode .ss {
+  color: #86efac;
+}
+
+pre .dv,
+pre .fl,
+pre .bn,
+pre .cn,
+.sourceCode .dv,
+.sourceCode .fl,
+.sourceCode .bn,
+.sourceCode .cn {
+  color: #fbbf24;
+}
+
+pre .co,
+pre .do,
+.sourceCode .co,
+.sourceCode .do {
+  color: #94a3b8;
+}
+
+pre .op,
+pre .ot,
+pre .at,
+pre .va,
+pre .sc,
+pre .no,
+pre .bu,
+.sourceCode .op,
+.sourceCode .ot,
+.sourceCode .at,
+.sourceCode .va,
+.sourceCode .sc,
+.sourceCode .no,
+.sourceCode .bu {
+  color: #cbd5e1;
+}
+
+pre .al,
+pre .er,
+.sourceCode .al,
+.sourceCode .er {
+  color: #f87171;
+}
+
 .bg-white,
 .bg-light,
 .card.bg-white,

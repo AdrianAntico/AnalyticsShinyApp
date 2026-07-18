@@ -88,7 +88,7 @@ page_report_browser_server <- function(id, ctx) {
       reports <- available_reports()
       selected <- input$report_family %||% "Regression"
       report <- reports[[selected]] %||% reports[[1]]
-      render_report_browser(report)
+      render_report_browser(report, output = output, session = session)
     })
   })
 }
