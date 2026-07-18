@@ -249,6 +249,46 @@ report_browser_render_visual_payload <- function(visual) {
   NULL
 }
 
+report_browser_visual_mode <- function(visual) {
+  if (is.null(visual)) {
+    return("semantic_reference")
+  }
+  if (inherits(visual, "htmlwidget")) {
+    return("interactive_widget")
+  }
+  if (inherits(visual, "shiny.tag") || inherits(visual, "shiny.tag.list")) {
+    return("static_inline_visual")
+  }
+  if (is.character(visual) && length(visual) == 1L && grepl("^\\s*<", visual)) {
+    return("static_html_fragment")
+  }
+  "unsupported_visual_payload"
+}
+
+report_browser_visual_interaction_label <- function(mode, spec, component) {
+  if (identical(mode, "interactive_widget")) {
+    return(paste(spec$interaction_capability %||% component$interaction_descriptor$capabilities %||% "interactive widget", collapse = ", "))
+  }
+  if (identical(mode, "static_inline_visual") || identical(mode, "static_html_fragment")) {
+    return("static inline visual")
+  }
+  if (identical(mode, "semantic_reference")) {
+    return("semantic reference only")
+  }
+  "unsupported visual payload"
+}
+
+report_browser_visual_fallback_label <- function(mode, spec, component) {
+  fallback <- spec$export_fallback %||% component$static_fallback %||% list(strategy = "static_placeholder")
+  if (identical(mode, "interactive_widget")) {
+    return(fallback$strategy %||% "htmlwidget")
+  }
+  if (identical(mode, "static_inline_visual") || identical(mode, "static_html_fragment")) {
+    return("inline_static_visual")
+  }
+  fallback$strategy %||% "static_placeholder"
+}
+
 report_browser_visual_placeholder <- function(component, payload, spec) {
   tags$div(
     class = "aq-report-browser-visual-placeholder",
@@ -262,15 +302,17 @@ report_browser_render_visualization <- function(component, report = NULL, regist
   payload <- component$payload %||% list()
   spec <- payload$specification %||% list()
   source_id <- spec$source_artifact_id %||% component$metadata$source_artifact_id %||% payload$plot_ref %||% payload$visual_ref
-  visual <- report_browser_render_visual_payload(payload$visual %||% component$metadata$visual)
+  visual_payload <- payload$visual %||% component$metadata$visual
+  visual_mode <- report_browser_visual_mode(visual_payload)
+  visual <- report_browser_render_visual_payload(visual_payload)
   report_browser_component_shell(
     component,
     class = "aq-report-browser-visualization",
     if (is.null(visual)) report_browser_visual_placeholder(component, payload, spec) else tags$div(class = "aq-report-browser-visual-render", visual),
     report_browser_key_values(list(
       source_artifact = source_id %||% "Not linked",
-      interaction = paste(spec$interaction_capability %||% component$interaction_descriptor$capabilities %||% "interactive", collapse = ", "),
-      fallback = (spec$export_fallback %||% component$static_fallback %||% list(strategy = "static_placeholder"))$strategy %||% "static_placeholder"
+      interaction = report_browser_visual_interaction_label(visual_mode, spec, component),
+      fallback = report_browser_visual_fallback_label(visual_mode, spec, component)
     ))
   )
 }
@@ -488,7 +530,59 @@ render_report_browser <- function(report_contract, registry = report_browser_com
 
 render_report <- render_report_browser
 
-report_browser_demo_observed_predicted_visual <- function() {
+report_browser_demo_observed_predicted_widget <- function() {
+  if (!requireNamespace("echarts4r", quietly = TRUE)) {
+    return(NULL)
+  }
+  points <- data.frame(
+    observed = c(18, 28, 37, 45, 53, 63, 70, 80, 88),
+    predicted = c(21, 26, 39, 43, 57, 60, 73, 77, 91)
+  )
+  points$ideal <- points$observed
+  chart <- points |>
+    echarts4r::e_charts(observed) |>
+    echarts4r::e_scatter(
+      predicted,
+      symbol_size = 16,
+      name = "Prediction pairs",
+      itemStyle = list(color = "#e8f1ff", borderColor = "#48e0c2", borderWidth = 3)
+    ) |>
+    echarts4r::e_line(
+      ideal,
+      symbol = "none",
+      name = "Ideal fit",
+      lineStyle = list(type = "dashed", color = "rgba(234, 242, 255, 0.45)", width = 2)
+    ) |>
+    echarts4r::e_title(
+      text = "Observed vs Predicted",
+      left = "center",
+      textStyle = list(color = "#e8f1ff", fontWeight = 800, fontSize = 22)
+    ) |>
+    echarts4r::e_tooltip(trigger = "item") |>
+    echarts4r::e_legend(
+      bottom = 10,
+      textStyle = list(color = "#9db7df")
+    ) |>
+    echarts4r::e_x_axis(
+      name = "Observed",
+      nameLocation = "middle",
+      nameGap = 34,
+      axisLine = list(lineStyle = list(color = "#9db7df")),
+      splitLine = list(lineStyle = list(color = "rgba(132, 163, 213, 0.18)"))
+    ) |>
+    echarts4r::e_y_axis(
+      name = "Predicted",
+      nameLocation = "middle",
+      nameGap = 42,
+      axisLine = list(lineStyle = list(color = "#9db7df")),
+      splitLine = list(lineStyle = list(color = "rgba(132, 163, 213, 0.18)"))
+    ) |>
+    echarts4r::e_grid(left = "8%", right = "5%", top = "16%", bottom = "18%")
+  chart$x$theme <- NULL
+  chart
+}
+
+report_browser_demo_observed_predicted_static <- function() {
   points <- data.frame(
     observed = c(18, 28, 37, 45, 53, 63, 70, 80, 88),
     predicted = c(21, 26, 39, 43, 57, 60, 73, 77, 91)
@@ -538,6 +632,10 @@ report_browser_demo_observed_predicted_visual <- function() {
     tags$text(x = 20, y = 60, fill = "#9db7df", `font-size` = 16, `font-weight` = 700, transform = "rotate(-90 20 60)", "Predicted"),
     tags$text(x = 58, y = 34, fill = "#e8f1ff", `font-size` = 20, `font-weight` = 800, "Observed vs Predicted")
   )
+}
+
+report_browser_demo_observed_predicted_visual <- function() {
+  report_browser_demo_observed_predicted_widget() %||% report_browser_demo_observed_predicted_static()
 }
 
 report_browser_demo_artifacts <- function(prefix = "demo") {
@@ -650,7 +748,9 @@ qa_report_browser <- function() {
     data.table::data.table(check = "report renderer returns html", status = if (inherits(rendered_report, "shiny.tag") || inherits(rendered_report, "shiny.tag.list")) "success" else "error"),
     data.table::data.table(check = "section navigation rendered", status = if (grepl("aq-report-browser-nav", rendered_html, fixed = TRUE) && grepl("section-", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "findings rendered prominently", status = if (grepl("aq-report-browser-findings", rendered_html, fixed = TRUE) && grepl("What the report asserts", rendered_html, fixed = TRUE)) "success" else "error"),
-    data.table::data.table(check = "visualization renders inline visual", status = if (grepl("aq-report-browser-demo-plot", rendered_html, fixed = TRUE)) "success" else "error"),
+    data.table::data.table(check = "visualization renders real payload", status = if (grepl("html-widget", rendered_html, fixed = TRUE) || grepl("echarts4r", rendered_html, fixed = TRUE) || grepl("aq-report-browser-demo-plot", rendered_html, fixed = TRUE)) "success" else "error"),
+    data.table::data.table(check = "demo visual uses echarts when available", status = if (!requireNamespace("echarts4r", quietly = TRUE) || inherits(report_browser_demo_observed_predicted_visual(), "htmlwidget")) "success" else "error"),
+    data.table::data.table(check = "visual interaction metadata matches payload", status = if (grepl("interactive, tooltip", rendered_html, fixed = TRUE) || grepl("static inline visual", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "presentation profile class rendered", status = if (grepl("aq-report-browser-density-", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "malformed contract degrades gracefully", status = if (inherits(malformed, "shiny.tag") || inherits(malformed, "shiny.tag.list")) "success" else "error")
   )

@@ -131,18 +131,33 @@ regression_model_insights_report_type <- "regression_model_insights"
 
 .rmi_report_visual_spec <- function(artifact) {
   metadata <- artifact$metadata %||% list()
+  visual <- artifact$object %||% metadata$visual
+  interaction_capability <- if (inherits(visual, "htmlwidget")) {
+    c("interactive", "tooltip")
+  } else if (inherits(visual, "shiny.tag") || inherits(visual, "shiny.tag.list") || (is.character(visual) && length(visual) == 1L && grepl("^\\s*<", visual))) {
+    "static_inline_visual"
+  } else {
+    "semantic_reference"
+  }
+  fallback_strategy <- if (inherits(visual, "htmlwidget")) {
+    "htmlwidget_or_static_capture"
+  } else if (identical(interaction_capability, "static_inline_visual")) {
+    "inline_static_visual"
+  } else {
+    "static_image_or_caption"
+  }
   list(
     purpose = metadata$purpose %||% metadata$recommended_caption %||% paste("Inspect", .rmi_report_artifact_label(artifact)),
     source_object = .rmi_report_artifact_id(artifact),
     source_artifact_id = .rmi_report_artifact_id(artifact),
-    interaction_capability = c("interactive", "drilldown"),
+    interaction_capability = interaction_capability,
     presentation_hints = list(
       density = "balanced",
       preferred_size = "large",
       caption = metadata$recommended_caption %||% .rmi_report_artifact_label(artifact)
     ),
     export_fallback = list(
-      strategy = "static_image_or_caption",
+      strategy = fallback_strategy,
       reason = "Renderer-specific plot capture is outside the ReportContract adapter."
     )
   )

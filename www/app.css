@@ -7888,7 +7888,13 @@ body.aq-theme-cyberpunk .aq-plot-artifact-tray .aq-card {
 .aq-report-browser-demo-plot {
   display: block;
   width: 100%;
-  min-height: 260px;
+  min-height: 420px;
+}
+
+.aq-report-browser-visual-render .html-widget,
+.aq-report-browser-visual-render .echarts4r {
+  width: 100% !important;
+  height: 420px !important;
 }
 
 .aq-report-browser-table-preview {
