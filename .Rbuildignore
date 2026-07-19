@@ -3,6 +3,7 @@
 ^\.Rproj\.user$
 ^\.git$
 ^\.github$
+^\.githooks$
 ^\.agents$
 ^exports$
 ^runtime$

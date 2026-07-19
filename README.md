@@ -347,6 +347,22 @@ Useful checks before recording or submitting:
 git diff --check
 ```
 
+For release-candidate pushes, use the guarded push path instead of `git push`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\guarded_push.ps1
+```
+
+This mirrors the GitHub Actions release gates before pushing: dependency installation, `R CMD check`, deterministic QA, pkgdown build, tracked-file cleanliness, and `git diff --check`.
+
+To install the same gate as a local Git pre-push hook:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_git_hooks.ps1
+```
+
+An emergency bypass is possible with `AW_SKIP_PRE_PUSH=1`, but it should be treated as an explicit release-steward exception.
+
 See [docs/final_demo_reliability_checklist.md](docs/final_demo_reliability_checklist.md) for the full recording gate.
 
 ## Repository Layout

@@ -1,0 +1,38 @@
+#!/bin/sh
+
+if [ "$AW_SKIP_PRE_PUSH" = "1" ]; then
+  echo "AW_SKIP_PRE_PUSH=1 is set. Skipping Analytics Workstation release-steward pre-push validation." >&2
+  exit 0
+fi
+
+if [ "$AW_PRE_PUSH_ALREADY_VALIDATED" = "1" ]; then
+  echo "Analytics Workstation release-steward validation already passed in guarded_push.ps1." >&2
+  exit 0
+fi
+
+unset LC_ALL
+unset LC_CTYPE
+export LANG=C
+
+RSCRIPT_BIN="${RSCRIPT:-Rscript}"
+
+if ! command -v "$RSCRIPT_BIN" >/dev/null 2>&1; then
+  for candidate in \
+    "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" \
+    "/c/Program Files/R/R-4.5.1/bin/Rscript.exe" \
+    "/c/Program Files/R/R-4.5.0/bin/Rscript.exe"
+  do
+    if [ -x "$candidate" ]; then
+      RSCRIPT_BIN="$candidate"
+      break
+    fi
+  done
+fi
+
+if ! command -v "$RSCRIPT_BIN" >/dev/null 2>&1 && [ ! -x "$RSCRIPT_BIN" ]; then
+  echo "Rscript is required for Analytics Workstation pre-push validation." >&2
+  echo "Set RSCRIPT to the full Rscript path or use scripts/guarded_push.ps1." >&2
+  exit 1
+fi
+
+"$RSCRIPT_BIN" scripts/pre_push_release_check.R
