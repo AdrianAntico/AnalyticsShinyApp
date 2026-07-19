@@ -311,6 +311,8 @@ report_browser_render_visualization <- function(component, report = NULL, regist
   visual_payload <- payload$visual %||% component$metadata$visual
   visual_mode <- report_browser_visual_mode(visual_payload)
   visual <- report_browser_render_visual_payload(visual_payload, component = component, output = output, session = session)
+  provenance <- component$metadata$provenance_diagnostics %||% list()
+  runtime_fallback <- component$metadata$fallback_status %||% provenance$fallback_path %||% "not reported"
   report_browser_component_shell(
     component,
     class = "aq-report-browser-visualization",
@@ -318,7 +320,8 @@ report_browser_render_visualization <- function(component, report = NULL, regist
     report_browser_key_values(list(
       source_artifact = source_id %||% "Not linked",
       interaction = report_browser_visual_interaction_label(visual_mode, spec, component),
-      fallback = report_browser_visual_fallback_label(visual_mode, spec, component)
+      runtime_fallback = runtime_fallback,
+      export_fallback = report_browser_visual_fallback_label(visual_mode, spec, component)
     ))
   )
 }
@@ -605,86 +608,29 @@ report_browser_demo_observed_predicted_widget <- function() {
     toolbox.emphasis.iconStyle.borderColor = "#CE1141"
   )
   if (requireNamespace("echarts4r", quietly = TRUE)) {
-    chart <- tryCatch(
-      echarts4r::e_line(
-        chart,
-        ideal,
-        symbol = "none",
-        name = "Ideal fit",
-        lineStyle = list(type = "dashed", color = "rgba(234, 242, 255, 0.45)", width = 2)
-      ),
-      error = function(error) chart
+    chart <- echarts4r::e_line(
+      chart,
+      ideal,
+      symbol = "none",
+      name = "Ideal fit",
+      lineStyle = list(type = "dashed", color = "rgba(234, 242, 255, 0.45)", width = 2)
     )
   }
-  chart <- tryCatch(
-    AutoPlots::e_grid_full(
-      chart,
-      grid.left = "10%",
-      grid.right = "6%",
-      grid.top = "18%",
-      grid.bottom = "20%",
-      grid.containLabel = TRUE
-    ),
-    error = function(error) chart
-  )
+  chart <- AutoPlots::e_grid_full(
+    chart,
+    grid.left = "10%",
+    grid.right = "6%",
+    grid.top = "18%",
+    grid.bottom = "20%",
+    grid.containLabel = TRUE
+  ) |>
+    echarts4r::e_color(background = "transparent")
   attr(chart, "report_browser_visual_source") <- "AutoPlots::Scatter"
   chart
 }
 
-report_browser_demo_observed_predicted_static <- function() {
-  points <- data.frame(
-    observed = c(18, 28, 37, 45, 53, 63, 70, 80, 88),
-    predicted = c(21, 26, 39, 43, 57, 60, 73, 77, 91)
-  )
-  x <- 48 + points$observed * 4.2
-  y <- 420 - points$predicted * 3.6
-  tags$svg(
-    class = "aq-report-browser-demo-plot",
-    viewBox = "0 0 520 440",
-    role = "img",
-    `aria-label` = "Observed versus predicted diagnostic plot",
-    tags$defs(
-      tags$linearGradient(
-        id = "reportDemoPlotGradient",
-        x1 = "0%", y1 = "0%", x2 = "100%", y2 = "100%",
-        tags$stop(offset = "0%", `stop-color` = "#61a8ff", `stop-opacity` = "0.95"),
-        tags$stop(offset = "100%", `stop-color` = "#48e0c2", `stop-opacity` = "0.85")
-      )
-    ),
-    tags$rect(x = 0, y = 0, width = 520, height = 440, rx = 18, fill = "rgba(11, 20, 38, 0.94)"),
-    tags$g(
-      stroke = "rgba(132, 163, 213, 0.22)",
-      `stroke-width` = 1,
-      lapply(seq(80, 400, by = 80), function(pos) {
-        tagList(
-          tags$line(x1 = 52, y1 = pos, x2 = 460, y2 = pos),
-          tags$line(x1 = pos + 20, y1 = 40, x2 = pos + 20, y2 = 392)
-        )
-      })
-    ),
-    tags$line(x1 = 58, y1 = 374, x2 = 430, y2 = 54, stroke = "rgba(255,255,255,0.32)", `stroke-width` = 2, `stroke-dasharray` = "8 10"),
-    tags$polyline(
-      points = paste(paste(round(x), round(y), sep = ","), collapse = " "),
-      fill = "none",
-      stroke = "url(#reportDemoPlotGradient)",
-      `stroke-width` = 4,
-      `stroke-linecap` = "round",
-      `stroke-linejoin` = "round"
-    ),
-    tags$g(
-      fill = "#e8f1ff",
-      stroke = "#48e0c2",
-      `stroke-width` = 2,
-      lapply(seq_along(x), function(i) tags$circle(cx = round(x[[i]]), cy = round(y[[i]]), r = 6))
-    ),
-    tags$text(x = 58, y = 410, fill = "#9db7df", `font-size` = 16, `font-weight` = 700, "Observed"),
-    tags$text(x = 20, y = 60, fill = "#9db7df", `font-size` = 16, `font-weight` = 700, transform = "rotate(-90 20 60)", "Predicted"),
-    tags$text(x = 58, y = 34, fill = "#e8f1ff", `font-size` = 20, `font-weight` = 800, "Observed vs Predicted")
-  )
-}
-
 report_browser_demo_observed_predicted_visual <- function() {
-  report_browser_demo_observed_predicted_widget() %||% report_browser_demo_observed_predicted_static()
+  report_browser_demo_observed_predicted_widget()
 }
 
 report_browser_demo_regression_data <- function() {
@@ -733,7 +679,8 @@ report_browser_demo_direct_observed_predicted_autoplots <- function(data = repor
     grid.top = "16%",
     grid.bottom = "18%",
     grid.containLabel = TRUE
-  )
+  ) |>
+    echarts4r::e_color(background = "transparent")
 }
 
 report_browser_package_location <- function(package) {
@@ -872,7 +819,7 @@ report_browser_demo_regression_artifacts <- function() {
   report_browser_log_regression_provenance(selected$metadata$provenance_diagnostics)
   c(
     list(selected),
-    report_browser_demo_artifacts("regression_fixture")[-1]
+    report_browser_demo_artifacts("regression_fixture")
   )
 }
 
@@ -882,26 +829,7 @@ report_browser_demo_artifacts <- function(prefix = "demo") {
   }
   module_id <- if (identical(prefix, "regression")) "autoquant_regression_model_insights" else prefix
   source_function <- if (identical(prefix, "regression")) "deterministic_regression_report_demo_fixture" else "deterministic_report_demo_fixture"
-  observed_predicted_visual <- report_browser_demo_observed_predicted_visual()
   list(
-    list(
-      artifact_id = paste0(prefix, "_visual_observed_predicted"),
-      title = "Observed vs Predicted",
-      label = "Observed vs Predicted",
-      artifact_type = "plot",
-      section = "Prediction Diagnostics",
-      source_module = module_id,
-      status = "ready",
-      object = observed_predicted_visual,
-      metadata = list(
-        recommended_caption = "Predicted values should track observed values without systematic structure.",
-        analytical_intent = "diagnostic",
-        artifact_importance = "critical",
-        demo_fixture = TRUE,
-        source_function = source_function,
-        visual_source = attr(observed_predicted_visual, "report_browser_visual_source") %||% "static_fallback"
-      )
-    ),
     list(
       artifact_id = paste0(prefix, "_metrics"),
       title = "Model Metrics",
@@ -1008,6 +936,17 @@ qa_report_browser <- function() {
   regression_visual_metadata <- regression_visual_artifact$metadata %||% list()
   regression_visual_provenance <- regression_visual_metadata$provenance_diagnostics %||% list()
   direct_autoplots_visual <- report_browser_demo_direct_observed_predicted_autoplots()
+  regression_visual_background <- regression_visual_artifact$object$x$opts$backgroundColor %||%
+    regression_visual_artifact$object$x$opts$background %||%
+    NA_character_
+  direct_visual_background <- direct_autoplots_visual$x$opts$backgroundColor %||%
+    direct_autoplots_visual$x$opts$background %||%
+    NA_character_
+  fabricated_generic_plot_count <- sum(vapply(
+    c(report_browser_demo_artifacts("shap"), report_browser_demo_artifacts("eda")),
+    function(artifact) identical(artifact$artifact_type, "plot"),
+    logical(1)
+  ))
 
   rows <- list(
     data.table::data.table(check = "registry covers component types", status = if (all(report_component_types %in% names(registry))) "success" else "error"),
@@ -1016,7 +955,7 @@ qa_report_browser <- function() {
     data.table::data.table(check = "report renderer returns html", status = if (inherits(rendered_report, "shiny.tag") || inherits(rendered_report, "shiny.tag.list")) "success" else "error"),
     data.table::data.table(check = "section navigation rendered", status = if (grepl("aq-report-browser-nav", rendered_html, fixed = TRUE) && grepl("section-", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "findings rendered prominently", status = if (grepl("aq-report-browser-findings", rendered_html, fixed = TRUE) && grepl("What the report asserts", rendered_html, fixed = TRUE)) "success" else "error"),
-    data.table::data.table(check = "visualization renders real payload", status = if (grepl("html-widget", rendered_html, fixed = TRUE) || grepl("echarts4r", rendered_html, fixed = TRUE) || grepl("aq-report-browser-demo-plot", rendered_html, fixed = TRUE)) "success" else "error"),
+    data.table::data.table(check = "visualization renders real payload", status = if ((grepl("html-widget", rendered_html, fixed = TRUE) || grepl("echarts4r", rendered_html, fixed = TRUE)) && !grepl("aq-report-browser-demo-plot", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "Shiny visual binding uses echarts4r output", status = if (!requireNamespace("AutoPlots", quietly = TRUE) || grepl("html-widget-output", visual_binding_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "demo visual uses modern AutoPlots when available", status = if (!requireNamespace("AutoPlots", quietly = TRUE) || identical(attr(report_browser_demo_observed_predicted_visual(), "report_browser_visual_source"), "AutoPlots::Scatter")) "success" else "error"),
     data.table::data.table(check = "regression demo visual comes from AutoQuant", status = if (identical(regression_visual_metadata$source_function, "AutoQuant::generate_regression_model_insights_artifacts") && identical(regression_visual_artifact$source_module, "autoquant_regression_model_insights")) "success" else "error"),
@@ -1024,7 +963,9 @@ qa_report_browser <- function() {
     data.table::data.table(check = "regression demo visual has no fallback", status = if (identical(regression_visual_metadata$fallback_status, "none") && identical(regression_visual_provenance$fallback_path, "none")) "success" else "error"),
     data.table::data.table(check = "regression demo visual is interactive htmlwidget", status = if (inherits(regression_visual_artifact$object, "htmlwidget") && identical(regression_visual_provenance$display_mode, "interactive_htmlwidget")) "success" else "error"),
     data.table::data.table(check = "regression demo visual matches direct AutoPlots class", status = if (is.null(direct_autoplots_visual) || identical(class(regression_visual_artifact$object), class(direct_autoplots_visual))) "success" else "error"),
-    data.table::data.table(check = "visual interaction metadata matches payload", status = if (grepl("interactive, tooltip", rendered_html, fixed = TRUE) || grepl("static inline visual", rendered_html, fixed = TRUE)) "success" else "error"),
+    data.table::data.table(check = "regression demo visual has transparent chart background", status = if (identical(regression_visual_background, "transparent") && (is.null(direct_autoplots_visual) || identical(direct_visual_background, "transparent"))) "success" else "error"),
+    data.table::data.table(check = "generic demo fixtures do not fabricate plot artifacts", status = if (identical(fabricated_generic_plot_count, 0L)) "success" else "error"),
+    data.table::data.table(check = "visual interaction metadata matches payload", status = if (grepl("interactive, tooltip", rendered_html, fixed = TRUE) && !grepl("static inline visual", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "presentation profile class rendered", status = if (grepl("aq-report-browser-density-", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "malformed contract degrades gracefully", status = if (inherits(malformed, "shiny.tag") || inherits(malformed, "shiny.tag.list")) "success" else "error")
   )

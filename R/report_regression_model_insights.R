@@ -362,6 +362,8 @@ build_regression_model_insights_report <- function(
     artifact_id <- .rmi_report_artifact_id(artifact)
     section_id <- .rmi_report_slug(.rmi_report_artifact_section(artifact))
     if (identical(artifact$artifact_type, "plot")) {
+      component_metadata <- artifact$metadata %||% list()
+      component_metadata$source_artifact_id <- artifact_id
       add_to_section(section_id, report_component_visualization(
         plot_ref = artifact_id,
         specification = .rmi_report_visual_spec(artifact),
@@ -369,7 +371,7 @@ build_regression_model_insights_report <- function(
         visual = artifact$object %||% (artifact$metadata %||% list())$visual,
         component_id = paste0("visual_", artifact_id),
         title = .rmi_report_artifact_label(artifact),
-        metadata = list(source_artifact_id = artifact_id)
+        metadata = component_metadata
       ))
     } else if (identical(artifact$artifact_type, "table")) {
       add_to_section(section_id, report_component_table(
