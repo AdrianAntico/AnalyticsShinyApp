@@ -23,7 +23,7 @@ build_plot_args <- function(
 build_autoplots_call <- function(plot_type, data, input) {
   plot_fun <- getExportedValue("AutoPlots", plot_type)
   args <- build_plot_args(plot_type, data, input)
-  do.call(plot_fun, args)
+  apply_autoplots_full_grid(do.call(plot_fun, args))
 }
 
 plot_service_output_id <- function(id, prefix = "plot") {
@@ -100,7 +100,21 @@ build_plot_args_from_config <- function(config, data, include_data = TRUE) {
 build_autoplots_call_from_config <- function(config, data) {
   plot_fun <- getExportedValue("AutoPlots", config$plot_type)
   args <- build_plot_args_from_config(config, data = data, include_data = TRUE)
-  do.call(plot_fun, args)
+  apply_autoplots_full_grid(do.call(plot_fun, args))
+}
+
+apply_autoplots_full_grid <- function(widget) {
+  if (is.null(widget) || !inherits(widget, "htmlwidget")) {
+    return(widget)
+  }
+  if (!requireNamespace("AutoPlots", quietly = TRUE)) {
+    stop("AutoPlots is required to apply full-pane plot grid sizing.", call. = FALSE)
+  }
+  if (!exists("e_grid_full", envir = asNamespace("AutoPlots"), inherits = FALSE)) {
+    stop("AutoPlots::e_grid_full() is unavailable. Install the current GitHub version of AutoPlots.", call. = FALSE)
+  }
+
+  AutoPlots::e_grid_full(widget)
 }
 
 validate_plot_ready <- function(plot_type, data, input) {
@@ -183,7 +197,8 @@ build_autoplots_code <- function(plot_type, input) {
     "data <- data.table::fread(\"path/to/data.csv\")\n\n",
     "p1 <- AutoPlots::", plot_type, "(\n",
     "  ", paste(arg_lines, collapse = ",\n  "), "\n",
-    ")\n\n",
+    ") |>\n",
+    "  AutoPlots::e_grid_full()\n\n",
     "p1"
   )
 }
@@ -198,7 +213,8 @@ build_autoplots_assignment_code <- function(name, config) {
   paste0(
     name, " <- AutoPlots::", config$plot_type, "(\n",
     "  ", paste(arg_lines, collapse = ",\n  "), "\n",
-    ")"
+    ") |>\n",
+    "  AutoPlots::e_grid_full()"
   )
 }
 

@@ -773,6 +773,57 @@ report_browser_select_regression_observed_predicted <- function(artifacts) {
   }
 }
 
+report_browser_artifact_original_name <- function(artifact) {
+  (artifact$metadata %||% list())$original_name %||% artifact$artifact_id %||% ""
+}
+
+report_browser_select_artifacts <- function(artifacts, patterns, types = c("plot", "table", "text"), max_per_pattern = 1L) {
+  selected <- list()
+  used <- character()
+  for (pattern in patterns) {
+    candidates <- Filter(function(artifact) {
+      artifact_id <- artifact$artifact_id %||% ""
+      haystack <- paste(
+        artifact_id,
+        artifact$label %||% "",
+        artifact$title %||% "",
+        artifact$section %||% "",
+        report_browser_artifact_original_name(artifact),
+        collapse = " "
+      )
+      artifact$artifact_type %in% types &&
+        !artifact_id %in% used &&
+        grepl(pattern, haystack, ignore.case = TRUE)
+    }, artifacts %||% list())
+    if (length(candidates)) {
+      keep <- candidates[seq_len(min(length(candidates), max_per_pattern))]
+      selected <- c(selected, keep)
+      used <- c(used, vapply(keep, function(artifact) artifact$artifact_id %||% "", character(1)))
+    }
+  }
+  selected
+}
+
+report_browser_assert_artifact_mix <- function(artifacts, label) {
+  types <- vapply(artifacts %||% list(), function(artifact) artifact$artifact_type %||% "", character(1))
+  if (!any(types == "plot")) {
+    stop(paste(label, "did not produce a plot artifact for the Build Week report."), call. = FALSE)
+  }
+  if (!any(types == "table")) {
+    stop(paste(label, "did not produce a table artifact for the Build Week report."), call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+report_browser_mark_demo_artifacts <- function(artifacts, source_function) {
+  lapply(artifacts %||% list(), function(artifact) {
+    artifact$metadata <- artifact$metadata %||% list()
+    artifact$metadata$demo_fixture <- FALSE
+    artifact$metadata$source_function <- artifact$metadata$source_function %||% source_function
+    artifact
+  })
+}
+
 report_browser_demo_regression_artifacts <- function() {
   data <- report_browser_demo_regression_data()
   config <- list(
@@ -817,15 +868,180 @@ report_browser_demo_regression_artifacts <- function() {
   selected$metadata$fallback_status <- "none"
   selected$metadata$provenance_diagnostics <- report_browser_demo_regression_provenance(data, config, selected, original_artifact_id)
   report_browser_log_regression_provenance(selected$metadata$provenance_diagnostics)
-  c(
-    list(selected),
-    report_browser_demo_artifacts("regression_fixture")
+  metric_artifacts <- report_browser_select_artifacts(
+    result$artifacts,
+    patterns = c(
+      "computed_metrics_combined",
+      "train_test_metric_gap",
+      "target_prediction_summary",
+      "residual_summary_test"
+    ),
+    types = "table"
   )
+  if (!length(metric_artifacts)) {
+    stop("AutoQuant regression module did not return model metric table artifacts for the demo report.", call. = FALSE)
+  }
+  curated <- report_browser_mark_demo_artifacts(
+    c(list(selected), metric_artifacts),
+    "AutoQuant::generate_regression_model_insights_artifacts"
+  )
+  report_browser_assert_artifact_mix(curated, "AutoQuant regression model insights")
+  curated
+}
+
+report_browser_demo_eda_artifacts <- function() {
+  if (!exists("run_autoquant_eda_module", mode = "function")) {
+    stop("Registered AutoQuant EDA module wrapper is not available for the demo report.", call. = FALSE)
+  }
+  data <- build_week_demo_dataset(write_if_missing = TRUE)
+  config <- list(
+    DataName = "Build Week Mystery Dataset",
+    UnivariateVars = c(
+      "enrollments",
+      "search_spend",
+      "social_spend",
+      "creative_age_weeks",
+      "processing_delay_hours",
+      "competitor_promo",
+      "region",
+      "audience"
+    ),
+    CorrVars = c(
+      "enrollments",
+      "search_spend",
+      "social_spend",
+      "creative_age_weeks",
+      "processing_delay_hours",
+      "competitor_promo"
+    ),
+    TrendVars = c("enrollments", "search_spend", "social_spend", "processing_delay_hours"),
+    TrendDateVar = "week",
+    TrendGroupVar = "region",
+    TargetVar = "enrollments",
+    Theme = "dark"
+  )
+  result <- run_autoquant_eda_module(data, config)
+  if (!identical(result$status, "success")) {
+    stop(
+      paste("AutoQuant EDA failed while producing the demo report:", paste(result$errors %||% "unknown error", collapse = "; ")),
+      call. = FALSE
+    )
+  }
+  curated <- report_browser_select_artifacts(
+    result$artifacts,
+    patterns = c(
+      "describe_data",
+      "univariate_stats",
+      "correlation_stats",
+      "trend_stats_enrollments",
+      "histograms_enrollments",
+      "correlation.*plot|heatmap",
+      "trend.*enrollments"
+    ),
+    types = c("plot", "table"),
+    max_per_pattern = 1L
+  )
+  curated <- report_browser_mark_demo_artifacts(curated, "AutoQuant::generate_eda_artifacts")
+  report_browser_assert_artifact_mix(curated, "AutoQuant EDA")
+  curated
+}
+
+report_browser_demo_shap_data <- function(seed = 20260719L) {
+  set.seed(seed)
+  base <- as.data.frame(build_week_demo_dataset(write_if_missing = TRUE))
+  base$Predict <- round(stats::predict(stats::lm(
+    enrollments ~ search_spend + social_spend + creative_age_weeks +
+      processing_delay_hours + competitor_promo + region + audience,
+    data = base
+  )), 4)
+  centered <- function(x) as.numeric(scale(as.numeric(x), center = TRUE, scale = TRUE))
+  base$Shap_search_spend <- 0.18 * centered(base$search_spend)
+  base$Shap_social_spend <- ifelse(base$audience == "Career Changers", 0.16, -0.06) * centered(base$social_spend)
+  base$Shap_processing_delay_hours <- -0.24 * pmax(centered(base$processing_delay_hours), 0)
+  base$Shap_creative_age_weeks <- -0.14 * pmax(centered(base$creative_age_weeks), 0)
+  base$Shap_competitor_promo <- -0.22 * base$competitor_promo
+  data.table::as.data.table(base)
+}
+
+report_browser_demo_shap_artifacts <- function() {
+  if (!exists("run_autoquant_regression_shap_analysis_module", mode = "function")) {
+    stop("Registered AutoQuant Regression SHAP module wrapper is not available for the demo report.", call. = FALSE)
+  }
+  data <- report_browser_demo_shap_data()
+  config <- create_shap_analysis_config(
+    problem_type = "regression",
+    data_name = "Build Week deterministic SHAP evidence",
+    target_col = "enrollments",
+    prediction_col = "Predict",
+    feature_cols = c(
+      "search_spend",
+      "social_spend",
+      "processing_delay_hours",
+      "creative_age_weeks",
+      "competitor_promo"
+    ),
+    shap_prefix = "Shap_",
+    id_cols = character(),
+    prediction_scale = "response",
+    DateVar = "week",
+    date_aggregation = "month",
+    ByVars = "region",
+    selected_features = c("processing_delay_hours", "social_spend"),
+    local_row_ids = 1:2,
+    top_n = 5L,
+    max_dependence_rows = nrow(data),
+    max_segment_levels = 10L,
+    max_byvars = 2L,
+    include_dependence = TRUE,
+    include_segments = TRUE,
+    include_time = TRUE,
+    include_local = TRUE,
+    include_interactions = TRUE,
+    include_plots = TRUE,
+    include_effect_curves = FALSE,
+    effect_curve_backend = "none",
+    max_feature_effect_plots = 2L,
+    max_dependence_plots = 2L,
+    max_segment_plots = 2L,
+    max_time_plots = 2L,
+    max_local_plots = 2L,
+    max_interaction_pairs = 2L
+  )
+  result <- run_autoquant_regression_shap_analysis_module(data, config)
+  if (!result$status %in% c("success", "warning") || !length(result$artifacts)) {
+    stop(
+      paste("AutoQuant Regression SHAP failed while producing the demo report:", paste(result$errors %||% result$messages %||% "unknown error", collapse = "; ")),
+      call. = FALSE
+    )
+  }
+  curated <- report_browser_select_artifacts(
+    result$artifacts,
+    patterns = c(
+      "global_importance_table",
+      "global_importance_plot",
+      "shap_distribution_plot",
+      "shap_dependence_table",
+      "dependence.*processing_delay_hours|processing_delay_hours.*plot",
+      "segment_effects_table",
+      "time_effects_table"
+    ),
+    types = c("plot", "table", "text"),
+    max_per_pattern = 1L
+  )
+  curated <- report_browser_mark_demo_artifacts(curated, "AutoQuant::generate_regression_shap_analysis_artifacts")
+  report_browser_assert_artifact_mix(curated, "AutoQuant Regression SHAP")
+  curated
 }
 
 report_browser_demo_artifacts <- function(prefix = "demo") {
   if (identical(prefix, "regression")) {
     return(report_browser_demo_regression_artifacts())
+  }
+  if (identical(prefix, "eda")) {
+    return(report_browser_demo_eda_artifacts())
+  }
+  if (identical(prefix, "shap")) {
+    return(report_browser_demo_shap_artifacts())
   }
   module_id <- if (identical(prefix, "regression")) "autoquant_regression_model_insights" else prefix
   source_function <- if (identical(prefix, "regression")) "deterministic_regression_report_demo_fixture" else "deterministic_report_demo_fixture"
@@ -942,9 +1158,14 @@ qa_report_browser <- function() {
   direct_visual_background <- direct_autoplots_visual$x$opts$backgroundColor %||%
     direct_autoplots_visual$x$opts$background %||%
     NA_character_
-  fabricated_generic_plot_count <- sum(vapply(
-    c(report_browser_demo_artifacts("shap"), report_browser_demo_artifacts("eda")),
-    function(artifact) identical(artifact$artifact_type, "plot"),
+  shap_artifacts <- report_browser_demo_artifacts("shap")
+  eda_artifacts <- report_browser_demo_artifacts("eda")
+  artifact_mix <- function(artifacts, type) {
+    any(vapply(artifacts, function(artifact) identical(artifact$artifact_type, type), logical(1)))
+  }
+  demo_fixture_count <- sum(vapply(
+    c(regression_artifacts, shap_artifacts, eda_artifacts),
+    function(artifact) identical((artifact$metadata %||% list())$demo_fixture, TRUE),
     logical(1)
   ))
 
@@ -964,7 +1185,10 @@ qa_report_browser <- function() {
     data.table::data.table(check = "regression demo visual is interactive htmlwidget", status = if (inherits(regression_visual_artifact$object, "htmlwidget") && identical(regression_visual_provenance$display_mode, "interactive_htmlwidget")) "success" else "error"),
     data.table::data.table(check = "regression demo visual matches direct AutoPlots class", status = if (is.null(direct_autoplots_visual) || identical(class(regression_visual_artifact$object), class(direct_autoplots_visual))) "success" else "error"),
     data.table::data.table(check = "regression demo visual has transparent chart background", status = if (identical(regression_visual_background, "transparent") && (is.null(direct_autoplots_visual) || identical(direct_visual_background, "transparent"))) "success" else "error"),
-    data.table::data.table(check = "generic demo fixtures do not fabricate plot artifacts", status = if (identical(fabricated_generic_plot_count, 0L)) "success" else "error"),
+    data.table::data.table(check = "regression demo includes generated metric tables", status = if (artifact_mix(regression_artifacts, "table")) "success" else "error"),
+    data.table::data.table(check = "SHAP demo includes generated plot and table artifacts", status = if (artifact_mix(shap_artifacts, "plot") && artifact_mix(shap_artifacts, "table")) "success" else "error"),
+    data.table::data.table(check = "EDA demo includes generated plot and table artifacts", status = if (artifact_mix(eda_artifacts, "plot") && artifact_mix(eda_artifacts, "table")) "success" else "error"),
+    data.table::data.table(check = "demo-critical report artifacts are not generic fixtures", status = if (identical(demo_fixture_count, 0L)) "success" else "error"),
     data.table::data.table(check = "visual interaction metadata matches payload", status = if (grepl("interactive, tooltip", rendered_html, fixed = TRUE) && !grepl("static inline visual", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "presentation profile class rendered", status = if (grepl("aq-report-browser-density-", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "malformed contract degrades gracefully", status = if (inherits(malformed, "shiny.tag") || inherits(malformed, "shiny.tag.list")) "success" else "error")

@@ -938,6 +938,7 @@ qa_ui_consistency <- function() {
   export_page <- read_file(file.path("R", "page_export.R"))
   app_ui <- read_file(file.path("R", "app_ui.R"))
   ui_components <- read_file(file.path("R", "ui_components.R"))
+  service_plot <- read_file(file.path("R", "service_plot.R"))
   table_theme <- read_file(file.path("R", "table_theme.R"))
   page_files <- list.files("R", pattern = "^page_.*\\.R$", full.names = TRUE)
   page_text <- paste(vapply(page_files, read_file, character(1)), collapse = "\n")
@@ -1043,7 +1044,20 @@ qa_ui_consistency <- function() {
           grepl(".aq-plot-command-ribbon", css, fixed = TRUE) &&
           grepl(".aq-plot-theme-strip", css, fixed = TRUE) &&
           grepl("aq-plot-mapping-controls", plot_builder_page, fixed = TRUE) &&
-          grepl(".aq-plot-mapping-controls", css, fixed = TRUE)) "success" else "error",
+          grepl(".aq-plot-mapping-controls", css, fixed = TRUE) &&
+          grepl("mapping_options <- intersect(\"AutoAggregate\", spec$options)", plot_builder_page, fixed = TRUE) &&
+          grepl("class = \"aq-plot-mapping-option\"", plot_builder_page, fixed = TRUE) &&
+          grepl("option_names <- setdiff(spec$options, \"AutoAggregate\")", plot_builder_page, fixed = TRUE) &&
+          grepl(".aq-plot-mapping-option", css, fixed = TRUE) &&
+          grepl(".aq-plot-studio-v3 .aq-plot-mapping-controls", css, fixed = TRUE) &&
+          grepl(".aq-plot-studio-v3 .selectize-control.dropdown-active", css, fixed = TRUE) &&
+          grepl("rebuild_current_plot", plot_builder_page, fixed = TRUE) &&
+          grepl("option_overrides = list(Theme = theme)", plot_builder_page, fixed = TRUE) &&
+          grepl("render_plot_service_widget", plot_builder_page, fixed = TRUE) &&
+          grepl("preview_plot_echarts", plot_builder_page, fixed = TRUE) &&
+          grepl("apply_autoplots_full_grid", service_plot, fixed = TRUE) &&
+          grepl("AutoPlots::e_grid_full(widget)", service_plot, fixed = TRUE) &&
+          grepl("AutoPlots::e_grid_full()", service_plot, fixed = TRUE)) "success" else "error",
       if (grepl("Layout Studio", layouts_page, fixed = TRUE) && grepl("aq-layout-studio", layouts_page, fixed = TRUE) && grepl("ui_code_panel", layouts_page, fixed = TRUE)) "success" else "error",
       if (grepl("Artifact Studio", artifact_library_page, fixed = TRUE) && grepl("ui_artifact_filmstrip", artifact_library_page, fixed = TRUE) && grepl("artifact_studio_overview", artifact_library_page, fixed = TRUE)) "success" else "error",
       if (grepl("ui_code_panel", analysis_modules_page, fixed = TRUE)) "success" else "error",

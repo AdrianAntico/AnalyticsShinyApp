@@ -226,13 +226,6 @@ page_plot_builder_server <- function(id, ctx) {
       )
     }
 
-    lapply(theme_choices, function(theme) {
-      force(theme)
-      observeEvent(input[[plot_theme_preset_id(theme)]], {
-        update_option_control("Theme", theme)
-      }, ignoreInit = TRUE)
-    })
-
     ctx$load_config_into_builder <- function(config) {
       for (mapping in c("XVar", "YVar", "ZVar", "GroupVar", "CorrVars")) {
         ctx$mapping_state$values[[mapping]] <- config$mappings[[mapping]]
@@ -308,34 +301,42 @@ page_plot_builder_server <- function(id, ctx) {
       req(input$plot_type)
       data <- tryCatch(ctx$uploaded_data(), error = function(e) NULL)
       spec <- plot_spec(input$plot_type)
+      mapping_options <- intersect("AutoAggregate", spec$options)
 
       tagList(
         lapply(spec$mappings, function(mapping) {
-        mapping_control(
-          mapping = mapping,
-          data = data,
-          required = TRUE,
-          selected = ctx$mapping_state$values[[mapping]],
-          ns = session$ns
-        )
-      }),
-      lapply(spec$optional_mappings, function(mapping) {
-        mapping_control(
-          mapping = mapping,
-          data = data,
-          required = FALSE,
-          selected = ctx$mapping_state$values[[mapping]],
-          ns = session$ns
-        )
-      })
-    )
-  })
+          mapping_control(
+            mapping = mapping,
+            data = data,
+            required = TRUE,
+            selected = ctx$mapping_state$values[[mapping]],
+            ns = session$ns
+          )
+        }),
+        lapply(spec$optional_mappings, function(mapping) {
+          mapping_control(
+            mapping = mapping,
+            data = data,
+            required = FALSE,
+            selected = ctx$mapping_state$values[[mapping]],
+            ns = session$ns
+          )
+        }),
+        lapply(mapping_options, function(option_name) {
+          tags$div(
+            class = "aq-plot-mapping-option",
+            option_control(option_name, ns = session$ns)
+          )
+        })
+      )
+    })
 
     output$option_inputs <- renderUI({
       req(input$plot_type)
       spec <- plot_spec(input$plot_type)
+      option_names <- setdiff(spec$options, "AutoAggregate")
 
-      tagList(lapply(spec$options, function(option_name) {
+      tagList(lapply(option_names, function(option_name) {
         option_control(option_name, ns = session$ns)
       }))
     })
@@ -375,7 +376,7 @@ page_plot_builder_server <- function(id, ctx) {
       )
     })
 
-    observeEvent(input$build_plot, {
+    rebuild_current_plot <- function(option_overrides = list(), status_message = NULL) {
       ctx$plot_result(NULL)
       ctx$plot_error(NULL)
       ctx$plot_config(NULL)
@@ -387,6 +388,12 @@ page_plot_builder_server <- function(id, ctx) {
           mapping_values = ctx$mapping_state$values
         )
 
+        if (length(option_overrides)) {
+          for (option_name in names(option_overrides)) {
+            config$options[[option_name]] <- option_overrides[[option_name]]
+          }
+        }
+
         data <- ctx$uploaded_data()
         ready <- validate_plot_config_ready(config, data)
         if (!isTRUE(ready)) {
@@ -395,14 +402,36 @@ page_plot_builder_server <- function(id, ctx) {
 
         ctx$plot_result(build_autoplots_call_from_config(config, data))
         ctx$plot_config(config)
+        if (!is.null(status_message)) {
+          ctx$plot_list_message(status_message)
+        }
+        TRUE
       }, error = function(e) {
         message <- conditionMessage(e)
         if (!nzchar(message)) {
           message <- "AutoPlots returned an error without a message."
         }
         ctx$plot_error(message)
+        FALSE
       })
+    }
+
+    observeEvent(input$build_plot, {
+      rebuild_current_plot()
     }, ignoreInit = TRUE)
+
+    lapply(theme_choices, function(theme) {
+      force(theme)
+      observeEvent(input[[plot_theme_preset_id(theme)]], {
+        update_option_control("Theme", theme)
+        if (!is.null(ctx$plot_config()) || !is.null(ctx$plot_result())) {
+          rebuild_current_plot(
+            option_overrides = list(Theme = theme),
+            status_message = paste("Applied", plot_theme_label(theme), "theme.")
+          )
+        }
+      }, ignoreInit = TRUE)
+    })
 
     observeEvent(input$add_plot, {
       if (is.null(ctx$plot_result()) || is.null(ctx$plot_config()) || !is.null(ctx$plot_error())) {
@@ -597,9 +626,12 @@ page_plot_builder_server <- function(id, ctx) {
 
     output$preview_plot_widget <- renderUI({
       req(ctx$plot_result())
-      tags$div(
-        style = "min-height: 600px;",
-        htmltools::tagList(ctx$plot_result())
+      render_plot_service_widget(
+        ctx$plot_result(),
+        output = output,
+        session = session,
+        output_id = "preview_plot_echarts",
+        height = "600px"
       )
     })
 

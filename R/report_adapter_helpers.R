@@ -232,7 +232,13 @@ report_adapter_add_standard_artifact_components <- function(report, artifacts, s
     } else if (identical(artifact$artifact_type, "table")) {
       add_to_section(section_id, report_component_table(
         table_ref = artifact_id,
-        data = if (is.data.frame(artifact$content)) artifact$content else NULL,
+        data = if (is.data.frame(artifact$content)) {
+          artifact$content
+        } else if (is.data.frame(artifact$object)) {
+          artifact$object
+        } else {
+          NULL
+        },
         table_contract = report_adapter_table_contract(artifact),
         component_id = paste0("table_", artifact_id),
         title = report_adapter_artifact_label(artifact),

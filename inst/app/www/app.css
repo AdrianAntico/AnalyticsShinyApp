@@ -2878,6 +2878,31 @@ body.aq-theme-cyberpunk .aq-home-arrival {
   overflow-x: hidden;
 }
 
+.aq-plot-studio-v3 .aq-plot-command-ribbon,
+.aq-plot-studio-v3 .aq-plot-command-cell,
+.aq-plot-studio-v3 .aq-plot-mapping-controls,
+.aq-plot-studio-v3 .aq-plot-mapping-controls .shiny-html-output,
+.aq-plot-studio-v3 .aq-plot-mapping-controls .shiny-bound-output,
+.aq-plot-studio-v3 .aq-plot-mapping-controls .form-group,
+.aq-plot-studio-v3 .aq-plot-mapping-controls .shiny-input-container,
+.aq-plot-studio-v3 .aq-plot-mapping-controls .selectize-control {
+  overflow: visible;
+}
+
+.aq-plot-studio-v3 .selectize-control {
+  position: relative;
+  z-index: 24;
+}
+
+.aq-plot-studio-v3 .selectize-control.dropdown-active {
+  z-index: 10050;
+}
+
+.aq-plot-studio-v3 .selectize-dropdown,
+.aq-plot-studio-v3 .selectize-dropdown.form-control {
+  z-index: 10060;
+}
+
 .aq-plot-mapping-controls .form-group,
 .aq-plot-mapping-controls .shiny-input-container {
   display: block;
@@ -2891,6 +2916,39 @@ body.aq-theme-cyberpunk .aq-home-arrival {
 .aq-plot-mapping-controls .selectize-input input {
   max-width: 100% !important;
   min-width: 0 !important;
+}
+
+.aq-plot-mapping-option {
+  align-self: end;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.aq-plot-mapping-option .form-group,
+.aq-plot-mapping-option .shiny-input-container,
+.aq-plot-mapping-option .checkbox {
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.aq-plot-mapping-option .checkbox label {
+  align-items: center;
+  background: var(--aq-input-bg);
+  border: 1px solid var(--aq-input-border);
+  border-radius: var(--aq-radius-sm);
+  color: var(--aq-text);
+  display: flex;
+  font-weight: 800;
+  gap: 10px;
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
+.aq-plot-mapping-option .checkbox input[type="checkbox"] {
+  margin: 0;
+  position: static;
 }
 
 .aq-global-ai-assistant {
