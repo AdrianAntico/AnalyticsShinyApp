@@ -2926,6 +2926,10 @@ body.aq-theme-cyberpunk .aq-home-arrival {
   width: 100%;
 }
 
+.aq-plot-grain-control {
+  width: 100%;
+}
+
 .aq-plot-mapping-option .form-group,
 .aq-plot-mapping-option .shiny-input-container,
 .aq-plot-mapping-option .checkbox {
@@ -2943,10 +2947,27 @@ body.aq-theme-cyberpunk .aq-home-arrival {
   font-weight: 800;
   gap: 10px;
   min-height: 36px;
-  padding: 8px 12px;
+  padding: 8px 10px;
+  white-space: normal;
+}
+
+.aq-plot-mapping-option .checkbox label span {
+  display: block;
+  font-size: 0.9rem;
+  line-height: 1.1;
+}
+
+.aq-plot-mapping-option .checkbox label small {
+  color: var(--aq-text-muted);
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-top: 2px;
 }
 
 .aq-plot-mapping-option .checkbox input[type="checkbox"] {
+  flex: 0 0 auto;
   margin: 0;
   position: static;
 }

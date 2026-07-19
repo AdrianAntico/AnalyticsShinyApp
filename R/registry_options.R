@@ -19,9 +19,9 @@ option_registry <- list(
   ),
   AutoAggregate = list(
     input_id = "auto_aggregate",
-    label = "Auto-aggregate before plotting",
+    label = "Already summarized",
     type = "checkbox",
-    default = FALSE
+    default = TRUE
   ),
   AggMethod = list(
     input_id = "agg_method",
@@ -85,6 +85,20 @@ option_control <- function(option_name, ns = identity) {
     return(NULL)
   }
 
+  if (identical(option_name, "AutoAggregate")) {
+    return(tags$div(
+      class = "aq-plot-grain-control",
+      checkboxInput(
+        ns(opt$input_id),
+        label = tagList(
+          tags$span("Already summarized"),
+          tags$small("One plotted value per X/group.")
+        ),
+        value = opt$default
+      )
+    ))
+  }
+
   switch(
     opt$type,
     select = selectInput(ns(opt$input_id), opt$label, choices = opt$choices, selected = opt$default),
@@ -112,7 +126,7 @@ option_value <- function(input, option_name) {
 
 add_option_arg <- function(args, option_name, value) {
   if (identical(option_name, "AutoAggregate")) {
-    args$PreAgg <- !isTRUE(value)
+    args$PreAgg <- isTRUE(value)
     return(args)
   }
 

@@ -931,6 +931,7 @@ qa_ui_consistency <- function() {
   project_page <- read_file(file.path("R", "page_project.R"))
   data_page <- read_file(file.path("R", "page_data.R"))
   plot_builder_page <- read_file(file.path("R", "page_plot_builder.R"))
+  registry_options <- read_file(file.path("R", "registry_options.R"))
   workflow_page <- read_file(file.path("R", "page_workflow.R"))
   analysis_modules_page <- read_file(file.path("R", "page_analysis_modules.R"))
   artifact_library_page <- read_file(file.path("R", "page_artifact_library.R"))
@@ -1048,7 +1049,11 @@ qa_ui_consistency <- function() {
           grepl("mapping_options <- intersect(\"AutoAggregate\", spec$options)", plot_builder_page, fixed = TRUE) &&
           grepl("class = \"aq-plot-mapping-option\"", plot_builder_page, fixed = TRUE) &&
           grepl("option_names <- setdiff(spec$options, \"AutoAggregate\")", plot_builder_page, fixed = TRUE) &&
+          grepl("Already summarized", registry_options, fixed = TRUE) &&
+          grepl("args$PreAgg <- isTRUE(value)", registry_options, fixed = TRUE) &&
+          grepl("aq-plot-grain-control", registry_options, fixed = TRUE) &&
           grepl(".aq-plot-mapping-option", css, fixed = TRUE) &&
+          grepl(".aq-plot-grain-control", css, fixed = TRUE) &&
           grepl(".aq-plot-studio-v3 .aq-plot-mapping-controls", css, fixed = TRUE) &&
           grepl(".aq-plot-studio-v3 .selectize-control.dropdown-active", css, fixed = TRUE) &&
           grepl("rebuild_current_plot", plot_builder_page, fixed = TRUE) &&
