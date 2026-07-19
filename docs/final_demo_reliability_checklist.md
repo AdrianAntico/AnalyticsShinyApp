@@ -6,8 +6,9 @@ Run this before recording or presenting the Build Week demo.
 
 - Start from a fresh R session.
 - Use R 4.5.2 for the current validation environment.
-- Confirm `source("app.R")` succeeds.
-- Confirm the app launches with `shiny::runApp(".")`.
+- Confirm `library(AnalyticsShinyApp)` succeeds after installation.
+- Confirm the installed app launches with `run_workstation()`.
+- For source-tree development, confirm `shiny::runApp(".")` launches.
 - Confirm no unexpected startup dialogs appear.
 
 ## Provider
@@ -49,10 +50,8 @@ Run this before recording or presenting the Build Week demo.
 ## QA Commands
 
 ```powershell
-& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'source("app.R"); qa <- app_env$qa_build_week_demo(); print(qa)'
-& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'source("app.R"); qa <- app_env$qa_report_browser(); print(qa)'
-& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'source("app.R"); qa <- app_env$qa_agent_operation_runtime(); print(qa)'
-& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e 'testthat::test_file("tests/testthat/test-build-week-demo.R")'
+& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" scripts\run_deterministic_qa.R
+& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e "testthat::test_file('tests/testthat/test-build-week-demo.R')"
 git diff --check
 ```
 

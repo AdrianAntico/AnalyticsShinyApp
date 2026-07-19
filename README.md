@@ -314,9 +314,9 @@ Do not use `devtools::load_all()` or source internal package files from sibling 
 To check whether the active R runtime sees the expected capability set:
 
 ```r
-source("app.R")
-app_env$app_dependency_inventory()
-app_env$qa_app_dependency_capabilities()
+library(AnalyticsShinyApp)
+workstation_diagnostics()
+qa_package_distribution()
 ```
 
 ## Validation
@@ -324,10 +324,8 @@ app_env$qa_app_dependency_capabilities()
 Useful checks before recording or submitting:
 
 ```powershell
-Rscript -e 'source("app.R"); qa <- app_env$qa_build_week_demo(); print(qa)'
-Rscript -e 'source("app.R"); qa <- app_env$qa_report_browser(); print(qa)'
-Rscript -e 'source("app.R"); qa <- app_env$qa_agent_operation_runtime(); print(qa)'
-Rscript -e 'testthat::test_file("tests/testthat/test-build-week-demo.R")'
+& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" scripts\run_deterministic_qa.R
+& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e "testthat::test_file('tests/testthat/test-build-week-demo.R')"
 git diff --check
 ```
 
