@@ -687,7 +687,199 @@ report_browser_demo_observed_predicted_visual <- function() {
   report_browser_demo_observed_predicted_widget() %||% report_browser_demo_observed_predicted_static()
 }
 
+report_browser_demo_regression_data <- function() {
+  observed <- c(18, 28, 37, 45, 53, 63, 70, 80, 88)
+  predicted <- c(21, 26, 39, 43, 57, 60, 73, 77, 91)
+  data.table::data.table(
+    y = observed,
+    Predict = predicted,
+    signal_strength = seq_along(observed),
+    exposure_index = round(observed / max(observed), 4),
+    segment = rep(c("Baseline", "Growth", "Mature"), length.out = length(observed))
+  )
+}
+
+report_browser_demo_direct_observed_predicted_autoplots <- function(data = report_browser_demo_regression_data(), theme = "dark") {
+  if (!requireNamespace("AutoPlots", quietly = TRUE) || !requireNamespace("echarts4r", quietly = TRUE)) {
+    return(NULL)
+  }
+  plot_data <- data.table::data.table(
+    Actual = data$y,
+    Prediction = data$Predict
+  )
+  plot_data[, Ideal := Actual]
+  chart <- AutoPlots::Scatter(
+    dt = plot_data,
+    XVar = "Actual",
+    YVar = "Prediction",
+    SampleSize = nrow(plot_data),
+    Theme = theme,
+    title.text = "Observed vs Predicted: Direct QA",
+    xAxis.title = "Observed",
+    yAxis.title = "Predicted",
+    legend.show = FALSE
+  )
+  chart <- echarts4r::e_line(
+    chart,
+    Ideal,
+    symbol = "none",
+    name = "Ideal fit",
+    lineStyle = list(type = "dashed", width = 2)
+  )
+  AutoPlots::e_grid_full(
+    chart,
+    grid.left = "8%",
+    grid.right = "5%",
+    grid.top = "16%",
+    grid.bottom = "18%",
+    grid.containLabel = TRUE
+  )
+}
+
+report_browser_package_location <- function(package) {
+  tryCatch(normalizePath(find.package(package), winslash = "/", mustWork = TRUE), error = function(e) NA_character_)
+}
+
+report_browser_function_namespace <- function(package, function_name) {
+  tryCatch(
+    environmentName(environment(get(function_name, envir = asNamespace(package), inherits = FALSE))),
+    error = function(e) NA_character_
+  )
+}
+
+report_browser_demo_regression_provenance <- function(data, config, selected_artifact, original_artifact_id, fallback_status = "none") {
+  list(
+    tool_id = "build_week_demo.regression_model_insights",
+    report_contract_id = "demo_regression_model_insights_report",
+    adapter = "build_regression_model_insights_report",
+    autoquant_function = "AutoQuant::generate_regression_model_insights_artifacts",
+    autoquant_version = tryCatch(as.character(utils::packageVersion("AutoQuant")), error = function(e) NA_character_),
+    autoquant_library_path = report_browser_package_location("AutoQuant"),
+    autoquant_function_namespace = report_browser_function_namespace("AutoQuant", "generate_regression_model_insights_artifacts"),
+    autoplots_function = "AutoPlots::Scatter",
+    autoplots_version = tryCatch(as.character(utils::packageVersion("AutoPlots")), error = function(e) NA_character_),
+    autoplots_library_path = report_browser_package_location("AutoPlots"),
+    autoplots_function_namespace = report_browser_function_namespace("AutoPlots", "Scatter"),
+    renderer_function = "render_plot_service_widget",
+    shiny_renderer = "echarts4r::renderEcharts4r",
+    input_column_names = names(data),
+    input_row_count = nrow(data),
+    argument_values = list(
+      target_column = config$target_column,
+      prediction_column = config$prediction_column,
+      feature_columns = config$feature_columns,
+      theme = config$theme,
+      sample_size = config$sample_size,
+      generate_calibration_pdp = config$generate_calibration_pdp,
+      generate_uplift_pdp = config$generate_uplift_pdp,
+      generate_stratified_effects = config$generate_stratified_effects,
+      detect_simpsons_paradox = config$detect_simpsons_paradox
+    ),
+    output_class = class(selected_artifact$object),
+    original_artifact_id = original_artifact_id,
+    final_artifact_id = selected_artifact$artifact_id,
+    fallback_status = fallback_status,
+    fallback_path = "none",
+    display_mode = if (inherits(selected_artifact$object, "htmlwidget")) "interactive_htmlwidget" else "unexpected"
+  )
+}
+
+report_browser_log_regression_provenance <- function(record) {
+  if (!identical(tolower(Sys.getenv("AQ_REPORT_PROVENANCE_LOG", "false")), "true")) {
+    return(invisible(record))
+  }
+  if (requireNamespace("jsonlite", quietly = TRUE)) {
+    message("AQ_REPORT_PROVENANCE ", jsonlite::toJSON(record, auto_unbox = TRUE, null = "null"))
+  } else {
+    message("AQ_REPORT_PROVENANCE ", paste(names(record), unlist(record, recursive = FALSE, use.names = FALSE), sep = "=", collapse = "; "))
+  }
+  invisible(record)
+}
+
+report_browser_select_regression_observed_predicted <- function(artifacts) {
+  if (!length(artifacts)) {
+    stop("AutoQuant regression module returned no artifacts.", call. = FALSE)
+  }
+  candidates <- Filter(function(artifact) {
+    metadata <- artifact$metadata %||% list()
+    haystack <- paste(
+      artifact$artifact_id %||% "",
+      artifact$label %||% "",
+      metadata$original_name %||% "",
+      artifact$section %||% "",
+      collapse = " "
+    )
+    identical(artifact$artifact_type, "plot") &&
+      inherits(artifact$object, "htmlwidget") &&
+      grepl("actual.*predicted|observed.*predicted|predicted.*actual", haystack, ignore.case = TRUE)
+  }, artifacts)
+  if (!length(candidates)) {
+    stop("AutoQuant regression module did not return an interactive observed-vs-predicted plot artifact.", call. = FALSE)
+  }
+  preferred <- Filter(function(artifact) {
+    grepl("test.*actual.*predicted|actual.*predicted.*scatter", (artifact$metadata %||% list())$original_name %||% artifact$artifact_id, ignore.case = TRUE)
+  }, candidates)
+  if (length(preferred)) {
+    preferred[[1]]
+  } else {
+    candidates[[1]]
+  }
+}
+
+report_browser_demo_regression_artifacts <- function() {
+  data <- report_browser_demo_regression_data()
+  config <- list(
+    data_name = "Deterministic regression demo",
+    model_id = "build_week_regression_demo",
+    algo = "external_predictions",
+    target_column = "y",
+    prediction_column = "Predict",
+    feature_columns = c("signal_strength", "exposure_index", "segment"),
+    theme = "dark",
+    sample_size = nrow(data),
+    generate_calibration_pdp = FALSE,
+    generate_uplift_pdp = FALSE,
+    generate_stratified_effects = FALSE,
+    detect_simpsons_paradox = FALSE
+  )
+  if (!exists("run_autoquant_regression_model_insights_module", mode = "function")) {
+    stop("Registered AutoQuant regression module wrapper is not available for the demo report.", call. = FALSE)
+  }
+  result <- run_autoquant_regression_model_insights_module(data, config)
+  if (!identical(result$status, "success")) {
+    stop(
+      paste("AutoQuant regression module failed while producing the demo report:", paste(result$errors %||% "unknown error", collapse = "; ")),
+      call. = FALSE
+    )
+  }
+  selected <- report_browser_select_regression_observed_predicted(result$artifacts)
+  original_artifact_id <- selected$artifact_id
+  selected$artifact_id <- "regression_visual_observed_predicted"
+  selected$label <- "Observed vs Predicted"
+  selected$title <- "Observed vs Predicted"
+  selected$section <- "Prediction Diagnostics"
+  selected$order <- 1L
+  selected$status <- "ready"
+  selected$metadata <- selected$metadata %||% list()
+  selected$metadata$recommended_caption <- "Predicted values should track observed values without systematic structure."
+  selected$metadata$analytical_intent <- "diagnostic"
+  selected$metadata$artifact_importance <- "critical"
+  selected$metadata$demo_fixture <- FALSE
+  selected$metadata$source_function <- "AutoQuant::generate_regression_model_insights_artifacts"
+  selected$metadata$visual_source <- "AutoPlots::Scatter"
+  selected$metadata$fallback_status <- "none"
+  selected$metadata$provenance_diagnostics <- report_browser_demo_regression_provenance(data, config, selected, original_artifact_id)
+  report_browser_log_regression_provenance(selected$metadata$provenance_diagnostics)
+  c(
+    list(selected),
+    report_browser_demo_artifacts("regression_fixture")[-1]
+  )
+}
+
 report_browser_demo_artifacts <- function(prefix = "demo") {
+  if (identical(prefix, "regression")) {
+    return(report_browser_demo_regression_artifacts())
+  }
   module_id <- if (identical(prefix, "regression")) "autoquant_regression_model_insights" else prefix
   source_function <- if (identical(prefix, "regression")) "deterministic_regression_report_demo_fixture" else "deterministic_report_demo_fixture"
   observed_predicted_visual <- report_browser_demo_observed_predicted_visual()
@@ -811,6 +1003,11 @@ qa_report_browser <- function() {
     )
     visual_binding_html <- as.character(htmltools::renderTags(visual_binding)$html)
   }
+  regression_artifacts <- report_browser_demo_artifacts("regression")
+  regression_visual_artifact <- regression_artifacts[[1]]
+  regression_visual_metadata <- regression_visual_artifact$metadata %||% list()
+  regression_visual_provenance <- regression_visual_metadata$provenance_diagnostics %||% list()
+  direct_autoplots_visual <- report_browser_demo_direct_observed_predicted_autoplots()
 
   rows <- list(
     data.table::data.table(check = "registry covers component types", status = if (all(report_component_types %in% names(registry))) "success" else "error"),
@@ -822,7 +1019,11 @@ qa_report_browser <- function() {
     data.table::data.table(check = "visualization renders real payload", status = if (grepl("html-widget", rendered_html, fixed = TRUE) || grepl("echarts4r", rendered_html, fixed = TRUE) || grepl("aq-report-browser-demo-plot", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "Shiny visual binding uses echarts4r output", status = if (!requireNamespace("AutoPlots", quietly = TRUE) || grepl("html-widget-output", visual_binding_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "demo visual uses modern AutoPlots when available", status = if (!requireNamespace("AutoPlots", quietly = TRUE) || identical(attr(report_browser_demo_observed_predicted_visual(), "report_browser_visual_source"), "AutoPlots::Scatter")) "success" else "error"),
-    data.table::data.table(check = "regression demo artifact provenance is explicit", status = if (identical((report_browser_demo_artifacts("regression")[[1]]$metadata %||% list())$demo_fixture, TRUE) && identical(report_browser_demo_artifacts("regression")[[1]]$source_module, "autoquant_regression_model_insights")) "success" else "error"),
+    data.table::data.table(check = "regression demo visual comes from AutoQuant", status = if (identical(regression_visual_metadata$source_function, "AutoQuant::generate_regression_model_insights_artifacts") && identical(regression_visual_artifact$source_module, "autoquant_regression_model_insights")) "success" else "error"),
+    data.table::data.table(check = "regression demo visual comes from AutoPlots Scatter", status = if (identical(regression_visual_metadata$visual_source, "AutoPlots::Scatter") && identical(regression_visual_provenance$autoplots_function, "AutoPlots::Scatter")) "success" else "error"),
+    data.table::data.table(check = "regression demo visual has no fallback", status = if (identical(regression_visual_metadata$fallback_status, "none") && identical(regression_visual_provenance$fallback_path, "none")) "success" else "error"),
+    data.table::data.table(check = "regression demo visual is interactive htmlwidget", status = if (inherits(regression_visual_artifact$object, "htmlwidget") && identical(regression_visual_provenance$display_mode, "interactive_htmlwidget")) "success" else "error"),
+    data.table::data.table(check = "regression demo visual matches direct AutoPlots class", status = if (is.null(direct_autoplots_visual) || identical(class(regression_visual_artifact$object), class(direct_autoplots_visual))) "success" else "error"),
     data.table::data.table(check = "visual interaction metadata matches payload", status = if (grepl("interactive, tooltip", rendered_html, fixed = TRUE) || grepl("static inline visual", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "presentation profile class rendered", status = if (grepl("aq-report-browser-density-", rendered_html, fixed = TRUE)) "success" else "error"),
     data.table::data.table(check = "malformed contract degrades gracefully", status = if (inherits(malformed, "shiny.tag") || inherits(malformed, "shiny.tag.list")) "success" else "error")
