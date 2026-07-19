@@ -6,47 +6,67 @@
 
 Analytics Workstation is an evidence-governed AI investigation platform for analytical work that cannot be reduced to a dashboard, notebook, report, or one-shot AI answer.
 
+Most AI tools answer the question.
+
+Analytics Workstation answers the harder one:
+
+> **Why should I believe this?**
+
 It helps move from a business objective to a decision-ready recommendation by preserving the investigation itself: what was observed, what remained uncertain, which explanations competed, what evidence was gathered, how beliefs changed, which claims were verified, and why the final recommendation deserves trust.
 
 > Analytics Workstation does not just produce answers. It conducts transparent investigations that can revise their conclusions as evidence accumulates, then critique their own recommendations before asking for trust.
 
 <p align="center"><strong>This project is both a software product and a documented experiment in AI-assisted software engineering.</strong></p>
 
+## Judge This In 90 Seconds
+
+1. View the investigation exhibits.
+2. Run the deterministic Build Week mock demo.
+3. Ask `Why should I believe this?`
+4. Open the Report Browser and inspect the preserved evidence.
+
+## Where The AI Operates
+
+| Actor | Responsibility |
+|---|---|
+| Human | Defines objectives, reviews evidence, decides whether to act |
+| GPT-5.6 | Frames investigations, selects bounded tools, synthesizes evidence, explains belief changes, verifies claims |
+| Deterministic Tools | Produce EDA, regression, SHAP, validation, reports, replay artifacts |
+| Analytics Workstation | Preserves provenance, investigation state, evidence lineage, replay, integrity review |
+
+## Investigation Loop
+
+Objective -> Uncertainty -> Competing Explanations -> Evidence -> Belief Revision -> Claim Verification -> Integrity Review -> Decision Readiness
+
 ## Evidence Exhibits
 
-These figures combine product captures and curated evidence exhibits. They are not decoration; each one shows a part of the investigation loop the product preserves.
+These figures combine product captures and curated evidence exhibits. They are not decoration; each one shows a distinct part of the investigation loop the product preserves.
 
-### Figure 1 - Arrival At The Edge Of The Known
-
-The workstation opens as a place to think before it becomes a place to operate.
-
-![Arrival at the edge of the known](docs/media/hero.png)
-
-### Figure 2 - The Investigation Begins
+### Figure 1 - The Investigation Begins
 
 The Build Week demonstration starts with uncertainty, not a conclusion: an objective, readiness checks, competing explanations, and an explicit evidence plan.
 
 ![The investigation begins](docs/media/investigation.png)
 
-### Figure 3 - Belief Revision
+### Figure 2 - Belief Revision
 
 The recommendation is allowed to change because the evidence changed.
 
 ![Belief revision sequence](docs/media/belief_revision.gif)
 
-### Figure 4 - Claim Verification
+### Figure 3 - Claim Verification
 
 The system can answer why a final claim deserves belief by tracing it through evidence, diagnostics, methodology, and limitations.
 
 ![Claim verification](docs/media/claim_verification.png)
 
-### Figure 5 - Integrity Review
+### Figure 4 - Integrity Review
 
 The investigation ends by challenging its own conclusion before asking the user to trust it.
 
 ![Integrity review](docs/media/integrity_review.png)
 
-### Figure 6 - Architecture In One Frame
+### Figure 5 - Architecture In One Frame
 
 Deterministic services compute evidence; GPT-5.6 supports synthesis, belief evolution, verification, and integrity review inside bounded contracts.
 
@@ -67,10 +87,6 @@ In a few minutes, the viewer should see:
 7. The workstation challenge its own conclusion.
 8. Decision readiness stated transparently.
 
-The most important moment is not that the system gives an answer. The important moment is that the system can answer:
-
-> Why should I believe this?
-
 ## What GPT-5.6 Does
 
 GPT-5.6 is used where probabilistic synthesis is useful:
@@ -85,6 +101,15 @@ GPT-5.6 is used where probabilistic synthesis is useful:
 It is not used to invent evidence or replace deterministic analytics.
 
 Deterministic services remain responsible for data generation, EDA, regression diagnostics, SHAP evidence, validation, replay, report-contract construction, and QA.
+
+## Why Engineers Should Care
+
+- Deterministic analytical services generate the evidence.
+- `ReportContract` objects separate analytical meaning from rendering.
+- Provenance records producing functions, package paths, and artifact identities.
+- Replay reconstructs the investigation state without rerunning the analysis.
+- Agent actions are bounded by registered tools, preflight checks, and approvals.
+- Demo-critical fallbacks are tested and rejected instead of silently substituting plausible output.
 
 ## Why It Is Different
 
