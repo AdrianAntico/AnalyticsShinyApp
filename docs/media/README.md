@@ -13,11 +13,11 @@ This folder contains product captures, curated evidence exhibits, and browser-re
 | `integrity_review.png` | Curated evidence exhibit showing the workstation challenging its own recommendation before asking for trust. |
 | `architecture.png` | Curated one-frame architecture summary. |
 
-## Video
+## Video Inventory
 
 | File | Purpose |
 |---|---|
-| `demo.webm` | Browser-recorded Build Week app run. |
-| `youtube_intro.webm` | Short web-ready teaser source derived from the same recorded run. |
+| `demo.webm` | Internal browser-recorded Build Week app run. Not linked from the public README until replaced by a polished viewing asset. |
+| `youtube_intro.webm` | Internal teaser source derived from the same recorded run. Not linked from the public README until replaced by a polished viewing asset. |
 
-The repository currently stores WebM video because the local capture environment has Playwright video support but no MP4 encoder installed. Convert these to MP4 during release packaging when ffmpeg or another encoder is available.
+These files remain useful as source captures, but they are not treated as judge-facing media. Promote a video link only after the final viewing asset has the right pacing, content, format, and playback experience.

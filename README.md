@@ -52,13 +52,6 @@ Deterministic services compute evidence; GPT-5.6 supports synthesis, belief evol
 
 ![Architecture overview](docs/media/architecture.png)
 
-## Video Evidence
-
-- [Build Week browser recording](docs/media/demo.webm): a recorded pass through the running app.
-- [Short teaser clip](docs/media/youtube_intro.webm): a small web-ready teaser source derived from the same capture.
-
-The repository stores WebM video because the local capture environment has browser video support but no MP4 encoder installed. Convert to MP4 during release packaging when an encoder is available.
-
 ## What The Build Week Demo Shows
 
 The Build Week demo is a focused investigation over a deterministic synthetic enrollment-growth dataset.
