@@ -1311,6 +1311,18 @@ server <- function(input, output, session) {
           status = "Ready",
           message = compatibility$message
         )
+        metadata <- ctx$saved_plots$metadata[[plot_name]]
+        if (is.null(metadata)) {
+          metadata <- plot_metadata(
+            plot_name = plot_name,
+            config = config,
+            sort_order = next_sort_order(ctx$saved_plots$metadata)
+          )
+        }
+        if (is.null(metadata$visual_document)) {
+          metadata$visual_document <- visual_document_from_plot_config(config, plot_name = plot_name)
+        }
+        ctx$saved_plots$metadata[[plot_name]] <- metadata
       }
     }
 

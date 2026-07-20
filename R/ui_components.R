@@ -941,6 +941,7 @@ qa_ui_consistency <- function() {
   ui_components <- read_file(file.path("R", "ui_components.R"))
   service_plot <- read_file(file.path("R", "service_plot.R"))
   table_theme <- read_file(file.path("R", "table_theme.R"))
+  visual_document <- read_file(file.path("R", "visual_document.R"))
   page_files <- list.files("R", pattern = "^page_.*\\.R$", full.names = TRUE)
   page_text <- paste(vapply(page_files, read_file, character(1)), collapse = "\n")
   component_names <- c(
@@ -989,6 +990,7 @@ qa_ui_consistency <- function() {
       "dark_first_tokens",
       "data_workspace_page",
       "plot_builder_workspace_page",
+      "visual_document_contract",
       "layout_studio_page",
       "artifact_studio_mode",
       "analysis_module_code_panel",
@@ -1037,23 +1039,35 @@ qa_ui_consistency <- function() {
       if (has_patterns(c("Data Workspace", "supported_data_accept_types", "aq-data-workbench", "aq-data-loader-band", "aq-data-preview-wide"), data_page)) "success" else "error",
       if (grepl("Plot Studio", plot_builder_page, fixed = TRUE) &&
           grepl("aq-plot-studio-v3", plot_builder_page, fixed = TRUE) &&
-          grepl("aq-plot-command-ribbon", plot_builder_page, fixed = TRUE) &&
+          grepl("aq-plot-definition", plot_builder_page, fixed = TRUE) &&
           grepl("aq-plot-stage-v3", plot_builder_page, fixed = TRUE) &&
           grepl("theme_presets", plot_builder_page, fixed = TRUE) &&
+          grepl("plot_inspector", plot_builder_page, fixed = TRUE) &&
           grepl("ui_code_panel", plot_builder_page, fixed = TRUE) &&
           grepl(".aq-plot-studio-v3", css, fixed = TRUE) &&
-          grepl(".aq-plot-command-ribbon", css, fixed = TRUE) &&
+          grepl(".aq-plot-definition", css, fixed = TRUE) &&
           grepl(".aq-plot-theme-strip", css, fixed = TRUE) &&
+          grepl(".aq-plot-inspector", css, fixed = TRUE) &&
+          grepl("plot_selected_object", plot_builder_page, fixed = TRUE) &&
+          grepl("plot_inspector_mode", plot_builder_page, fixed = TRUE) &&
+          grepl(".aq-plot-inspector-workbench", css, fixed = TRUE) &&
+          grepl(".aq-plot-object-rail", css, fixed = TRUE) &&
+          grepl(".aq-plot-selected-properties", css, fixed = TRUE) &&
           grepl("aq-plot-mapping-controls", plot_builder_page, fixed = TRUE) &&
+          grepl("grain_input", plot_builder_page, fixed = TRUE) &&
+          grepl("aq-plot-grain-cell", plot_builder_page, fixed = TRUE) &&
+          grepl("aggregation_input", plot_builder_page, fixed = TRUE) &&
+          grepl("aq-plot-aggregation-cell", plot_builder_page, fixed = TRUE) &&
           grepl(".aq-plot-mapping-controls", css, fixed = TRUE) &&
-          grepl("mapping_options <- intersect(\"AutoAggregate\", spec$options)", plot_builder_page, fixed = TRUE) &&
-          grepl("class = \"aq-plot-mapping-option\"", plot_builder_page, fixed = TRUE) &&
-          grepl("option_names <- setdiff(spec$options, \"AutoAggregate\")", plot_builder_page, fixed = TRUE) &&
+          grepl("option_names <- setdiff(plot_spec_option_names(spec), c(\"AutoAggregate\", \"AggMethod\", \"Theme\"))", plot_builder_page, fixed = TRUE) &&
+          grepl("aq-plot-hidden-state", plot_builder_page, fixed = TRUE) &&
+          grepl("Raw rows", registry_options, fixed = TRUE) &&
           grepl("Already summarized", registry_options, fixed = TRUE) &&
-          grepl("args$PreAgg <- isTRUE(value)", registry_options, fixed = TRUE) &&
+          grepl("args$PreAgg <- identical(value, \"preaggregated\") || isTRUE(value)", registry_options, fixed = TRUE) &&
           grepl("aq-plot-grain-control", registry_options, fixed = TRUE) &&
-          grepl(".aq-plot-mapping-option", css, fixed = TRUE) &&
           grepl(".aq-plot-grain-control", css, fixed = TRUE) &&
+          grepl(".aq-plot-aggregation-control", css, fixed = TRUE) &&
+          grepl(".aq-plot-hidden-state", css, fixed = TRUE) &&
           grepl(".aq-plot-studio-v3 .aq-plot-mapping-controls", css, fixed = TRUE) &&
           grepl(".aq-plot-studio-v3 .selectize-control.dropdown-active", css, fixed = TRUE) &&
           grepl("rebuild_current_plot", plot_builder_page, fixed = TRUE) &&
@@ -1061,8 +1075,26 @@ qa_ui_consistency <- function() {
           grepl("render_plot_service_widget", plot_builder_page, fixed = TRUE) &&
           grepl("preview_plot_echarts", plot_builder_page, fixed = TRUE) &&
           grepl("apply_autoplots_full_grid", service_plot, fixed = TRUE) &&
-          grepl("AutoPlots::e_grid_full(widget)", service_plot, fixed = TRUE) &&
-          grepl("AutoPlots::e_grid_full()", service_plot, fixed = TRUE)) "success" else "error",
+          grepl("apply_inferred_plot_title", service_plot, fixed = TRUE) &&
+          grepl("infer_plot_title", service_plot, fixed = TRUE) &&
+          grepl("Distribution of", service_plot, fixed = TRUE) &&
+          grepl("grid.left = 45", service_plot, fixed = TRUE) &&
+          grepl("grid.right = 40", service_plot, fixed = TRUE) &&
+          grepl("grid.containLabel = TRUE", service_plot, fixed = TRUE)) "success" else "error",
+      if (has_patterns(c(
+        "VISUAL_DOCUMENT_SCHEMA_VERSION",
+        "visual_object_registry",
+        "visual_document_from_plot_spec",
+        "visual_inspector_contract",
+        "visual_document_apply_mutation",
+        "visual_document_undo",
+        "visual_document_validate",
+        "qa_visual_document_runtime",
+        "caption_001"
+      ), visual_document) &&
+          grepl("visual_document_from_plot_spec", plot_builder_page, fixed = TRUE) &&
+          grepl("visual_inspector_contract", plot_builder_page, fixed = TRUE) &&
+          grepl("visual_document_from_plot_config", service_plot, fixed = TRUE)) "success" else "error",
       if (grepl("Layout Studio", layouts_page, fixed = TRUE) && grepl("aq-layout-studio", layouts_page, fixed = TRUE) && grepl("ui_code_panel", layouts_page, fixed = TRUE)) "success" else "error",
       if (grepl("Artifact Studio", artifact_library_page, fixed = TRUE) && grepl("ui_artifact_filmstrip", artifact_library_page, fixed = TRUE) && grepl("artifact_studio_overview", artifact_library_page, fixed = TRUE)) "success" else "error",
       if (grepl("ui_code_panel", analysis_modules_page, fixed = TRUE)) "success" else "error",
@@ -1116,7 +1148,8 @@ qa_ui_consistency <- function() {
       "Cyberpunk theme tokens and table theme support are available.",
       "Dark-first tokens include base surfaces, focus states, and secondary accent.",
       "Data page uses a top dataset loader/status band with a full-width preview.",
-      "Plot Studio uses a live stage, command ribbon, AutoPlots theme rail, and shared code panels.",
+      "Plot Studio uses a live stage, bounded plot definition controls, AutoPlots theme rail, and shared code panels.",
+      "Plot Studio is backed by a schema-driven visual document, stable object ids, contextual inspector contracts, mutation history, and a non-plot text object proof.",
       "Layout Studio uses a dedicated composition stage, disclosure, preview, and code panels.",
       "Artifact Studio surfaces evidence gallery, inspector, and filmstrip.",
       "Analysis Modules uses the shared code panel.",

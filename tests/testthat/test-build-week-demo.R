@@ -1,5 +1,5 @@
 build_week_test_env <- function() {
-  asNamespace("AnalyticsShinyApp")
+  load_test_app_env()
 }
 
 test_that("Build Week preflight and campaign path are deterministic", {

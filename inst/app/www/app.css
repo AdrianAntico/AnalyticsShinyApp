@@ -2875,9 +2875,15 @@ body.aq-theme-cyberpunk .aq-home-arrival {
 }
 
 .aq-plot-mapping-controls {
-  overflow-x: hidden;
+  overflow: visible;
 }
 
+.aq-plot-studio-v3,
+.aq-plot-definition,
+.aq-plot-definition-panel,
+.aq-plot-definition-grid,
+.aq-plot-map-grid,
+.aq-plot-treatment-grid,
 .aq-plot-studio-v3 .aq-plot-command-ribbon,
 .aq-plot-studio-v3 .aq-plot-command-cell,
 .aq-plot-studio-v3 .aq-plot-mapping-controls,
@@ -2895,12 +2901,290 @@ body.aq-theme-cyberpunk .aq-home-arrival {
 }
 
 .aq-plot-studio-v3 .selectize-control.dropdown-active {
-  z-index: 10050;
+  z-index: 10061;
 }
 
 .aq-plot-studio-v3 .selectize-dropdown,
 .aq-plot-studio-v3 .selectize-dropdown.form-control {
-  z-index: 10060;
+  z-index: 10060 !important;
+}
+
+.aq-plot-instrument {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid var(--aq-border);
+  border-radius: var(--aq-radius-sm);
+  background: color-mix(in srgb, var(--aq-panel) 78%, transparent);
+}
+
+.aq-plot-instrument-copy h2 {
+  margin: 0;
+  font-size: clamp(1.7rem, 2vw, 2.5rem);
+}
+
+.aq-plot-instrument-copy p {
+  margin: 4px 0 0;
+  color: var(--aq-muted);
+}
+
+.aq-plot-operation-status {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  max-width: min(480px, 100%);
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--aq-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--aq-surface-raised) 86%, transparent);
+  color: var(--aq-muted);
+}
+
+.aq-plot-operation-status strong,
+.aq-plot-operation-status span {
+  min-width: 0;
+}
+
+.aq-plot-operation-label {
+  display: block;
+  color: var(--aq-primary);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.aq-plot-operation-status strong {
+  display: block;
+  overflow: hidden;
+  color: var(--aq-text);
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aq-plot-operation-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--aq-success);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--aq-success) 75%, transparent);
+}
+
+.aq-plot-operation-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--aq-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.aq-plot-operation-status.is-running .aq-plot-operation-dot {
+  background: var(--aq-primary);
+  animation: aqPlotPulse 1s ease-in-out infinite;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--aq-primary) 78%, transparent);
+}
+
+.aq-plot-operation-status.is-error .aq-plot-operation-dot,
+.aq-plot-operation-status.is-failed .aq-plot-operation-dot {
+  background: var(--aq-danger);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--aq-danger) 70%, transparent);
+}
+
+@keyframes aqPlotPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.aq-plot-definition {
+  position: relative;
+  z-index: 35;
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--aq-border);
+  border-radius: var(--aq-radius-sm);
+  background: color-mix(in srgb, var(--aq-panel) 86%, transparent);
+  overflow: visible;
+}
+
+.aq-plot-definition-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.aq-plot-definition-head h3 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.aq-plot-definition-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
+  gap: 8px;
+  width: min(520px, 100%);
+}
+
+.aq-plot-definition-actions .btn {
+  width: 100%;
+}
+
+.aq-plot-destructive-menu {
+  grid-column: 1 / -1;
+  position: relative;
+}
+
+.aq-plot-destructive-menu > summary {
+  width: max-content;
+  max-width: 100%;
+  list-style: none;
+  cursor: pointer;
+  color: var(--aq-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.aq-plot-destructive-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.aq-plot-destructive-menu[open] {
+  padding: 8px;
+  border: 1px solid var(--aq-border);
+  border-radius: var(--aq-radius-sm);
+  background: var(--aq-surface-elevated);
+}
+
+.aq-plot-definition-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.45fr) minmax(260px, 0.75fr);
+  gap: 12px;
+  align-items: stretch;
+  overflow: visible;
+}
+
+.aq-plot-definition-panel {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--aq-border) 82%, transparent);
+  border-radius: var(--aq-radius-sm);
+  background: color-mix(in srgb, var(--aq-surface) 88%, transparent);
+  overflow: visible;
+}
+
+.aq-plot-map-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.72fr) minmax(360px, 1.28fr);
+  gap: 12px;
+  align-items: end;
+  overflow: visible;
+}
+
+.aq-plot-mapping-controls {
+  display: block;
+  min-width: 0;
+}
+
+.aq-plot-mapping-controls > .shiny-html-output,
+.aq-plot-mapping-controls > .shiny-bound-output {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+  overflow: visible;
+}
+
+.aq-plot-treatment-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.82fr);
+  gap: 10px;
+  align-items: end;
+  overflow: visible;
+}
+
+.aq-plot-definition .form-group,
+.aq-plot-definition .shiny-input-container {
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.aq-plot-definition .selectize-input {
+  min-height: 42px;
+}
+
+.aq-plot-empty-preview {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  min-height: 420px;
+  padding: 28px;
+  color: var(--aq-muted);
+  text-align: center;
+}
+
+.aq-plot-empty-preview strong {
+  color: var(--aq-text);
+  font-size: 1.08rem;
+}
+
+.aq-plot-empty-preview span {
+  max-width: 560px;
+}
+
+.aq-plot-theme-browser {
+  position: relative;
+  z-index: 20;
+  margin-bottom: 16px;
+  overflow: visible;
+}
+
+.aq-plot-theme-details {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  overflow: visible;
+}
+
+.aq-plot-theme-details > summary {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--aq-border);
+  border-radius: 999px;
+  background: var(--aq-surface-2);
+  color: var(--aq-text);
+  cursor: pointer;
+  font-weight: 850;
+  list-style: none;
+}
+
+.aq-plot-theme-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.aq-plot-theme-details[open] > summary {
+  border-color: var(--aq-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--aq-primary) 28%, transparent);
 }
 
 .aq-plot-mapping-controls .form-group,
@@ -2927,49 +3211,89 @@ body.aq-theme-cyberpunk .aq-home-arrival {
 }
 
 .aq-plot-grain-control {
+  display: grid;
+  align-content: center;
+  gap: 8px;
   width: 100%;
+  min-height: 74px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--aq-border-strong) 78%, transparent);
+  border-radius: var(--aq-radius-md);
+  background: color-mix(in srgb, var(--aq-surface-raised) 82%, transparent);
 }
 
-.aq-plot-mapping-option .form-group,
-.aq-plot-mapping-option .shiny-input-container,
-.aq-plot-mapping-option .checkbox {
+.aq-plot-grain-control-disabled {
+  opacity: 0.62;
+}
+
+.aq-plot-grain-copy {
+  display: grid;
+  gap: 1px;
+}
+
+.aq-plot-grain-copy span {
+  color: var(--aq-primary);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.aq-plot-grain-copy small {
+  color: var(--aq-muted);
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.aq-plot-grain-control .form-group,
+.aq-plot-grain-control .shiny-input-container,
+.aq-plot-grain-control .radio {
   margin-bottom: 0;
   width: 100%;
 }
 
-.aq-plot-mapping-option .checkbox label {
+.aq-plot-grain-control .shiny-options-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.aq-plot-grain-control .radio-inline {
   align-items: center;
-  background: var(--aq-input-bg);
-  border: 1px solid var(--aq-input-border);
+  background: color-mix(in srgb, var(--aq-surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--aq-border-strong) 70%, transparent);
   border-radius: var(--aq-radius-sm);
-  color: var(--aq-text);
+  color: var(--aq-muted);
   display: flex;
-  font-weight: 800;
-  gap: 10px;
-  min-height: 36px;
-  padding: 8px 10px;
+  font-size: 0.78rem;
+  font-weight: 850;
+  justify-content: center;
+  line-height: 1.15;
+  margin: 0;
+  min-height: 32px;
+  padding: 6px 8px;
+  position: relative;
+  text-align: center;
   white-space: normal;
 }
 
-.aq-plot-mapping-option .checkbox label span {
-  display: block;
-  font-size: 0.9rem;
-  line-height: 1.1;
+.aq-plot-grain-control .radio-inline input[type="radio"] {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
 }
 
-.aq-plot-mapping-option .checkbox label small {
-  color: var(--aq-text-muted);
-  display: block;
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1.1;
-  margin-top: 2px;
+.aq-plot-grain-control .radio-inline:has(input[type="radio"]:checked) {
+  background: color-mix(in srgb, var(--aq-primary) 20%, var(--aq-surface-raised));
+  border-color: var(--aq-primary);
+  color: var(--aq-text);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--aq-primary) 22%, transparent);
 }
 
-.aq-plot-mapping-option .checkbox input[type="checkbox"] {
-  flex: 0 0 auto;
-  margin: 0;
-  position: static;
+.aq-plot-grain-control .radio-inline:hover {
+  border-color: var(--aq-primary);
+  color: var(--aq-text);
 }
 
 .aq-global-ai-assistant {
@@ -5868,7 +6192,12 @@ body.aq-theme-cyberpunk .aq-global-ai-panel {
   top: 116px;
   z-index: 15;
   display: grid;
-  grid-template-columns: minmax(190px, 0.35fr) minmax(360px, 1fr) minmax(210px, 0.34fr);
+  grid-template-columns:
+    minmax(190px, 0.3fr)
+    minmax(480px, 1fr)
+    minmax(260px, 0.32fr)
+    minmax(190px, 0.25fr)
+    minmax(220px, 0.28fr);
   gap: 12px;
   align-items: end;
   padding: 14px;
@@ -5892,7 +6221,7 @@ body.aq-theme-cyberpunk .aq-global-ai-panel {
 .aq-plot-mapping-controls .shiny-html-output,
 .aq-plot-mapping-controls > .shiny-bound-output {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 10px;
   align-items: end;
 }
@@ -5917,6 +6246,54 @@ body.aq-theme-cyberpunk .aq-global-ai-panel {
 
 .aq-plot-run-cell .btn {
   width: 100%;
+}
+
+.aq-plot-aggregation-control {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 74px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--aq-border-strong) 78%, transparent);
+  border-radius: var(--aq-radius-md);
+  background: color-mix(in srgb, var(--aq-surface-raised) 82%, transparent);
+}
+
+.aq-plot-aggregation-control-disabled,
+.aq-plot-aggregation-control.is-muted {
+  opacity: 0.68;
+}
+
+.aq-plot-aggregation-copy {
+  display: grid;
+  gap: 1px;
+}
+
+.aq-plot-aggregation-copy span {
+  color: var(--aq-primary);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.aq-plot-aggregation-copy small {
+  color: var(--aq-muted);
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.aq-plot-aggregation-control .form-group,
+.aq-plot-aggregation-control .shiny-input-container,
+.aq-plot-aggregation-control .selectize-control {
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.aq-plot-hidden-state {
+  display: none !important;
 }
 
 .aq-plot-theme-strip {
@@ -6086,6 +6463,320 @@ body.aq-theme-cyberpunk .aq-global-ai-panel {
   min-width: 0;
 }
 
+.aq-plot-depth > .shiny-html-output,
+.aq-plot-depth > .shiny-bound-output {
+  min-width: 0;
+}
+
+.aq-plot-inspector {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--aq-border-strong) 72%, transparent);
+  border-radius: var(--aq-radius-lg);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--aq-surface-raised) 92%, transparent), color-mix(in srgb, var(--aq-surface) 96%, transparent));
+}
+
+.aq-plot-inspector-header {
+  display: flex;
+  gap: 18px;
+  align-items: end;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.aq-plot-inspector-header h3,
+.aq-plot-inspector-group-header h4 {
+  margin: 0;
+}
+
+.aq-plot-inspector-header > p,
+.aq-plot-inspector-group-header p {
+  margin: 0;
+  color: var(--aq-muted);
+}
+
+.aq-plot-inspector-workbench {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.22fr) minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  overflow: visible;
+}
+
+.aq-plot-inspector-mode .form-group {
+  margin: 0;
+}
+
+.aq-plot-inspector-mode .radio-inline {
+  padding: 7px 11px;
+  border: 1px solid color-mix(in srgb, var(--aq-border) 76%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--aq-surface-raised) 72%, transparent);
+  color: var(--aq-muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.aq-plot-inspector-mode .radio-inline:has(input[type="radio"]:checked) {
+  border-color: color-mix(in srgb, var(--aq-primary) 78%, transparent);
+  background: color-mix(in srgb, var(--aq-primary) 16%, var(--aq-surface-raised));
+  color: var(--aq-text);
+}
+
+.aq-plot-inspector-mode input[type="radio"] {
+  margin: 0 6px 0 0;
+  accent-color: var(--aq-primary);
+}
+
+.aq-plot-object-rail {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--aq-border) 70%, transparent);
+  border-radius: var(--aq-radius-md);
+  background: color-mix(in srgb, var(--aq-bg-panel) 64%, transparent);
+}
+
+.aq-plot-object-rail .form-group,
+.aq-plot-object-rail .radio {
+  margin: 0;
+}
+
+.aq-plot-object-rail .radio + .radio {
+  margin-top: 6px;
+}
+
+.aq-plot-object-rail .radio label {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid transparent;
+  border-radius: var(--aq-radius-sm);
+  color: var(--aq-muted);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.aq-plot-object-rail .radio input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.aq-plot-object-rail .radio:has(input[type="radio"]:checked) label {
+  border-color: color-mix(in srgb, var(--aq-primary) 78%, transparent);
+  background: color-mix(in srgb, var(--aq-primary) 17%, var(--aq-surface-raised));
+  color: var(--aq-text);
+  box-shadow: inset 3px 0 0 var(--aq-primary);
+}
+
+.aq-plot-selected-properties {
+  min-height: 178px;
+}
+
+.aq-plot-inspector-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.aq-plot-inspector-status span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--aq-border) 68%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--aq-surface-raised) 68%, transparent);
+  color: var(--aq-muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.aq-plot-inspector-commandbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.aq-plot-inspector-commandbar .btn {
+  min-height: 34px;
+  padding: 6px 11px;
+}
+
+.aq-plot-inspector-rename {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  min-width: 0;
+}
+
+.aq-plot-inspector-rename .form-group,
+.aq-plot-inspector-rename .shiny-input-container {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 0;
+}
+
+.aq-plot-inspector-draft-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.aq-plot-inspector-draft-note {
+  color: var(--aq-muted);
+  font-size: 0.82rem;
+}
+
+.aq-plot-inspector-draft-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--aq-border) 72%, transparent);
+  border-radius: var(--aq-radius-md);
+  background: color-mix(in srgb, var(--aq-surface) 72%, transparent);
+}
+
+.aq-plot-inspector-draft-footer.is-dirty {
+  border-color: color-mix(in srgb, var(--aq-accent) 54%, var(--aq-border));
+}
+
+.aq-plot-inspector-draft-footer.is-conflicted {
+  border-color: color-mix(in srgb, var(--aq-danger) 64%, var(--aq-border));
+}
+
+.aq-plot-inspector-draft-status {
+  display: grid;
+  gap: 4px;
+  min-width: min(100%, 260px);
+}
+
+.aq-plot-inspector-draft-status strong {
+  color: var(--aq-text);
+  font-size: 0.92rem;
+}
+
+.aq-plot-inspector-draft-status small {
+  color: var(--aq-muted);
+  font-size: 0.8rem;
+}
+
+.aq-plot-inspector-validation {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--aq-danger);
+  font-size: 0.8rem;
+}
+
+.aq-plot-inspector-draft-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.aq-plot-inspector-group {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--aq-border) 72%, transparent);
+  border-radius: var(--aq-radius-md);
+  background: color-mix(in srgb, var(--aq-surface) 70%, transparent);
+}
+
+.aq-plot-inspector-group-header {
+  display: grid;
+  gap: 4px;
+}
+
+.aq-plot-inspector-group-header h4 {
+  font-size: 1rem;
+}
+
+.aq-plot-inspector-group-header p {
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.aq-plot-inspector-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  min-width: 0;
+  overflow: visible;
+}
+
+.aq-plot-inspector-control,
+.aq-plot-inspector-control .form-group,
+.aq-plot-inspector-control .shiny-input-container,
+.aq-plot-inspector-control .selectize-control {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 0;
+}
+
+.aq-plot-inspector-control-checkbox .checkbox {
+  margin: 0;
+}
+
+.aq-plot-inspector-control-checkbox .checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--aq-border) 70%, transparent);
+  border-radius: var(--aq-radius-sm);
+  background: color-mix(in srgb, var(--aq-surface-raised) 72%, transparent);
+  color: var(--aq-text);
+  font-weight: 750;
+}
+
+.aq-plot-inspector-control-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--aq-primary);
+}
+
+.aq-plot-inspector-empty-state {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-height: 92px;
+  padding: 14px;
+  border: 1px dashed color-mix(in srgb, var(--aq-border-strong) 64%, transparent);
+  border-radius: var(--aq-radius-sm);
+  background: color-mix(in srgb, var(--aq-surface-raised) 46%, transparent);
+  color: var(--aq-muted);
+}
+
+.aq-plot-inspector-empty-state p,
+.aq-plot-inspector-empty-state small {
+  margin: 0;
+}
+
+.aq-plot-inspector-empty-state p {
+  color: var(--aq-text);
+  font-weight: 850;
+}
+
+.aq-plot-inspector-empty {
+  min-height: 110px;
+}
+
 .aq-plot-depth .aq-disclosure,
 .aq-plot-depth .aq-code-panel {
   margin-top: 0;
@@ -6115,9 +6806,34 @@ body.aq-theme-cyberpunk .aq-plot-artifact-tray .aq-card {
 }
 
 @media (max-width: 1180px) {
+  .aq-plot-instrument,
+  .aq-plot-definition-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aq-plot-definition-actions {
+    width: 100%;
+  }
+
+  .aq-plot-definition-grid,
+  .aq-plot-map-grid,
+  .aq-plot-treatment-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aq-plot-mapping-controls > .shiny-html-output,
+  .aq-plot-mapping-controls > .shiny-bound-output {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
   .aq-plot-command-ribbon {
     position: static;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aq-plot-inspector-workbench {
+    grid-template-columns: minmax(170px, 0.28fr) minmax(0, 1fr);
   }
 
   .aq-plot-theme-strip,
@@ -6132,6 +6848,12 @@ body.aq-theme-cyberpunk .aq-plot-artifact-tray .aq-card {
 }
 
 @media (max-width: 760px) {
+  .aq-plot-definition-actions,
+  .aq-plot-mapping-controls > .shiny-html-output,
+  .aq-plot-mapping-controls > .shiny-bound-output {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .aq-plot-instrument,
   .aq-plot-stage-header {
     grid-template-columns: minmax(0, 1fr);
@@ -6147,6 +6869,16 @@ body.aq-theme-cyberpunk .aq-plot-artifact-tray .aq-card {
   }
 
   .aq-plot-run-cell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aq-plot-inspector-header,
+  .aq-plot-inspector-workbench {
+    grid-template-columns: minmax(0, 1fr);
+    display: grid;
+  }
+
+  .aq-plot-inspector-rename {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -8329,6 +9061,133 @@ body.aq-theme-cyberpunk .aq-plot-artifact-tray .aq-card {
   border-left: 4px solid var(--aq-danger);
 }
 
+.aq-visual-composition {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--aq-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--aq-panel) 82%, transparent);
+}
+
+.aq-visual-composition-heading h3 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2vw, 2.2rem);
+}
+
+.aq-visual-composition-heading p,
+.aq-visual-composition-copy p,
+.aq-visual-composition-source p {
+  margin: 6px 0 0;
+  color: var(--aq-muted);
+}
+
+.aq-visual-composition-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.aq-visual-composition-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.aq-visual-composition-plot {
+  min-width: 0;
+}
+
+.aq-visual-composition-plot .html-widget,
+.aq-visual-composition-plot .echarts4r,
+.aq-visual-composition-plot iframe {
+  width: 100% !important;
+  min-height: 520px;
+}
+
+.aq-visual-composition-evidence {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.aq-visual-composition-evidence-panel {
+  border: 1px solid var(--aq-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--aq-surface) 88%, transparent);
+  overflow: hidden;
+}
+
+.aq-visual-composition-evidence-panel > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.aq-visual-composition-evidence-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.aq-visual-composition-evidence-summary {
+  min-width: 0;
+  color: var(--aq-muted);
+  font-size: 0.86rem;
+}
+
+.aq-visual-composition-evidence-toggle {
+  justify-self: end;
+  color: var(--aq-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.aq-visual-composition-evidence-panel[open] .aq-visual-composition-evidence-toggle {
+  color: var(--aq-muted);
+}
+
+.aq-visual-composition-evidence-panel[open] .aq-visual-composition-evidence-toggle::after {
+  content: " context";
+}
+
+.aq-visual-composition-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border-top: 1px solid var(--aq-border);
+}
+
+.aq-visual-composition-callout,
+.aq-visual-composition-copy,
+.aq-visual-composition-source {
+  padding: 14px;
+  border: 1px solid var(--aq-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--aq-surface) 88%, transparent);
+}
+
+.aq-visual-composition-callout span,
+.aq-visual-composition-source span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--aq-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.aq-visual-composition-callout strong {
+  display: block;
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
 @media (max-width: 900px) {
   .aq-build-week-progress-header {
     display: grid;
@@ -8355,5 +9214,15 @@ body.aq-theme-cyberpunk .aq-plot-artifact-tray .aq-card {
 
   .aq-inquiry-grid {
     grid-template-columns: 1fr;
+  }
+
+  .aq-visual-composition-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .aq-visual-composition-plot .html-widget,
+  .aq-visual-composition-plot .echarts4r,
+  .aq-visual-composition-plot iframe {
+    min-height: 420px;
   }
 }

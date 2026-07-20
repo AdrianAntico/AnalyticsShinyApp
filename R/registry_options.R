@@ -19,9 +19,10 @@ option_registry <- list(
   ),
   AutoAggregate = list(
     input_id = "auto_aggregate",
-    label = "Already summarized",
-    type = "checkbox",
-    default = TRUE
+    label = "Data grain",
+    type = "grain",
+    choices = c("Raw rows" = "raw", "Already summarized" = "preaggregated"),
+    default = "raw"
   ),
   AggMethod = list(
     input_id = "agg_method",
@@ -79,32 +80,42 @@ option_registry <- list(
     default = NA
   )
 )
-option_control <- function(option_name, ns = identity) {
+option_control <- function(option_name, ns = identity, value = NULL) {
   opt <- option_registry[[option_name]]
   if (is.null(opt)) {
     return(NULL)
   }
 
+  control_value <- value %||% opt$default
+
   if (identical(option_name, "AutoAggregate")) {
     return(tags$div(
       class = "aq-plot-grain-control",
-      checkboxInput(
+      tags$div(
+        class = "aq-plot-grain-copy",
+        tags$span("Data grain"),
+        tags$small("Most datasets are raw rows; summarize only when needed.")
+      ),
+      radioButtons(
         ns(opt$input_id),
-        label = tagList(
-          tags$span("Already summarized"),
-          tags$small("One plotted value per X/group.")
-        ),
-        value = opt$default
+        label = NULL,
+        choices = opt$choices,
+        selected = if (identical(control_value, "preaggregated") || isTRUE(control_value)) {
+          "preaggregated"
+        } else {
+          "raw"
+        },
+        inline = TRUE
       )
     ))
   }
 
   switch(
     opt$type,
-    select = selectInput(ns(opt$input_id), opt$label, choices = opt$choices, selected = opt$default),
-    text = textInput(ns(opt$input_id), opt$label, value = opt$default),
-    checkbox = checkboxInput(ns(opt$input_id), opt$label, value = opt$default),
-    numeric = numericInput(ns(opt$input_id), opt$label, value = opt$default),
+    select = selectInput(ns(opt$input_id), opt$label, choices = opt$choices, selected = control_value),
+    text = textInput(ns(opt$input_id), opt$label, value = control_value %||% ""),
+    checkbox = checkboxInput(ns(opt$input_id), opt$label, value = isTRUE(control_value)),
+    numeric = numericInput(ns(opt$input_id), opt$label, value = control_value),
     NULL
   )
 }
@@ -116,6 +127,10 @@ option_value <- function(input, option_name) {
   }
 
   value <- input[[opt$input_id]]
+  if (identical(opt$type, "grain")) {
+    return(selected_value(value))
+  }
+
   switch(
     opt$type,
     checkbox = logical_value(value),
@@ -126,7 +141,7 @@ option_value <- function(input, option_name) {
 
 add_option_arg <- function(args, option_name, value) {
   if (identical(option_name, "AutoAggregate")) {
-    args$PreAgg <- isTRUE(value)
+    args$PreAgg <- identical(value, "preaggregated") || isTRUE(value)
     return(args)
   }
 
